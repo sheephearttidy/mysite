@@ -136,6 +136,58 @@ def api_health():
     return jsonify(ok=True, time=datetime.now(timezone.utc).isoformat())
 
 
+# ---------------- 访问统计 ----------------
+
+# 只记这些路径,避免被扫描器刷爆数据库
+TRACK_PATHS = {"/", "/index.html"}
+_BEIJING = timezone(timedelta(hours=8))
+
+
+def _clean_referer(raw: str) -> str:
+    """把 referer 裁成域名,顺便过滤掉自己站内跳转"""
+    if not raw:
+        return ""
+    try:
+        from urllib.parse import urlparse
+        host = (urlparse(raw).hostname or "").lower()
+    except Exception:
+        return ""
+    if not host:
+        return ""
+    # 自己站内的跳转不算来源
+    if host in ("imyxj.xyz", "www.imyxj.xyz", "SERVER_IP", "127.0.0.1", "localhost"):
+        return ""
+    return host[:100]
+
+
+@app.post("/api/track")
+def track_visit():
+    """前台每次打开首页调一次。公开接口,只记首页,防扫描器刷库。"""
+    body = request.get_json(silent=True) or {}
+    path = (body.get("path") or "/")[:100]
+    if path not in TRACK_PATHS:
+        return jsonify(ok=False, error="只统计首页"), 400
+
+    ua = request.headers.get("User-Agent", "")[:300]
+    ref = _clean_referer(request.headers.get("Referer", ""))
+
+    now = datetime.now(_BEIJING)
+    try:
+        db.record_visit(path=path, referer=ref, ua=ua,
+                        day=now.strftime("%Y-%m-%d"), ts=int(time.time()))
+    except Exception:
+        return jsonify(ok=False), 200   # 统计失败不影响用户
+    return jsonify(ok=True)
+
+
+@app.get("/api/stats/visits")
+@login_required
+def visit_stats():
+    days = request.args.get("days", 30, type=int)
+    days = max(1, min(days, 365))
+    return jsonify(db.get_visit_stats(days))
+
+
 # ---------------- 后台页面 ----------------
 
 @app.get("/admin/login")

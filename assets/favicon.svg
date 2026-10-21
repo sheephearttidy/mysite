@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="14" fill="#ffd93d"/>
+  <rect x="4" y="4" width="56" height="56" rx="11" fill="none" stroke="#2d2a32" stroke-width="4"/>
+  <text x="32" y="45" font-size="34" font-weight="700"
+        font-family="ZCOOL KuaiLe, Baloo 2, sans-serif"
+        text-anchor="middle" fill="#2d2a32">杰</text>
+</svg>

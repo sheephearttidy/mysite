@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+
+# 后台和 API 不要被收录
+Disallow: /admin
+Disallow: /admin/
+Disallow: /api/
+
+Sitemap: https://imyxj.xyz/sitemap.xml

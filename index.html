@@ -5,10 +5,53 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>至尊杰 · 大学生活实录 🎓</title>
 <meta name="description" content="至尊杰的小窝 —— 燕京理工学院计算机科学与技术,沉迷智能车 AI,正在 learning and building。" />
+<meta name="author" content="至尊杰" />
+<meta name="theme-color" content="#ffd93d" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#1b1922" media="(prefers-color-scheme: dark)" />
+<link rel="canonical" href="https://imyxj.xyz/" />
+
+<!-- 图标 -->
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
+
+<!-- 分享卡片:微信/QQ/Twitter/飞书等 -->
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="至尊杰的小窝" />
+<meta property="og:title" content="至尊杰 · 大学生活实录 🎓" />
+<meta property="og:description" content="燕京理工学院计算机科学与技术,沉迷智能车 AI,正在 learning and building。" />
+<meta property="og:url" content="https://imyxj.xyz/" />
+<meta property="og:image" content="https://imyxj.xyz/assets/og-image.png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content="至尊杰的小窝 —— learning and building" />
+<meta property="og:locale" content="zh_CN" />
+
+<!-- Twitter 卡片 -->
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="至尊杰 · 大学生活实录 🎓" />
+<meta name="twitter:description" content="燕京理工学院计算机科学与技术,沉迷智能车 AI,正在 learning and building。" />
+<meta name="twitter:image" content="https://imyxj.xyz/assets/og-image.png" />
+
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="css/style.css" />
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Person",
+  "name": "至尊杰",
+  "url": "https://imyxj.xyz/",
+  "image": "https://imyxj.xyz/assets/og-image.png",
+  "description": "燕京理工学院计算机科学与技术,沉迷智能车 AI,正在 learning and building。",
+  "alumniOf": {
+    "@type": "CollegeOrUniversity",
+    "name": "燕京理工学院"
+  },
+  "knowsAbout": ["智能车 AI", "计算机视觉", "全栈开发", "嵌入式"],
+  "sameAs": ["https://github.com/sheephearttidy"]
+}
+</script>
 <script>
   // 尽早应用主题,避免深色模式闪白
   (function () {
@@ -65,6 +108,7 @@
         <div class="btn-row">
           <a href="#works" class="btn btn-pink">看看我做了啥 👀</a>
           <a href="#contact" class="btn btn-white">来加个好友 🤝</a>
+          <button class="btn btn-yellow" id="resumeBtn">下载简历 📄</button>
         </div>
       </div>
 
@@ -423,6 +467,22 @@
     <button class="qr-close" id="qrClose" aria-label="关闭">✕</button>
     <img src="assets/wechat-qr.jpg" alt="至尊杰的微信二维码" />
     <p>微信扫一扫,加个好友吧 🎉</p>
+  </div>
+</div>
+
+<!-- 简历打印提示 -->
+<div class="print-hint" id="printHint" role="dialog" aria-label="打印简历提示">
+  <div class="ph-card">
+    <h3>📄 把这一页存成 PDF</h3>
+    <p>
+      点下面的按钮会打开浏览器的打印窗口。<br>
+      在「目标打印机」里选 <b>另存为 PDF</b>,然后保存就行。<br>
+      <span style="font-size:13px;color:#8a8494">页面已经排版成 A4 简历样式,装饰会自动隐藏。</span>
+    </p>
+    <div class="ph-btns">
+      <button class="btn btn-teal" id="doPrintBtn">🖨️ 打开打印窗口</button>
+      <button class="btn btn-white" id="cancelPrintBtn">先不了</button>
+    </div>
   </div>
 </div>
 

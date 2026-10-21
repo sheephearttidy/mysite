@@ -278,6 +278,98 @@
     border-radius: 6px; padding: 0 5px; font-size: 12.5px;
   }
 
+  /* ============ 数据看板 ============ */
+  .dash-range { display: flex; gap: 6px; margin-left: auto; }
+  .rbtn {
+    font-size: 12.5px; font-weight: 800; font-family: inherit; cursor: pointer;
+    padding: 3px 12px; border: 2px solid var(--ink); border-radius: 999px;
+    background: var(--paper); color: var(--ink);
+  }
+  .rbtn.active { background: var(--teal); box-shadow: 2px 2px 0 var(--ink); }
+
+  .dash-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .dash-card {
+    border: 3px solid var(--ink); border-radius: 16px; padding: 14px 16px;
+    box-shadow: 4px 4px 0 var(--ink); text-align: center;
+  }
+  .dash-card.c1 { background: var(--pink-bg); }
+  .dash-card.c2 { background: var(--teal-bg); }
+  .dash-card.c3 { background: var(--yellow-bg); }
+  .dash-card.c4 { background: var(--purple-bg); }
+  .dc-num { font-size: 30px; font-weight: 800; line-height: 1.1; }
+  .dc-lbl { font-size: 12px; font-weight: 800; color: #6b6577; margin-top: 4px; }
+
+  /* 柱状趋势图 */
+  .chart {
+    display: flex; align-items: flex-end; gap: 3px;
+    height: 150px; padding: 10px 0 0;
+    border-bottom: 3px solid var(--ink);
+  }
+  .chart .bar-col {
+    flex: 1; min-width: 3px; display: flex; flex-direction: column;
+    justify-content: flex-end; align-items: center; position: relative;
+  }
+  .chart .bar-col i {
+    display: block; width: 100%; background: var(--teal);
+    border: 2px solid var(--ink); border-bottom: none;
+    border-radius: 4px 4px 0 0; min-height: 2px;
+    transition: height .3s ease;
+  }
+  .chart .bar-col.zero i { background: #e6e1d8; border-color: #c9c3d0; }
+  .chart .bar-col:hover i { background: var(--pink); }
+  .chart .bar-col .tip {
+    display: none; position: absolute; bottom: 100%; left: 50%;
+    transform: translateX(-50%); white-space: nowrap;
+    background: var(--ink); color: #fff; font-size: 11px; font-weight: 700;
+    padding: 2px 7px; border-radius: 6px; z-index: 5; margin-bottom: 4px;
+  }
+  .chart .bar-col:hover .tip { display: block; }
+  .chart-x { display: flex; justify-content: space-between; font-size: 11px;
+    font-weight: 700; color: #8a8494; margin-top: 4px; }
+
+  .dash-two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 18px; }
+
+  .rank-row {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 13px; font-weight: 700; padding: 4px 0;
+  }
+  .rank-row .rn { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rank-row .rv { font-weight: 800; }
+  .rank-row .rb {
+    width: 90px; height: 9px; background: var(--cream);
+    border: 2px solid var(--ink); border-radius: 999px; overflow: hidden;
+  }
+  .rank-row .rb i { display: block; height: 100%; background: var(--pink); }
+
+  /* 24 小时热力条 */
+  .hours { display: flex; gap: 3px; align-items: flex-end; height: 64px; }
+  .hours .h {
+    flex: 1; background: var(--cream); border: 2px solid var(--ink);
+    border-radius: 4px; min-height: 4px; position: relative;
+  }
+  .hours .h.hot { background: var(--orange); }
+  .hours .h:hover::after {
+    content: attr(data-tip); position: absolute; bottom: 100%; left: 50%;
+    transform: translateX(-50%); white-space: nowrap; background: var(--ink);
+    color: #fff; font-size: 11px; padding: 2px 6px; border-radius: 5px;
+    margin-bottom: 3px; z-index: 5;
+  }
+  .hours-x { display: flex; justify-content: space-between; font-size: 11px;
+    font-weight: 700; color: #8a8494; margin-top: 4px; }
+
+  .recent-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .recent-table th {
+    text-align: left; font-weight: 800; color: #6b6577;
+    padding: 6px 8px; border-bottom: 2px solid var(--ink);
+  }
+  .recent-table td { padding: 6px 8px; border-bottom: 1px dashed rgba(45,42,50,.18); font-weight: 700; }
+  .recent-table tr:last-child td { border-bottom: none; }
+
+  @media (max-width: 860px) {
+    .dash-cards { grid-template-columns: 1fr 1fr; }
+    .dash-two { grid-template-columns: 1fr; }
+  }
+
   /* ============ 响应式:小屏侧边栏变抽屉 ============ */
   @media (max-width: 860px) {
     .sidebar {
@@ -353,6 +445,7 @@
           ⚙️ 站点维护 <span class="caret">▾</span>
         </button>
         <ul class="sb-sub">
+          <li><a class="sb-link" data-panel="dashboard" href="#dashboard">📊 数据看板</a></li>
           <li><a class="sb-link" data-panel="backup" href="#backup">💾 数据备份</a></li>
           <li><a class="sb-link" data-panel="security" href="#security">🔐 安全设置</a></li>
         </ul>
@@ -458,6 +551,64 @@
             <span class="hint" id="uploadHint">也可以直接把图片拖到这里</span>
           </div>
           <div class="up-grid" id="upGrid"></div>
+        </div>
+      </section>
+
+      <!-- 数据看板 -->
+      <section class="panel" id="panel-dashboard">
+        <div class="sec-head">
+          <h2>📊 数据看板</h2>
+          <div class="dash-range">
+            <button class="rbtn active" data-days="7">近 7 天</button>
+            <button class="rbtn" data-days="30">近 30 天</button>
+            <button class="rbtn" data-days="90">近 90 天</button>
+          </div>
+        </div>
+
+        <div class="dash-cards">
+          <div class="dash-card c1">
+            <div class="dc-num" id="dc-today">–</div>
+            <div class="dc-lbl">今天访问</div>
+          </div>
+          <div class="dash-card c2">
+            <div class="dc-num" id="dc-range">–</div>
+            <div class="dc-lbl">所选区间</div>
+          </div>
+          <div class="dash-card c3">
+            <div class="dc-num" id="dc-total">–</div>
+            <div class="dc-lbl">累计访问</div>
+          </div>
+          <div class="dash-card c4">
+            <div class="dc-num" id="dc-bots">–</div>
+            <div class="dc-lbl">已过滤爬虫</div>
+          </div>
+        </div>
+
+        <div class="item" style="margin-top:18px">
+          <h3>📈 每日访问趋势</h3>
+          <div class="chart" id="dashChart"></div>
+        </div>
+
+        <div class="dash-two">
+          <div class="item">
+            <h3>🔗 流量来源</h3>
+            <div id="dashRefs"></div>
+          </div>
+          <div class="item">
+            <h3>💻 浏览器 / 系统</h3>
+            <div id="dashUas"></div>
+          </div>
+        </div>
+
+        <div class="item" style="margin-top:18px">
+          <h3>🕐 活跃时段</h3>
+          <div class="hours" id="dashHours"></div>
+          <p class="hint" style="margin-top:6px">按北京时间统计,数值越高说明那个点看的人越多</p>
+        </div>
+
+        <div class="item" style="margin-top:18px">
+          <h3>🧾 最近访问</h3>
+          <div id="dashRecent"></div>
         </div>
       </section>
 
@@ -573,6 +724,7 @@ const PANELS = {
   'profile-about': { title:'✍️ 自我介绍段落',  crumb:'个人信息 / 自我介绍' },
   'profile-info':  { title:'🪪 信息卡片',      crumb:'个人信息 / 信息卡片' },
   'uploads':       { title:'🖼️ 图片库',        crumb:'媒体资源 / 图片库' },
+  'dashboard':     { title:'📊 数据看板',      crumb:'站点维护 / 数据看板' },
   'backup':        { title:'💾 数据备份',      crumb:'站点维护 / 数据备份' },
   'security':      { title:'🔐 安全设置',      crumb:'站点维护 / 安全设置' },
 };
@@ -588,6 +740,12 @@ function showPanel(name) {
 
   document.getElementById('panelTitle').textContent = PANELS[name].title;
   document.getElementById('panelCrumb').textContent = PANELS[name].crumb;
+
+  // 看板:每次进来都刷新一次数据
+  if (name === 'dashboard') loadDashboard(DASH_DAYS);
+
+  // 图片库:每次进来刷新列表
+  if (name === 'uploads' && typeof loadUploads === 'function') loadUploads();
 
   // 记住当前面板
   try { localStorage.setItem('admin_panel', name); } catch (e) {}
@@ -656,6 +814,133 @@ function updateCounts() {
 function editProfileKind(kind) {
   editItem('profile', null, { kind });
 }
+
+/* ---------- 数据看板 ---------- */
+let DASH_DAYS = 7;
+let dashLoaded = false;
+
+async function loadDashboard(days) {
+  DASH_DAYS = days || DASH_DAYS;
+  try {
+    const j = await api('GET', `/api/stats/visits?days=${DASH_DAYS}`);
+    renderDashboard(j);
+    dashLoaded = true;
+  } catch (e) {
+    toast('看板加载失败:' + e.message);
+  }
+}
+
+function renderDashboard(d) {
+  document.getElementById('dc-today').textContent = d.today;
+  document.getElementById('dc-total').textContent = d.total_real;
+  document.getElementById('dc-bots').textContent = d.total - d.total_real;
+
+  const sum = d.by_day.reduce((a, b) => a + b.n, 0);
+  document.getElementById('dc-range').textContent = sum;
+
+  // ---- 趋势柱状图 ----
+  const chart = document.getElementById('dashChart');
+  if (!d.by_day.length) {
+    chart.innerHTML = '<p class="hint" style="margin:auto">还没有数据,等有人来看看~</p>';
+    document.getElementById('dashChartX')?.remove();
+  } else {
+    const max = Math.max(...d.by_day.map(x => x.n), 1);
+    chart.innerHTML = d.by_day.map(x => {
+      const h = Math.max(2, Math.round(x.n / max * 100));
+      const mmdd = x.day.slice(5).replace('-', '/');
+      return `<div class="bar-col ${x.n === 0 ? 'zero' : ''}">
+        <span class="tip">${mmdd} · ${x.n} 次</span>
+        <i style="height:${h}%"></i>
+      </div>`;
+    }).join('');
+    // 首尾日期标注
+    const first = d.by_day[0].day.slice(5).replace('-', '/');
+    const last = d.by_day[d.by_day.length - 1].day.slice(5).replace('-', '/');
+    let xa = document.getElementById('dashChartX');
+    if (!xa) {
+      xa = document.createElement('div');
+      xa.className = 'chart-x';
+      xa.id = 'dashChartX';
+      chart.after(xa);
+    }
+    xa.innerHTML = `<span>${first}</span><span>${last}</span>`;
+  }
+
+  // ---- 来源 ----
+  const refs = document.getElementById('dashRefs');
+  if (!d.by_ref.length) {
+    refs.innerHTML = '<p class="hint">还没有外部来源,基本都是直接访问</p>';
+  } else {
+    const rmax = Math.max(...d.by_ref.map(x => x.n), 1);
+    refs.innerHTML = d.by_ref.map(x => `
+      <div class="rank-row">
+        <span class="rn">${esc(x.referer)}</span>
+        <span class="rb"><i style="width:${Math.round(x.n / rmax * 100)}%"></i></span>
+        <span class="rv">${x.n}</span>
+      </div>`).join('');
+  }
+
+  // ---- 浏览器/系统 ----
+  const uas = document.getElementById('dashUas');
+  if (!d.by_ua.length) {
+    uas.innerHTML = '<p class="hint">还没有数据</p>';
+  } else {
+    const umax = Math.max(...d.by_ua.map(x => x.n), 1);
+    uas.innerHTML = d.by_ua.map(x => `
+      <div class="rank-row">
+        <span class="rn">${esc(x.ua)}</span>
+        <span class="rb"><i style="width:${Math.round(x.n / umax * 100)}%"></i></span>
+        <span class="rv">${x.n}</span>
+      </div>`).join('');
+  }
+
+  // ---- 24 小时 ----
+  const hours = document.getElementById('dashHours');
+  const hmax = Math.max(...d.by_hour, 1);
+  hours.innerHTML = d.by_hour.map((n, h) => {
+    const pct = Math.round(n / hmax * 100);
+    return `<div class="h ${pct > 60 ? 'hot' : ''}"
+      style="height:${Math.max(6, pct)}%"
+      data-tip="${h}:00 · ${n} 次"></div>`;
+  }).join('');
+  let hx = document.getElementById('dashHoursX');
+  if (!hx) {
+    hx = document.createElement('div');
+    hx.className = 'hours-x';
+    hx.id = 'dashHoursX';
+    hours.after(hx);
+  }
+  hx.innerHTML = '<span>0:00</span><span>6:00</span><span>12:00</span><span>18:00</span><span>23:00</span>';
+
+  // ---- 最近访问 ----
+  const recent = document.getElementById('dashRecent');
+  if (!d.recent.length) {
+    recent.innerHTML = '<p class="hint">还没有访问记录</p>';
+  } else {
+    recent.innerHTML = `<table class="recent-table">
+      <thead><tr><th>时间</th><th>路径</th><th>来源</th><th>设备</th></tr></thead>
+      <tbody>${d.recent.map(r => {
+        const dt = new Date(r.ts * 1000);
+        const t = `${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')} ` +
+                  `${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
+        return `<tr>
+          <td>${t}</td>
+          <td>${esc(r.path)}</td>
+          <td>${r.referer ? esc(r.referer) : '<span style="color:#8a8494">直接访问</span>'}</td>
+          <td>${esc(r.ua)}</td>
+        </tr>`;
+      }).join('')}</tbody></table>`;
+  }
+}
+
+// 区间切换
+document.querySelectorAll('.rbtn').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('.rbtn').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    loadDashboard(parseInt(b.dataset.days, 10));
+  });
+});
 
 function renderSkills() {
   const box = document.getElementById('list-skills');

@@ -63,6 +63,19 @@ CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
 );
+
+-- 访问统计:每次页面访问记一条
+CREATE TABLE IF NOT EXISTS visits (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    day TEXT NOT NULL,              -- YYYY-MM-DD(按服务器本地时区)
+    ts INTEGER NOT NULL,            -- unix 时间戳
+    path TEXT NOT NULL DEFAULT '/', -- 访问路径
+    referer TEXT DEFAULT '',        -- 来源域名(已裁剪)
+    ua TEXT DEFAULT '',             -- 简化的浏览器/系统标签
+    is_bot INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_visits_day ON visits(day);
+CREATE INDEX IF NOT EXISTS idx_visits_ts  ON visits(ts);
 """
 
 # 首次建库时灌入的初始数据(与 v1.0.0 静态页一致)
@@ -484,3 +497,119 @@ def import_payload(payload: dict, replace: bool = False) -> dict:
                 n += 1
             counts[table] = n
     return counts
+
+
+# ---------------- 访问统计 ----------------
+
+BOT_PATTERNS = (
+    "bot", "spider", "crawl", "slurp", "curl", "wget", "python-requests",
+    "httpclient", "scrapy", "headless", "phantom", "facebookexternalhit",
+    "whatsapp", "telegram", "preview", "monitor", "uptime", "pingdom",
+)
+
+
+def _classify_ua(ua: str):
+    """把 UA 简化成 '浏览器 / 系统' 标签,并判断是不是爬虫"""
+    if not ua:
+        return "未知", 1
+    low = ua.lower()
+    is_bot = 1 if any(p in low for p in BOT_PATTERNS) else 0
+
+    if "edg/" in low:
+        browser = "Edge"
+    elif "opr/" in low or "opera" in low:
+        browser = "Opera"
+    elif "firefox/" in low:
+        browser = "Firefox"
+    elif "chrome/" in low or "crios/" in low:
+        browser = "Chrome"
+    elif "safari/" in low:
+        browser = "Safari"
+    elif "micromessenger" in low:
+        browser = "微信"
+    else:
+        browser = "其他"
+
+    if "iphone" in low or "ipad" in low:
+        os_name = "iOS"
+    elif "android" in low:
+        os_name = "Android"
+    elif "windows" in low:
+        os_name = "Windows"
+    elif "mac os" in low or "macintosh" in low:
+        os_name = "macOS"
+    elif "linux" in low:
+        os_name = "Linux"
+    else:
+        os_name = "其他"
+
+    return f"{browser} / {os_name}", is_bot
+
+
+def record_visit(path: str, referer: str, ua: str, day: str, ts: int):
+    """记录一次访问。调用方负责把 referer 裁成域名。"""
+    label, is_bot = _classify_ua(ua)
+    with get_db() as c:
+        c.execute(
+            "INSERT INTO visits(day,ts,path,referer,ua,is_bot) VALUES(?,?,?,?,?,?)",
+            (day, ts, path[:200], referer[:200], label[:60], is_bot))
+
+
+def get_visit_stats(days: int = 30) -> dict:
+    """返回看板需要的聚合数据"""
+    import time as _t
+    now = int(_t.time())
+    since = now - days * 86400
+
+    with get_db() as c:
+        total = c.execute("SELECT COUNT(*) n FROM visits").fetchone()["n"]
+        total_real = c.execute(
+            "SELECT COUNT(*) n FROM visits WHERE is_bot=0").fetchone()["n"]
+
+        today = c.execute(
+            "SELECT COUNT(*) n FROM visits WHERE day=? AND is_bot=0",
+            (_t.strftime("%Y-%m-%d"),)).fetchone()["n"]
+
+        # 按天(只取真实访问)
+        rows = c.execute(
+            """SELECT day, COUNT(*) n FROM visits
+               WHERE is_bot=0 AND ts>=? GROUP BY day ORDER BY day""",
+            (since,)).fetchall()
+        by_day = [{"day": r["day"], "n": r["n"]} for r in rows]
+
+        # 来源(空 = 直接访问)
+        refs = c.execute(
+            """SELECT referer, COUNT(*) n FROM visits
+               WHERE is_bot=0 AND referer<>'' GROUP BY referer
+               ORDER BY n DESC LIMIT 10""").fetchall()
+        by_ref = [{"referer": r["referer"], "n": r["n"]} for r in refs]
+
+        # 浏览器/系统
+        uas = c.execute(
+            """SELECT ua, COUNT(*) n FROM visits
+               WHERE is_bot=0 GROUP BY ua ORDER BY n DESC LIMIT 8""").fetchall()
+        by_ua = [{"ua": r["ua"], "n": r["n"]} for r in uas]
+
+        # 最近访问
+        recent = c.execute(
+            """SELECT day,ts,path,referer,ua FROM visits
+               WHERE is_bot=0 ORDER BY ts DESC LIMIT 20""").fetchall()
+        recent = [dict(r) for r in recent]
+
+        # 按小时分布(帮助判断活跃时段)
+        hours = c.execute(
+            """SELECT CAST(strftime('%H', ts, 'unixepoch', 'localtime') AS INTEGER) h,
+                      COUNT(*) n FROM visits WHERE is_bot=0 GROUP BY h""").fetchall()
+        by_hour = {r["h"]: r["n"] for r in hours}
+
+    return {
+        "total": total,
+        "total_real": total_real,
+        "today": today,
+        "by_day": by_day,
+        "by_ref": by_ref,
+        "by_ua": by_ua,
+        "recent": recent,
+        "by_hour": [by_hour.get(h, 0) for h in range(24)],
+        "days": days,
+    }
