@@ -123,6 +123,7 @@ def logout():
 
 
 @app.get("/admin")
+@app.get("/admin/")
 @login_required
 def admin():
     data = {
