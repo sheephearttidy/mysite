@@ -40,6 +40,7 @@ ck("map 导航高亮", 'class="active">来访地图' in body)
 
 # 2. 节日特效接入所有前台页
 FRONT = ["index", "about", "skills", "works", "campus", "contact", "map"]
+NAV_EXPECT = ["首页", "关于我", "技能树", "小破项目", "校园日常", "来访地图", "来找我玩"]
 for name in FRONT:
     fn = "" if name == "index" else name + ".html"
     _, body = get("/" + fn)
@@ -49,6 +50,9 @@ for name in FRONT:
     # CSS 顺序:dark -> holidays -> responsive
     idx = [body.find(x) for x in ("css/dark.css", "css/holidays.css", "css/responsive.css")]
     ck(f"{name} CSS 顺序", idx[0] < idx[1] < idx[2], str(idx))
+    # 导航必须 7 项且顺序一致(含来访地图)
+    nav = re.findall(r'<li><a href="/[^"]*"[^>]*>([^<]+)</a></li>', body)
+    ck(f"{name} 导航 7 项一致", nav == NAV_EXPECT, str(nav))
 
 # 3. 节日资源文件
 for u in ["/css/holidays.css", "/js/holiday.js", "/js/holiday-fx.js", "/js/cities.js", "/js/map.js"]:
