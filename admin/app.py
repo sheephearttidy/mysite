@@ -204,6 +204,28 @@ def api_content():
     )
 
 
+# 每个页面需要的数据:拆分多页后,各页只拉自己那部分
+PAGE_FIELDS = {
+    "index": ("stats",),
+    "about": ("profile",),
+    "skills": ("skills",),
+    "works": ("works",),
+    "campus": ("timeline",),
+    "contact": (),
+}
+
+
+@app.get("/api/page/<name>")
+def api_page(name: str):
+    """按页拉取数据:只返回该页用到的字段,省流量"""
+    if name not in PAGE_FIELDS:
+        return jsonify(error="未知页面"), 404
+    out = {}
+    for f in PAGE_FIELDS[name]:
+        out[f] = getattr(db, f"get_{f}")()
+    return jsonify(**out)
+
+
 @app.get("/api/health")
 def api_health():
     return jsonify(ok=True, time=datetime.now(timezone.utc).isoformat())
@@ -211,8 +233,15 @@ def api_health():
 
 # ---------------- 访问统计 ----------------
 
-# 只记这些路径,避免被扫描器刷爆数据库
-TRACK_PATHS = {"/", "/index.html"}
+# 只记这些页面路径,避免被扫描器刷爆数据库
+TRACK_PATHS = {
+    "/", "/index.html",
+    "/about", "/about.html",
+    "/skills", "/skills.html",
+    "/works", "/works.html",
+    "/campus", "/campus.html",
+    "/contact", "/contact.html",
+}
 _BEIJING = timezone(timedelta(hours=8))
 
 
@@ -235,7 +264,7 @@ def _clean_referer(raw: str) -> str:
 
 @app.post("/api/track")
 def track_visit():
-    """前台每次打开首页调一次。公开接口,只记首页,防扫描器刷库。"""
+    """前台每次打开页面调一次。公开接口,只记已知页面,防扫描器刷库。"""
     body = request.get_json(silent=True) or {}
     path = (body.get("path") or "/")[:100]
     if path not in TRACK_PATHS:

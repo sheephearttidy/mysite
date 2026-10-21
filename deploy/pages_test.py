@@ -1,0 +1,119 @@
+"""测试环境:多页拆分回归(6 页 + api/page + 导航高亮 + 动态选择器)"""
+import sys
+import urllib.request
+
+BASE = "http://127.0.0.1:5102"
+PASS = 0
+FAIL = 0
+
+
+def check(name, cond, extra=""):
+    global PASS, FAIL
+    if cond:
+        PASS += 1
+        print(f"PASS  {name}")
+    else:
+        FAIL += 1
+        print(f"FAIL  {name}  {extra}")
+
+
+def get(path):
+    r = urllib.request.urlopen(BASE + path, timeout=15)
+    return r.status, r.read().decode("utf-8", "replace")
+
+
+def get_status(path):
+    """只拿状态码,404 也正常返回"""
+    try:
+        return urllib.request.urlopen(BASE + path, timeout=15).status
+    except urllib.error.HTTPError as e:
+        return e.code
+
+
+PAGES = {
+    "index": {"active": "首页", "nav": 6},
+    "about": {"active": "关于我", "nav": 6},
+    "skills": {"active": "技能树", "nav": 6},
+    "works": {"active": "小破项目", "nav": 6},
+    "campus": {"active": "校园日常", "nav": 6},
+    "contact": {"active": "来找我玩", "nav": 6},
+}
+
+# 1. 每个页面结构完整
+for name, spec in PAGES.items():
+    st, body = get("/" + ("" if name == "index" else name + ".html"))
+    check(f"{name} 页 200", st == 200, str(st))
+    check(f"{name} data-page", f'data-page="{name}"' in body)
+    check(f"{name} 含主题按钮", 'id="themeToggle"' in body)
+    check(f"{name} 含防闪", "data-theme-source" in body)
+    check(f"{name} 含双 meta", body.count('name="theme-color"') >= 2)
+    check(f"{name} 含 footer", "<footer>" in body)
+    check(f"{name} 含回顶", 'id="backTop"' in body)
+    check(f"{name} 含二维码弹窗", 'id="qrOverlay"' in body)
+    # 导航:6 个链接 + 当前页 active 且唯一
+    nav_links = body.count('class="nav-links"')
+    check(f"{name} 有导航", nav_links >= 1)
+    import re
+    active = re.findall(r'<a href="[^"]*" class="active">([^<]+)</a>', body)
+    check(f"{name} 当前页高亮唯一", active == [spec["active"]], str(active))
+    # 导航链接全部指向页面(非锚点)
+    anchors = re.findall(r'<li><a href="(#[^"]+)"', body)
+    check(f"{name} 无锚点导航", not anchors, str(anchors))
+
+# 2. 页面关键容器(动态填充目标)
+st, body = get("/index.html")
+check("首页 stats 容器", 'class="stats"' in body)
+st, body = get("/about.html")
+check("about 卡片", 'id="aboutCard"' in body)
+check("about 信息卡", 'id="infoCards"' in body)
+st, body = get("/skills.html")
+check("skills 双列", 'class="skills-cols"' in body)
+st, body = get("/works.html")
+check("works 网格", 'id="worksGrid"' in body)
+st, body = get("/campus.html")
+check("campus 时间线", 'class="timeline"' in body)
+st, body = get("/contact.html")
+check("contact 按钮", 'id="wechatBtn"' in body)
+
+# 3. api/page 接口
+import json
+st, data = get("/api/page/index")
+check("api/page/index 200", st == 200)
+d = json.loads(data)
+check("index 返回 stats", "stats" in d and len(d["stats"]) > 0)
+check("index 无多余字段", set(d.keys()) == {"stats"}, str(d.keys()))
+
+st, data = get("/api/page/skills")
+d = json.loads(data)
+check("skills 返回 skills", "skills" in d and len(d["skills"]) > 0)
+check("skills 只返回 skills", set(d.keys()) == {"skills"}, str(d.keys()))
+
+st, data = get("/api/page/about")
+d = json.loads(data)
+check("about 返回 profile", "profile" in d and len(d["profile"]) > 0)
+
+st, data = get("/api/page/works")
+d = json.loads(data)
+check("works 返回 works", "works" in d and len(d["works"]) > 0)
+
+st, data = get("/api/page/campus")
+d = json.loads(data)
+check("campus 返回 timeline", "timeline" in d and len(d["timeline"]) > 0)
+
+st, data = get("/api/page/contact")
+d = json.loads(data) if data.strip() else {}
+# contact 页无需数据:接口返回 null/空对象均可
+check("contact 返回空", st == 200 and d in ({}, None), str(d))
+
+st = get_status("/api/page/unknown")
+check("api/page/unknown 404", st == 404, str(st))
+
+# 4. main.js 用分页接口
+st, js = get("/js/main.js")
+check("main.js 含 PAGE_API", "PAGE_API" in js)
+check("main.js 用 /api/page/", "/api/page/" in js)
+check("main.js 不再用 /api/content", "/api/content" not in js)
+
+print()
+print(f"通过 {PASS} 项,失败 {FAIL} 项")
+sys.exit(1 if FAIL else 0)

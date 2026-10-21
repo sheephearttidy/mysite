@@ -297,3 +297,18 @@ section { padding: 84px 0; position: relative; }
 .contact-actions .btn:nth-child(odd) { transform: rotate(-2deg); }
 .contact-actions .btn:nth-child(even) { transform: rotate(2deg); }
 .contact-actions .btn:hover { transform: translate(-2px,-2px) rotate(0deg); }
+
+/* ================= 多页结构 ================= */
+/* 子页面的首屏区块:导航下面留出呼吸空间 */
+.page-head { padding-top: 110px; }
+
+/* 首页「窝里有什么」引导卡片 */
+.home-links-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+.home-link { display: block; text-decoration: none; text-align: center; padding: 30px 22px; transition: all .18s ease; }
+.home-link:hover { transform: translate(-3px,-3px) rotate(-1deg); box-shadow: 8px 8px 0 var(--shadow); }
+.home-link .hl-emoji { font-size: 44px; display: block; margin-bottom: 12px; }
+.home-link h3 { font-size: 20px; font-weight: 400; margin-bottom: 6px; color: var(--ink); }
+.home-link p { font-size: 13px; color: var(--text-2); }
+
+/* 作品页说明文字 */
+.works-note { text-align: center; color: var(--text-2); margin: -28px 0 34px; font-size: 14px; }

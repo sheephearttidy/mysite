@@ -80,14 +80,27 @@ qrOverlay.addEventListener('click', e => { if (e.target === qrOverlay) closeQr()
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeQr(); });
 
 // ============================================================
-// 动态内容:从后台拉取技能树 / 时间线 / 统计数据
+// 动态内容:从后台拉当前页面用到的数据(技能树 / 时间线 / 统计等)
 // 拉取失败(本地打开 / 后台挂了)就什么都不做,页面内置内容兜底
 // ============================================================
 
+// 每个页面拉哪个接口:contact 没有动态数据,直接跳过
+const PAGE_API = {
+  index: '/api/page/index',
+  about: '/api/page/about',
+  skills: '/api/page/skills',
+  works: '/api/page/works',
+  campus: '/api/page/campus',
+};
+
 async function loadDynamicContent() {
+  const page = document.body.dataset.page || 'index';
+  const api = PAGE_API[page];
+  if (!api) return;
+
   let data;
   try {
-    const res = await fetch('/api/content');
+    const res = await fetch(api);
     if (!res.ok) return;
     data = await res.json();
   } catch { return; }   // 本地 file:// 打开或后台不在线,静默回退

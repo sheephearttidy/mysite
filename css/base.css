@@ -122,5 +122,12 @@ h1, h2, h3, .logo, .btn { font-family: "ZCOOL KuaiLe", "Baloo 2", "PingFang SC",
   box-shadow: 3px 3px 0 var(--shadow);
   transform: rotate(-2deg);
 }
+/* 当前页高亮:贴纸被按下去的感觉 */
+.nav-links a.active {
+  background: var(--pink);
+  color: var(--on-accent);
+  border-color: var(--line);
+  box-shadow: 3px 3px 0 var(--shadow);
+}
 .nav-toggle { display: none; background: none; border: none; cursor: pointer; padding: 8px; }
 .nav-toggle svg { width: 26px; height: 26px; stroke: var(--ink); }

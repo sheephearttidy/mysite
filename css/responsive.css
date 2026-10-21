@@ -10,6 +10,7 @@
   .spin-badge { right: 6%; }
   .about-grid, .skills-cols { grid-template-columns: 1fr; }
   .works-grid { grid-template-columns: repeat(2, 1fr); }
+  .home-links-grid { grid-template-columns: repeat(2, 1fr); }
   .stats { grid-template-columns: repeat(2, 1fr); }
   section { padding: 64px 0; }
   .nav-links {
@@ -25,6 +26,7 @@
 }
 @media (max-width: 560px) {
   .works-grid { grid-template-columns: 1fr; }
+  .home-links-grid { grid-template-columns: 1fr; }
   .info-cards { grid-template-columns: 1fr 1fr; }
   .polaroids { height: 300px; }
   .pol { width: 172px; }

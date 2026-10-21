@@ -22,19 +22,25 @@
 | `v1.4.0` | 登录图形验证码(纯标准库 SVG、一次性、答案哈希存储);安全设置面板全面扩充(7 项可调参数、封锁 IP 管理、会话踢下线、15 类操作审计、应急解锁工具);移除简历 PDF 下载功能 |
 | `v1.5.0` | 前后台样式与脚本全部分文件:前台 `style.css` 拆成 5 个分层文件,后台内联 CSS/JS 抽成 `admin/static/`,`admin.html` 从 1745 行降到 448 行;静态资源自动加缓存版本号 |
 | `v1.5.1` | 前后台统一暗色模式(低饱和莫兰迪配色,保持可爱):前台颜色全部变量化分层,大面积区块不再发闷;后台管理页与登录页同步支持暗色;主题切换改为「跟随系统 + 手动按钮」,前后台共用 `theme.js`,带防闪烁脚本 |
+| `v1.6.0` | 前台从单页流式拆成 6 个独立页面(首页 / 关于我 / 技能树 / 项目墙 / 校园日常 / 联系),导航真跳转 + 当前页高亮;后台新增 `/api/page/<name>` 按页接口,每页只拉自己用到的数据;访问统计扩展到全部页面 |
 
 ## 预览
 
 - 线上地址:<https://imyxj.xyz>
 - 后台入口:<https://imyxj.xyz/admin>(输密码进入)
-- 本地看前台:直接双击 `index.html` 即可,动态内容会静默回退,页面照常显示
+- 本地看前台:在项目根目录起个静态服务器(如 `python -m http.server 8000`)再访问 <http://127.0.0.1:8000>,多页导航才能跳转;直接双击 `index.html` 也能看单页,但页面间跳转会失效(本地无后台时动态内容静默回退)
 - 本地跑后台:`cd admin && python -m venv venv && venv\Scripts\pip install -r requirements.txt && venv\Scripts\python app.py`,然后访问 <http://127.0.0.1:5100/admin>
 
 ## 文件结构
 
 ```
 my-portfolio/
-├── index.html            ← 前台页面(同时是动态内容的离线兜底)
+├── index.html            ← 首页(Hero + 数据统计 + 跑马灯 + 窝里导航)
+├── about.html            ← 关于我
+├── skills.html           ← 技能树 + 技能背包
+├── works.html            ← 项目墙
+├── campus.html           ← 校园时间线
+├── contact.html          ← 联系(微信二维码 + GitHub)
 ├── robots.txt            ← 搜索引擎规则(禁收录 /admin 和 /api)
 ├── sitemap.xml           ← 站点地图
 ├── css/                  ← 前台样式,按层拆分(加载顺序有意义,别乱调)
@@ -44,7 +50,8 @@ my-portfolio/
 │   ├── dark.css          ← 深色模式(覆盖变量)
 │   └── responsive.css    ← 响应式断点(必须最后加载)
 ├── js/
-│   └── main.js           ← 前台交互 + 拉内容 + 访问上报
+│   ├── main.js           ← 前台交互 + 按页拉内容 + 访问上报
+│   └── theme.js          ← 前后台共用的主题切换(手动 > 系统)
 ├── assets/
 │   ├── wechat-qr.jpg     ← 微信二维码
 │   ├── favicon.svg       ← 站点图标
@@ -64,7 +71,8 @@ my-portfolio/
     │   │   └── login.css ← 登录页样式
     │   └── js/
     │       ├── admin.js  ← 后台管理页脚本
-    │       └── login.js  ← 登录页脚本(点验证码换图)
+    │       ├── login.js  ← 登录页脚本(点验证码换图)
+    │       └── theme.js  ← 与前台同一个主题切换脚本
     ├── templates/        ← 只有 HTML 结构,不含 CSS/JS
     │   ├── login.html    ← 后台登录页(密码 + 验证码)
     │   └── admin.html    ← 后台管理页(侧边栏 + 10 个面板)
@@ -84,7 +92,7 @@ my-portfolio/
 | 📊 数据看板 | —— | 访问量趋势、来源、浏览器/系统、活跃时段、最近访问 |
 | 💾 数据备份 | —— | 一键导出 JSON / 从 JSON 恢复 / 清空并恢复 |
 
-改完保存,前台刷新即可生效(前台加载的是 `/api/content` 接口)。
+改完保存,前台刷新即可生效(前台各页面按需拉 `/api/page/<页面名>` 接口,只取自己用到的数据)。
 
 ## 样式与脚本怎么组织
 
@@ -99,7 +107,8 @@ my-portfolio/
 | `css/widgets.css` | 页脚、动画、二维码弹窗、技能背包、深色模式切换按钮 |
 | `css/dark.css` | 深色模式(`[data-theme="dark"]` 覆盖变量) |
 | `css/responsive.css` | 响应式断点 |
-| `js/main.js` | 交互、拉内容、访问上报 |
+| `js/main.js` | 交互、按页拉内容、访问上报 |
+| `js/theme.js` | 主题切换(手动 > 系统),前后台共用同一份 |
 
 `<link>` 的顺序就是层叠顺序,**`responsive.css` 必须最后**,否则媒体查询会被后面的规则盖掉。
 改配色只改 `base.css` 的 `:root` 就行。
@@ -171,7 +180,9 @@ window.__ADMIN_MUST_CHANGE__ = {{ 'true' if must_change else 'false' }};
 |---|---|
 | 技能 / 时间线 / 统计 / 项目墙 / 关于我 | 后台 <https://imyxj.xyz/admin> 在线改(推荐) |
 | 图片素材 | 后台上传,或直接替换 `assets/` 里的文件 |
-| 名字、首屏大字、跑马灯文案、联系方式按钮 | `index.html`(这几块没做进后台) |
+| 名字、首屏大字、跑马灯文案 | `index.html`(这几块没做进后台) |
+| 关于我文案 / 技能背包 / 作品兜底卡片 | `about.html` / `skills.html` / `works.html`(后台数据拉不到时显示的兜底) |
+| 联系方式按钮 | `contact.html`(微信按钮 + GitHub) |
 | 前台配色(浅色) | `css/base.css` 顶部 `:root` |
 | 前台配色(深色) | `css/dark.css` 的 `[data-theme="dark"]` 块 |
 | 后台配色(浅色) | `admin/static/css/admin.css` 顶部 `:root` |
