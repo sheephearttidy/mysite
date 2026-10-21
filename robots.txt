@@ -1,7 +1,7 @@
 User-agent: *
 Allow: /
 
-# 后台和 API 不要被收录
+# Admin and API are not for indexing
 Disallow: /admin
 Disallow: /admin/
 Disallow: /api/
