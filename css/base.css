@@ -1,0 +1,103 @@
+/* ============================================================
+   我的小窝 · 青春贴纸风个人主页
+   基础层:配色变量 / 重置 / 排版 / 卡片 / 导航
+   想换配色?改这里的 :root 变量就行
+   ============================================================ */
+/* ============================================================
+   我的小窝 · 青春贴纸风个人主页
+   全部样式都在这个文件里
+   想换配色?改下面 :root 里的变量就行
+   ============================================================ */
+:root {
+  --ink: #2d2a32;        /* 描边墨色 */
+  --cream: #fff8ee;      /* 奶油底色 */
+  --pink: #ff6b9d;
+  --pink-bg: #ffe4ef;
+  --orange: #ffa94d;
+  --yellow: #ffd93d;
+  --yellow-bg: #fff3d0;
+  --teal: #2ec4b6;
+  --teal-bg: #dcf5f1;
+  --purple: #a78bfa;
+  --purple-bg: #efe7ff;
+  --blue: #5aa9ff;
+  --paper: #ffffff;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: "Baloo 2", "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+  background: var(--cream);
+  color: var(--ink);
+  line-height: 1.8;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+::selection { background: var(--yellow); color: var(--ink); }
+
+.container { max-width: 1060px; margin: 0 auto; padding: 0 22px; }
+
+h1, h2, h3, .logo, .btn { font-family: "ZCOOL KuaiLe", "Baloo 2", "PingFang SC", "Microsoft YaHei", sans-serif; }
+
+/* ================= 贴纸卡片基础款 ================= */
+.card {
+  background: var(--paper);
+  border: 3px solid var(--ink);
+  border-radius: 20px;
+  box-shadow: 6px 6px 0 var(--ink);
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+.card:hover {
+  transform: translate(-3px, -3px);
+  box-shadow: 9px 9px 0 var(--ink);
+}
+
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 12px 26px; border-radius: 16px;
+  font-size: 17px; text-decoration: none; cursor: pointer;
+  border: 3px solid var(--ink);
+  box-shadow: 5px 5px 0 var(--ink);
+  transition: all .15s ease;
+  color: var(--ink);
+}
+.btn:hover { transform: translate(-2px, -2px); box-shadow: 8px 8px 0 var(--ink); }
+.btn:active { transform: translate(3px, 3px); box-shadow: 1px 1px 0 var(--ink); }
+.btn-pink { background: var(--pink); color: #fff; }
+.btn-yellow { background: var(--yellow); }
+.btn-teal { background: var(--teal); color: #fff; }
+.btn-white { background: var(--paper); }
+
+/* ================= 导航 ================= */
+.nav {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(255, 248, 238, 0.92);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 3px solid var(--ink);
+}
+.nav-inner { display: flex; align-items: center; justify-content: space-between; height: 66px; }
+.logo { font-size: 22px; text-decoration: none; color: var(--ink); display: flex; align-items: center; gap: 8px; }
+.logo .dot {
+  width: 14px; height: 14px; background: var(--pink);
+  border: 3px solid var(--ink); border-radius: 50%;
+  display: inline-block;
+}
+.nav-links { display: flex; gap: 6px; list-style: none; }
+.nav-links a {
+  text-decoration: none; color: var(--ink);
+  font-size: 16px; font-weight: 700; font-family: "ZCOOL KuaiLe", "Baloo 2", sans-serif;
+  padding: 6px 14px; border-radius: 12px;
+  border: 3px solid transparent;
+  transition: all .15s ease;
+}
+.nav-links a:hover {
+  background: var(--yellow);
+  border-color: var(--ink);
+  box-shadow: 3px 3px 0 var(--ink);
+  transform: rotate(-2deg);
+}
+.nav-toggle { display: none; background: none; border: none; cursor: pointer; padding: 8px; }
+.nav-toggle svg { width: 26px; height: 26px; stroke: var(--ink); }

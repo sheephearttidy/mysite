@@ -1,0 +1,66 @@
+/* ================= 深色模式 ================= */
+[data-theme="dark"] {
+  --ink: #f2eee9;        /* 深色下描边变成浅色 */
+  --cream: #16141a;      /* 底色 */
+  --paper: #221f27;      /* 卡片 */
+  --pink: #ff7fae;
+  --pink-bg: #3a2230;
+  --orange: #ffb877;
+  --yellow: #ffd93d;
+  --yellow-bg: #3a3320;
+  --teal: #35d6c6;
+  --teal-bg: #17342f;
+  --purple: #b49bff;
+  --purple-bg: #2a2440;
+  --blue: #6fb6ff;
+}
+/* 深色下原本写死的浅色背景 */
+[data-theme="dark"] .skill-col.col-b { background: #1e1b23; }
+[data-theme="dark"] .cover-orange { background: #3a2a1e; }
+[data-theme="dark"] .cover-blue { background: #1a2b3d; }
+[data-theme="dark"] .c-orange { background: #3a2a1e; }
+[data-theme="dark"] .c-blue { background: #1a2b3d; }
+[data-theme="dark"] .bar { background: #2b2731; }
+[data-theme="dark"] .pol .pol-img { background: #2b2731; }
+[data-theme="dark"] .pol-1 { background: #221f27; }
+[data-theme="dark"] .nav { background: rgba(22, 20, 26, 0.92); }
+[data-theme="dark"] .hero .role,
+[data-theme="dark"] .hero .desc,
+[data-theme="dark"] .about-card p,
+[data-theme="dark"] .work-body p,
+[data-theme="dark"] .tl-card p,
+[data-theme="dark"] .contact-card p { color: #b8b2c4; }
+[data-theme="dark"] .stat .label,
+[data-theme="dark"] .item .meta,
+[data-theme="dark"] .hint { color: #a29cb0; }
+[data-theme="dark"] .section-head .tag { background: var(--paper); }
+[data-theme="dark"] .back-top { color: var(--ink); }
+[data-theme="dark"] .qr-box { background: var(--paper); }
+[data-theme="dark"] .qr-overlay { background: rgba(0, 0, 0, 0.72); }
+[data-theme="dark"] .contact-card { box-shadow: 10px 10px 0 var(--pink); }
+[data-theme="dark"] .marquee { background: #0e0c11; }
+[data-theme="dark"] footer { color: #8a8494; }
+/* 深色下描边阴影用暗色,避免刺眼 */
+[data-theme="dark"] .card { box-shadow: 6px 6px 0 rgba(0,0,0,.55); }
+[data-theme="dark"] .card:hover { box-shadow: 9px 9px 0 rgba(0,0,0,.55); }
+[data-theme="dark"] .stat,
+[data-theme="dark"] .info-card,
+[data-theme="dark"] .pol { box-shadow: 6px 6px 0 rgba(0,0,0,.55); }
+[data-theme="dark"] .btn { box-shadow: 5px 5px 0 rgba(0,0,0,.55); }
+[data-theme="dark"] .btn:hover { box-shadow: 8px 8px 0 rgba(0,0,0,.55); }
+[data-theme="dark"] .btn:active { box-shadow: 1px 1px 0 rgba(0,0,0,.55); }
+[data-theme="dark"] .theme-toggle,
+[data-theme="dark"] .nav-links a:hover,
+[data-theme="dark"] .section-head .tag { box-shadow: 3px 3px 0 rgba(0,0,0,.55); }
+[data-theme="dark"] .tl-item::before { box-shadow: 4px 4px 0 rgba(0,0,0,.55); }
+[data-theme="dark"] .back-top { box-shadow: 5px 5px 0 rgba(0,0,0,.55); }
+[data-theme="dark"] .qr-close { box-shadow: 3px 3px 0 rgba(0,0,0,.55); }
+[data-theme="dark"] .contact-card .sticker { box-shadow: 4px 4px 0 rgba(0,0,0,.55); }
+[data-theme="dark"] .nav-links {
+  background: var(--paper);
+  box-shadow: 6px 6px 0 rgba(0,0,0,.55);
+}
+/* 深色下技能条上的斜纹 */
+[data-theme="dark"] .fill {
+  background-image: linear-gradient(45deg, rgba(0,0,0,.18) 25%, transparent 25%, transparent 50%, rgba(0,0,0,.18) 50%, rgba(0,0,0,.18) 75%, transparent 75%);
+}

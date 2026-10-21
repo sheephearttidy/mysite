@@ -19,7 +19,15 @@ from flask import (Flask, request, jsonify, render_template,
 import db
 import captcha
 
-app = Flask(__name__)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# 后台静态资源(CSS/JS)放在 admin/static,不经过 Jinja 渲染。
+# 必须作为构造参数传入:Flask 在 __init__ 里就注册了静态路由,
+# 之后再改 app.static_url_path 是无效的。
+app = Flask(__name__,
+            static_folder=os.path.join(BASE_DIR, "static"),
+            static_url_path="/admin/static")
+
 app.secret_key = os.environ.get("MYSITE_SECRET_KEY", os.urandom(24))
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["SESSION_COOKIE_SECURE"] = True      # 只走 HTTPS
@@ -42,8 +50,34 @@ def limit_json_body():
 
 ADMIN_USER = os.environ.get("MYSITE_ADMIN_USER", "admin")
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "data", "mysite.db")
+
+
+@app.context_processor
+def inject_asset_ver():
+    """给静态资源加版本号,改了 CSS/JS 后浏览器能立刻拿到新的。
+
+    取 app.py + 静态文件的最大 mtime,任何一次部署都会让版本号变化。
+    """
+    return {"asset_ver": ASSET_VER}
+
+
+def _compute_asset_ver() -> str:
+    newest = 0.0
+    watch = [os.path.abspath(__file__),
+             os.path.join(BASE_DIR, "db.py"),
+             os.path.join(BASE_DIR, "captcha.py")]
+    for root, _dirs, files in os.walk(app.static_folder):
+        watch.extend(os.path.join(root, f) for f in files)
+    for p in watch:
+        try:
+            newest = max(newest, os.path.getmtime(p))
+        except OSError:
+            pass
+    return str(int(newest))
+
+
+ASSET_VER = _compute_asset_ver()
 
 # 上传目录:放在静态站下面,前台可直接引用
 WEBROOT = os.path.dirname(BASE_DIR)                       # /var/www/mysite

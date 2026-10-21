@@ -1,0 +1,83 @@
+/* ============================================================
+   我的小窝 · 后台登录页样式
+   配套 admin/templates/login.html
+   ============================================================ */
+:root {
+  --ink: #2d2a32; --cream: #fff8ee; --paper: #fff;
+  --pink: #ff6b9d; --yellow: #ffd93d; --teal: #2ec4b6;
+  --purple: #a78bfa;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: "Baloo 2", "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: var(--cream); color: var(--ink);
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  padding: 20px; overflow-x: hidden;
+}
+.doodle { position: fixed; font-size: 30px; animation: bob 3.5s ease-in-out infinite; pointer-events: none; }
+.d1 { top: 12%; left: 8%; }
+.d2 { top: 18%; right: 10%; animation-delay: .6s; font-size: 38px; }
+.d3 { bottom: 15%; left: 12%; animation-delay: 1.2s; }
+.d4 { bottom: 20%; right: 8%; animation-delay: .3s; }
+@keyframes bob { 0%,100% { transform: translateY(0) rotate(-6deg); } 50% { transform: translateY(-12px) rotate(8deg); } }
+
+.card {
+  background: var(--paper); border: 3px solid var(--ink); border-radius: 24px;
+  box-shadow: 8px 8px 0 var(--ink); padding: 40px 38px 32px;
+  width: 100%; max-width: 420px; position: relative; z-index: 2;
+  transform: rotate(-.6deg);
+}
+.lock { font-size: 50px; text-align: center; }
+h1 { font-size: 25px; text-align: center; margin: 8px 0 4px; }
+.sub { text-align: center; color: #8a8494; font-size: 14px; font-weight: 700; margin-bottom: 24px; }
+label { display: block; font-size: 13px; font-weight: 800; color: #6b6577; margin-bottom: 6px; }
+input {
+  width: 100%; padding: 12px 16px; font-size: 16px;
+  border: 3px solid var(--ink); border-radius: 14px;
+  background: var(--cream); outline: none;
+  font-family: inherit; transition: box-shadow .15s ease;
+}
+input:focus { box-shadow: 4px 4px 0 var(--ink); }
+button {
+  width: 100%; margin-top: 20px; padding: 13px;
+  font-size: 17px; font-weight: 800; font-family: inherit;
+  background: var(--pink); color: #fff;
+  border: 3px solid var(--ink); border-radius: 14px;
+  box-shadow: 5px 5px 0 var(--ink); cursor: pointer;
+  transition: all .15s ease;
+}
+button:hover { transform: translate(-2px,-2px); box-shadow: 7px 7px 0 var(--ink); }
+button:active { transform: translate(3px,3px); box-shadow: 1px 1px 0 var(--ink); }
+.err {
+  background: #ffe4ef; border: 2px solid var(--pink); border-radius: 12px;
+  color: #d63384; font-size: 14px; font-weight: 700;
+  padding: 8px 14px; margin-bottom: 16px; text-align: center;
+}
+.tip {
+  background: var(--cream); border: 2px dashed var(--ink); border-radius: 12px;
+  color: #6b6577; font-size: 13px; font-weight: 700; line-height: 1.6;
+  padding: 8px 12px; margin-bottom: 16px; text-align: center;
+}
+.tip b { color: var(--pink); }
+.back { display: block; text-align: center; margin-top: 18px; color: #8a8494; font-size: 13px; font-weight: 700; text-decoration: none; }
+.back:hover { color: var(--pink); }
+
+/* 验证码 */
+.cap-row { display: flex; gap: 10px; align-items: stretch; }
+.cap-row input { flex: 1; min-width: 0; letter-spacing: 4px; text-transform: uppercase; }
+.cap-img {
+  width: 130px; height: 46px; flex: none; cursor: pointer;
+  border: 3px solid var(--ink); border-radius: 12px;
+  background: var(--cream); overflow: hidden; position: relative;
+  transition: box-shadow .15s ease;
+}
+.cap-img:hover { box-shadow: 3px 3px 0 var(--ink); }
+.cap-img img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.cap-img .refresh {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  background: rgba(255,248,238,.9); font-size: 13px; font-weight: 800; color: var(--ink);
+  opacity: 0; transition: opacity .15s ease;
+}
+.cap-img:hover .refresh { opacity: 1; }
+.cap-hint { font-size: 12px; font-weight: 700; color: #8a8494; margin-top: 6px; }
+.blocked { background: #fff3cd; border-color: #ffc107; color: #856404; }

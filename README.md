@@ -20,6 +20,7 @@
 | `v1.2.1` | 后台改为左侧边栏布局:4 组多级导航(内容/个人信息/媒体/维护)、9 个面板切换、数量角标、分组折叠、移动端抽屉、记住上次位置 |
 | `v1.3.0` | 分享卡片 + SEO 基础(og 标签/favicon/robots/sitemap/JSON-LD);自建访问统计 + 后台数据看板 |
 | `v1.4.0` | 登录图形验证码(纯标准库 SVG、一次性、答案哈希存储);安全设置面板全面扩充(7 项可调参数、封锁 IP 管理、会话踢下线、15 类操作审计、应急解锁工具);移除简历 PDF 下载功能 |
+| `v1.5.0` | 前后台样式与脚本全部分文件:前台 `style.css` 拆成 5 个分层文件,后台内联 CSS/JS 抽成 `admin/static/`,`admin.html` 从 1745 行降到 448 行;静态资源自动加缓存版本号 |
 
 ## 预览
 
@@ -35,8 +36,12 @@ my-portfolio/
 ├── index.html            ← 前台页面(同时是动态内容的离线兜底)
 ├── robots.txt            ← 搜索引擎规则(禁收录 /admin 和 /api)
 ├── sitemap.xml           ← 站点地图
-├── css/
-│   └── style.css         ← 前台全部样式
+├── css/                  ← 前台样式,按层拆分(加载顺序有意义,别乱调)
+│   ├── base.css          ← 配色变量 / 重置 / 排版 / 卡片 / 导航
+│   ├── home.css          ← 首屏 / 跑马灯 / 数据 / 关于 / 技能 / 作品 / 时间线 / 联系
+│   ├── widgets.css       ← 页脚 / 动画 / 二维码弹窗 / 技能背包 / 深色切换按钮
+│   ├── dark.css          ← 深色模式(覆盖变量)
+│   └── responsive.css    ← 响应式断点(必须最后加载)
 ├── js/
 │   └── main.js           ← 前台交互 + 拉内容 + 访问上报
 ├── assets/
@@ -52,7 +57,14 @@ my-portfolio/
     ├── unlock.py         ← 安全应急工具(SSH 里解锁 IP / 踢会话 / 关验证码)
     ├── gen_pass.py       ← 生成密码哈希的小工具(备用)
     ├── requirements.txt
-    ├── templates/
+    ├── static/           ← 后台静态资源,不经过 Jinja 渲染
+    │   ├── css/
+    │   │   ├── admin.css ← 后台管理页样式
+    │   │   └── login.css ← 登录页样式
+    │   └── js/
+    │       ├── admin.js  ← 后台管理页脚本
+    │       └── login.js  ← 登录页脚本(点验证码换图)
+    ├── templates/        ← 只有 HTML 结构,不含 CSS/JS
     │   ├── login.html    ← 后台登录页(密码 + 验证码)
     │   └── admin.html    ← 后台管理页(侧边栏 + 10 个面板)
     └── data/mysite.db    ← SQLite 数据库(gitignore,首次启动自动生成,初始密码 admin)
@@ -72,6 +84,52 @@ my-portfolio/
 | 💾 数据备份 | —— | 一键导出 JSON / 从 JSON 恢复 / 清空并恢复 |
 
 改完保存,前台刷新即可生效(前台加载的是 `/api/content` 接口)。
+
+## 样式与脚本怎么组织
+
+**前后台都是 HTML / CSS / JS 三分离,模板里不写样式也不写逻辑。**
+
+前台:
+
+| 文件 | 管什么 |
+|---|---|
+| `css/base.css` | `:root` 配色变量、重置、排版、贴纸卡片、导航 |
+| `css/home.css` | 首屏、跑马灯、数据统计、关于、技能、作品、时间线、联系 |
+| `css/widgets.css` | 页脚、动画、二维码弹窗、技能背包、深色模式切换按钮 |
+| `css/dark.css` | 深色模式(`[data-theme="dark"]` 覆盖变量) |
+| `css/responsive.css` | 响应式断点 |
+| `js/main.js` | 交互、拉内容、访问上报 |
+
+`<link>` 的顺序就是层叠顺序,**`responsive.css` 必须最后**,否则媒体查询会被后面的规则盖掉。
+改配色只改 `base.css` 的 `:root` 就行。
+
+后台:
+
+| 文件 | 管什么 |
+|---|---|
+| `admin/static/css/admin.css` | 后台管理页全部样式 |
+| `admin/static/js/admin.js` | 后台管理页全部逻辑(843 行) |
+| `admin/static/css/login.css` | 登录页样式 |
+| `admin/static/js/login.js` | 登录页脚本(点验证码换一张) |
+| `admin/templates/*.html` | 只有 HTML 结构 |
+
+后台模板通过 `/admin/static/` 引用资源,由 Flask 的 `static_folder` 提供,
+不经过 Jinja 渲染,所以 CSS/JS 可以直接被浏览器缓存。
+
+**模板数据注入**:`admin.html` 里只剩一小段内联脚本,把后端数据挂到 `window` 上:
+
+```html
+<script>
+window.__ADMIN_DATA__ = {{ data | tojson }};
+window.__ADMIN_MUST_CHANGE__ = {{ 'true' if must_change else 'false' }};
+</script>
+<script src=".../admin.js?v=..."></script>
+```
+
+`admin.js` 从 `window` 读取,所以它本身是纯静态文件。
+
+**缓存版本号**:静态资源 URL 自动带 `?v=<时间戳>`,取 `app.py` 和所有静态文件的
+最大修改时间。每次部署版本号都会变,浏览器立刻拿到新的 CSS/JS,不用手动 Ctrl+F5。
 
 ## 分享卡片与 SEO
 
