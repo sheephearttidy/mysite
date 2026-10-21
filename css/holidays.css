@@ -1,0 +1,120 @@
+/* ============================================================
+   节日特效:data-holiday 驱动的装饰
+   - national-day  : 国庆 10.1-10.7 → 红旗飘 + 金色粒子
+   - valentine     : 情人节 2.14 → 爱心粒子
+   - memorial      : 公祭日 12.13 → 全站黑白
+   - new-year      : 元旦 1.1-1.2 → 烟花彩带
+   - christmas     : 圣诞 12.24-25 → 雪花
+   - labor         : 五一 5.1-5.5 → 彩带
+   - children      : 六一 6.1 → 纸飞机
+   - teacher       : 教师节 9.10 → 小星星
+   ============================================================ */
+
+/* ---------- 通用:粒子容器 ---------- */
+.holiday-fx {
+  position: fixed; inset: 0; pointer-events: none; z-index: 60;
+  overflow: hidden;
+}
+
+/* ---------- 国庆:红旗 ---------- */
+[data-holiday="national-day"] .holiday-fx { display: block; }
+.flag {
+  position: absolute; top: -60px; width: 34px; height: 22px;
+  background: #de2910; border-radius: 2px; opacity: .85;
+  animation: flag-fall linear infinite;
+}
+.flag::before {
+  content: ""; position: absolute; top: 22px; left: 0;
+  width: 34px; height: 2px; background: rgba(0,0,0,.18);
+}
+.flag::after {
+  content: ""; position: absolute; left: -4px; top: 0;
+  width: 4px; height: 22px; background: #5b5b5b; border-radius: 2px 0 0 2px;
+}
+@keyframes flag-fall {
+  0% { transform: translateY(-60px) rotate(8deg); opacity: 0; }
+  8% { opacity: .85; }
+  100% { transform: translateY(105vh) rotate(-14deg); opacity: .85; }
+}
+
+/* ---------- 情人节:爱心粒子 ---------- */
+[data-holiday="valentine"] .holiday-fx { display: block; }
+.heart {
+  position: absolute; bottom: -30px; font-size: 22px;
+  animation: heart-rise linear infinite;
+}
+@keyframes heart-rise {
+  0% { transform: translateY(0) scale(.8) rotate(-10deg); opacity: 0; }
+  10% { opacity: .9; }
+  100% { transform: translateY(-105vh) scale(1.15) rotate(12deg); opacity: 0; }
+}
+
+/* ---------- 公祭日:全站黑白 + 蜡烛 ---------- */
+[data-holiday="memorial"] .holiday-fx { display: block; }
+.candle {
+  position: absolute; bottom: 8px; width: 18px; height: 52px;
+  background: #f6ecd9; border-radius: 4px 4px 2px 2px; opacity: .8;
+  animation: candle-flicker 2.4s ease-in-out infinite;
+}
+.candle::before {
+  content: ""; position: absolute; top: -12px; left: 4px;
+  width: 10px; height: 14px; background: #ffb347;
+  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+  animation: candle-flicker 1s ease-in-out infinite alternate;
+}
+@keyframes candle-flicker {
+  0%, 100% { transform: scaleY(1); }
+  50% { transform: scaleY(.94); }
+}
+
+/* ---------- 元旦:烟花彩带 ---------- */
+[data-holiday="new-year"] .holiday-fx { display: block; }
+.streamer {
+  position: absolute; top: -20px; width: 14px; height: 36px;
+  border-radius: 50%; opacity: .8;
+  animation: streamer-fall linear infinite;
+}
+@keyframes streamer-fall {
+  0% { transform: translateY(-50px) rotate(0deg); }
+  100% { transform: translateY(110vh) rotate(540deg); }
+}
+
+/* ---------- 圣诞:雪花 ---------- */
+[data-holiday="christmas"] .holiday-fx { display: block; }
+.snowflake {
+  position: absolute; top: -30px; font-size: 20px; opacity: .85;
+  animation: snow-fall linear infinite;
+}
+@keyframes snow-fall {
+  0% { transform: translateY(-40px) translateX(0) rotate(0deg); }
+  100% { transform: translateY(110vh) translateX(30px) rotate(360deg); }
+}
+
+/* ---------- 六一:纸飞机 ---------- */
+[data-holiday="children"] .holiday-fx { display: block; }
+.plane {
+  position: absolute; bottom: -20px; font-size: 26px;
+  animation: plane-fly linear infinite;
+}
+@keyframes plane-fly {
+  0% { transform: translateY(0) translateX(0) rotate(-20deg); opacity: 0; }
+  10% { opacity: .95; }
+  100% { transform: translateY(-100vh) translateX(140px) rotate(8deg); opacity: 0; }
+}
+
+/* ---------- 教师节:小星星 ---------- */
+[data-holiday="teacher"] .holiday-fx { display: block; }
+.teacher-star {
+  position: absolute; top: -20px; font-size: 16px; opacity: .8;
+  animation: teacher-fall linear infinite;
+}
+@keyframes teacher-fall {
+  0% { transform: translateY(-40px) rotate(0); }
+  100% { transform: translateY(110vh) rotate(320deg); }
+}
+
+/* ---------- 全站黑白(公祭日):最高优先级 ---------- */
+/* 对整个 html 根应用灰度,一次覆盖全部内容(含伪元素/SVG/图片) */
+html[data-holiday="memorial"] {
+  filter: grayscale(1);
+}

@@ -23,6 +23,7 @@
 | `v1.5.0` | 前后台样式与脚本全部分文件:前台 `style.css` 拆成 5 个分层文件,后台内联 CSS/JS 抽成 `admin/static/`,`admin.html` 从 1745 行降到 448 行;静态资源自动加缓存版本号 |
 | `v1.5.1` | 前后台统一暗色模式(低饱和莫兰迪配色,保持可爱):前台颜色全部变量化分层,大面积区块不再发闷;后台管理页与登录页同步支持暗色;主题切换改为「跟随系统 + 手动按钮」,前后台共用 `theme.js`,带防闪烁脚本 |
 | `v1.6.0` | 前台从单页流式拆成 6 个独立页面(首页 / 关于我 / 技能树 / 项目墙 / 校园日常 / 联系),导航真跳转 + 当前页高亮;后台新增 `/api/page/<name>` 按页接口,每页只拉自己用到的数据;访问统计扩展到全部页面 |
+| `v1.7.0` | 新增「来访地图」页:按 IP 解析访客城市(淘宝 IP 库,零第三方依赖),SVG 世界地图上钉贴纸星星,后台看板新增城市分布;新增节日特效系统(国庆红旗 / 情人节爱心 / 公祭日全站黑白 / 元旦彩带 / 圣诞雪花 / 五一彩带 / 六一纸飞机 / 教师节星星),前后台全站生效,按日期自动切换 |
 
 ## 预览
 
@@ -40,18 +41,24 @@ my-portfolio/
 ├── skills.html           ← 技能树 + 技能背包
 ├── works.html            ← 项目墙
 ├── campus.html           ← 校园时间线
+├── map.html              ← 来访地图(访客城市贴纸星星)
 ├── contact.html          ← 联系(微信二维码 + GitHub)
 ├── robots.txt            ← 搜索引擎规则(禁收录 /admin 和 /api)
 ├── sitemap.xml           ← 站点地图
 ├── css/                  ← 前台样式,按层拆分(加载顺序有意义,别乱调)
 │   ├── base.css          ← 配色变量 / 重置 / 排版 / 卡片 / 导航
-│   ├── home.css          ← 首屏 / 跑马灯 / 数据 / 关于 / 技能 / 作品 / 时间线 / 联系
+│   ├── home.css          ← 首屏 / 跑马灯 / 数据 / 关于 / 技能 / 作品 / 时间线 / 联系 / 地图
 │   ├── widgets.css       ← 页脚 / 动画 / 二维码弹窗 / 技能背包 / 深色切换按钮
 │   ├── dark.css          ← 深色模式(覆盖变量)
+│   ├── holidays.css      ← 节日特效(红旗 / 爱心 / 雪花 / 黑白…)
 │   └── responsive.css    ← 响应式断点(必须最后加载)
 ├── js/
 │   ├── main.js           ← 前台交互 + 按页拉内容 + 访问上报
-│   └── theme.js          ← 前后台共用的主题切换(手动 > 系统)
+│   ├── theme.js          ← 前后台共用的主题切换(手动 > 系统)
+│   ├── cities.js         ← 城市名 → 经纬度映射表(来访地图钉星用)
+│   ├── map.js            ← 来访地图渲染(SVG 星星 + 城市列表)
+│   ├── holiday.js        ← 节日检测(给 <html> 打 data-holiday,head 里先跑防闪)
+│   └── holiday-fx.js     ← 节日粒子特效(生成红旗/爱心/雪花等 DOM 元素)
 ├── assets/
 │   ├── wechat-qr.jpg     ← 微信二维码
 │   ├── favicon.svg       ← 站点图标
@@ -61,6 +68,7 @@ my-portfolio/
 └── admin/                ← 后台管理系统(Flask + SQLite)
     ├── app.py            ← 路由 / API / 登录 / 改密码 / 上传 / 备份 / 统计 / 安全
     ├── db.py             ← 建表 + 初始数据 + 增删改查 + 密码哈希 + 导入导出 + 统计 + 安全
+    ├── geo.py            ← IP 定位(淘宝 API + 内存缓存,只存城市不存 IP)
     ├── captcha.py        ← 图形验证码生成(纯标准库 SVG,零依赖)
     ├── unlock.py         ← 安全应急工具(SSH 里解锁 IP / 踢会话 / 关验证码)
     ├── gen_pass.py       ← 生成密码哈希的小工具(备用)
@@ -68,11 +76,14 @@ my-portfolio/
     ├── static/           ← 后台静态资源,不经过 Jinja 渲染
     │   ├── css/
     │   │   ├── admin.css ← 后台管理页样式
-    │   │   └── login.css ← 登录页样式
+    │   │   ├── login.css ← 登录页样式
+    │   │   └── holidays.css ← 节日特效(与前台同一份,复制过来)
     │   └── js/
     │       ├── admin.js  ← 后台管理页脚本
     │       ├── login.js  ← 登录页脚本(点验证码换图)
-    │       └── theme.js  ← 与前台同一个主题切换脚本
+    │       ├── theme.js  ← 与前台同一个主题切换脚本
+    │       ├── holiday.js    ← 与前台同一份节日检测
+    │       └── holiday-fx.js ← 与前台同一份节日粒子
     ├── templates/        ← 只有 HTML 结构,不含 CSS/JS
     │   ├── login.html    ← 后台登录页(密码 + 验证码)
     │   └── admin.html    ← 后台管理页(侧边栏 + 10 个面板)
@@ -103,12 +114,17 @@ my-portfolio/
 | 文件 | 管什么 |
 |---|---|
 | `css/base.css` | `:root` 配色变量、重置、排版、贴纸卡片、导航 |
-| `css/home.css` | 首屏、跑马灯、数据统计、关于、技能、作品、时间线、联系 |
+| `css/home.css` | 首屏、跑马灯、数据统计、关于、技能、作品、时间线、联系、来访地图 |
 | `css/widgets.css` | 页脚、动画、二维码弹窗、技能背包、深色模式切换按钮 |
 | `css/dark.css` | 深色模式(`[data-theme="dark"]` 覆盖变量) |
+| `css/holidays.css` | 节日特效(红旗 / 爱心 / 雪花 / 全站黑白等,`data-holiday` 驱动) |
 | `css/responsive.css` | 响应式断点 |
 | `js/main.js` | 交互、按页拉内容、访问上报 |
 | `js/theme.js` | 主题切换(手动 > 系统),前后台共用同一份 |
+| `js/cities.js` | 城市名 → 经纬度表(地图页钉星) |
+| `js/map.js` | 来访地图渲染(SVG 世界地图 + 贴纸星星 + 城市列表) |
+| `js/holiday.js` | 节日检测(head 里先跑,给 `<html>` 打 `data-holiday`) |
+| `js/holiday-fx.js` | 节日粒子特效(生成红旗 / 爱心 / 雪花等元素) |
 
 `<link>` 的顺序就是层叠顺序,**`responsive.css` 必须最后**,否则媒体查询会被后面的规则盖掉。
 改配色只改 `base.css` 的 `:root` 就行。
@@ -118,9 +134,11 @@ my-portfolio/
 | 文件 | 管什么 |
 |---|---|
 | `admin/static/css/admin.css` | 后台管理页全部样式 |
-| `admin/static/js/admin.js` | 后台管理页全部逻辑(843 行) |
+| `admin/static/js/admin.js` | 后台管理页全部逻辑(含看板城市分布渲染) |
 | `admin/static/css/login.css` | 登录页样式 |
 | `admin/static/js/login.js` | 登录页脚本(点验证码换一张) |
+| `admin/static/css/holidays.css` | 节日特效(与前台同一份) |
+| `admin/static/js/holiday.js` / `holiday-fx.js` | 节日检测 + 粒子(与前台同一份) |
 | `admin/templates/*.html` | 只有 HTML 结构 |
 
 后台模板通过 `/admin/static/` 引用资源,由 Flask 的 `static_folder` 提供,
@@ -158,11 +176,15 @@ window.__ADMIN_MUST_CHANGE__ = {{ 'true' if must_change else 'false' }};
 
 自建轻量统计,不引第三方(没有 Google Analytics,不涉及隐私外传)。
 
-- 前台打开首页时用 `sendBeacon` 上报一次,**同一标签页会话只报一次**(刷新不刷量)
-- 只记录首页访问,其他路径一律拒收,防止被扫描器刷爆数据库
+- 前台打开任意页面时用 `sendBeacon` 上报一次,**同一标签页会话只报一次**(刷新不刷量)
+- 只记录已知页面(首页 / 关于 / 技能 / 项目 / 校园 / 地图 / 联系),其他路径一律拒收,防止被扫描器刷爆数据库
 - 自动识别并过滤爬虫(Googlebot、curl、python-requests 等)
 - 来源只留域名,站内跳转不算外部来源
-- 后台「📊 数据看板」看:今天/区间/累计访问、每日趋势、来源排行、浏览器系统占比、24 小时活跃分布、最近 20 条明细
+- 后台「📊 数据看板」看:今天/区间/累计访问、每日趋势、来源排行、浏览器系统占比、24 小时活跃分布、**访客城市分布**、最近 20 条明细
+
+**访客城市**:每次上报时把访问 IP 交给 `geo.py`(淘宝 IP 库,免费无 key),
+解析成「省 市」存库;只存城市**不存 IP 原文**(隐私友好),同 IP 30 天内只查一次(内存缓存)。
+前台「来访地图」页按城市聚合,把星星钉在 SVG 世界地图上。
 
 想清空统计:`sqlite3 admin/data/mysite.db "DELETE FROM visits;"`
 
@@ -174,6 +196,34 @@ window.__ADMIN_MUST_CHANGE__ = {{ 'true' if must_change else 'false' }};
 
 配色通过 `[data-theme="dark"]` 覆盖 `:root` 变量实现,变量按语义分层(文字 / 描边 / 阴影 / 底色 / 强调色各管各的),所以深色下不会出现浅色的描边或投影。
 
+## 节日特效
+
+到日子了全站自动换皮肤,前后台一起生效,不用手动开。
+
+| 节日 | 日期 | 特效 |
+|---|---|---|
+| 🇨🇳 国庆节 | 10.1 ~ 10.7 | 红旗飘飘 |
+| 💗 情人节 | 2.14 | 爱心上飘 |
+| 🕯️ 国家公祭日 | 12.13 | **全站黑白**(优先级最高,撞上别的节日也黑白) |
+| 🎆 元旦 | 1.1 ~ 1.2 | 彩带飘落 |
+| 🎄 圣诞节 | 12.24 ~ 12.25 | 雪花 |
+| 🧹 劳动节 | 5.1 ~ 5.5 | 彩带 |
+| ✈️ 儿童节 | 6.1 | 纸飞机 |
+| ⭐ 教师节 | 9.10 | 小星星 |
+
+实现:`js/holiday.js` 在 `<head>` 里(主题防闪脚本之后)按日期给 `<html>` 打 `data-holiday="<key>"`,
+`css/holidays.css` 按属性显示装饰样式,`js/holiday-fx.js` 在页面末尾生成对应粒子 DOM(纯 CSS 动画,零依赖)。
+想加节日:改 `js/holiday.js` 的日期判断 + `css/holidays.css` 加一套样式 + `js/holiday-fx.js` 加一个粒子定义(后台的 `admin/static/` 里是同一份,复制过去即可)。
+
+## 来访地图
+
+「地图」页展示访客都来自哪些城市:SVG 世界地图(低多边形大陆),每座城市一颗贴纸星星,星星越大访问越多,悬停显示城市名 + 次数;右侧列表按访问量排行。
+
+- 数据来源:访问统计时用 `geo.py`(淘宝 IP 库)把 IP 解析成「省 市」,存库并聚合
+- **隐私**:只存城市,不存 IP 原文;IP 仅用于查询,30 天缓存,内存 LRU 上限 1000
+- 城市坐标映射在 `js/cities.js`(约 150 个国内城市 + 港澳台 + 海外主要城市),查不到坐标的城市在列表里用 ❓ 显示
+- 后台「📊 数据看板」也有城市分布排行,不用开前台就能看
+
 ## 想改内容去哪改
 
 | 想改什么 | 去哪里改 |
@@ -183,6 +233,9 @@ window.__ADMIN_MUST_CHANGE__ = {{ 'true' if must_change else 'false' }};
 | 名字、首屏大字、跑马灯文案 | `index.html`(这几块没做进后台) |
 | 关于我文案 / 技能背包 / 作品兜底卡片 | `about.html` / `skills.html` / `works.html`(后台数据拉不到时显示的兜底) |
 | 联系方式按钮 | `contact.html`(微信按钮 + GitHub) |
+| 节日特效(加节日 / 换样式) | `js/holiday.js` + `css/holidays.css` + `js/holiday-fx.js`(后台同步 `admin/static/` 里同一份) |
+| 地图星星坐标 | `js/cities.js`(城市名 → 经纬度表) |
+| 地图页文案 / 布局 | `map.html` + `css/home.css` 里 `.map-*` 块 |
 | 前台配色(浅色) | `css/base.css` 顶部 `:root` |
 | 前台配色(深色) | `css/dark.css` 的 `[data-theme="dark"]` 块 |
 | 后台配色(浅色) | `admin/static/css/admin.css` 顶部 `:root` |

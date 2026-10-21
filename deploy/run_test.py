@@ -41,4 +41,8 @@ def _css(fn):
 def _js(fn):
     return send_from_directory("/tmp/testapp/frontend/js", fn)
 
+@A.app.get("/assets/<path:fn>")
+def _assets(fn):
+    return send_from_directory("/tmp/testapp/frontend/assets", fn)
+
 A.app.run(host="127.0.0.1", port=5102, debug=False)

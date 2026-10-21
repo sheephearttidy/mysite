@@ -18,6 +18,7 @@ from flask import (Flask, request, jsonify, render_template,
 
 import db
 import captcha
+import geo
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -240,6 +241,7 @@ TRACK_PATHS = {
     "/skills", "/skills.html",
     "/works", "/works.html",
     "/campus", "/campus.html",
+    "/map", "/map.html",
     "/contact", "/contact.html",
 }
 _BEIJING = timezone(timedelta(hours=8))
@@ -273,13 +275,25 @@ def track_visit():
     ua = request.headers.get("User-Agent", "")[:300]
     ref = _clean_referer(request.headers.get("Referer", ""))
 
+    # 城市:geo 有内存缓存(同 IP 只查一次),未命中时首次查库可能慢几十毫秒,
+    # 但 track 是 sendBeacon 异步发的,不阻塞页面
+    ip = request.headers.get("X-Forwarded-For", "").split(",")[0].strip() \
+        or request.remote_addr or ""
+    city = geo.locate(ip) if ip else ""
     now = datetime.now(_BEIJING)
     try:
         db.record_visit(path=path, referer=ref, ua=ua,
-                        day=now.strftime("%Y-%m-%d"), ts=int(time.time()))
+                        day=now.strftime("%Y-%m-%d"), ts=int(time.time()),
+                        city=city)
     except Exception:
         return jsonify(ok=False), 200   # 统计失败不影响用户
     return jsonify(ok=True)
+
+
+@app.get("/api/map")
+def api_map():
+    """访客城市分布(公开):返回 [{city, count}],不暴露 IP"""
+    return jsonify(cities=db.get_visit_cities())
 
 
 @app.get("/api/stats/visits")

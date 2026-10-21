@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>来访地图 · 至尊杰的小窝</title>
+<meta name="description" content="看我这个小窝被哪些城市的朋友逛过 —— 一张星星贴纸地图,记录每一只来访的陌生人。" />
+<meta name="author" content="至尊杰" />
+<meta name="theme-color" content="#ffd93d" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#1b1922" media="(prefers-color-scheme: dark)" />
+<link rel="canonical" href="https://imyxj.xyz/map.html" />
+
+<!-- 图标 -->
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
+
+<!-- 分享卡片 -->
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="至尊杰的小窝" />
+<meta property="og:title" content="来访地图 · 至尊杰的小窝" />
+<meta property="og:description" content="看我这个小窝被哪些城市的朋友逛过 —— 一张星星贴纸地图,记录每一只来访的陌生人。" />
+<meta property="og:url" content="https://imyxj.xyz/map.html" />
+<meta property="og:image" content="https://imyxj.xyz/assets/og-image.png" />
+<meta property="og:locale" content="zh_CN" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="css/base.css" />
+<link rel="stylesheet" href="css/home.css" />
+<link rel="stylesheet" href="css/widgets.css" />
+<link rel="stylesheet" href="css/dark.css" />
+<link rel="stylesheet" href="css/holidays.css" />
+<link rel="stylesheet" href="css/responsive.css" />
+<script>
+  // 尽早应用主题,避免深色模式闪白
+  (function () {
+    try {
+      var t = localStorage.getItem('theme');
+      if (!t) t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      if (t === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+      document.documentElement.setAttribute('data-theme-source',
+        localStorage.getItem('theme') ? 'manual' : 'system');
+    } catch (e) {}
+  })();
+</script>
+  <script src="js/holiday.js"></script>
+</head>
+<body data-page="map">
+
+<!-- ================= 导航 ================= -->
+<nav class="nav">
+  <div class="container nav-inner">
+    <a href="/" class="logo"><span class="dot"></span>至尊杰的小窝</a>
+    <button class="nav-toggle" id="navToggle" aria-label="打开菜单">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
+    <ul class="nav-links" id="navLinks">
+      <li><a href="/">首页</a></li>
+      <li><a href="/about.html">关于我</a></li>
+      <li><a href="/skills.html">技能树</a></li>
+      <li><a href="/works.html">小破项目</a></li>
+      <li><a href="/campus.html">校园日常</a></li>
+      <li><a href="/map.html" class="active">来访地图</a></li>
+      <li><a href="/contact.html">来找我玩</a></li>
+      <li><button class="theme-toggle" id="themeToggle" aria-label="切换深色模式" title="切换深色模式">
+        <span class="ti-sun">☀️</span><span class="ti-moon">🌙</span>
+      </button></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- ================= 来访地图 ================= -->
+<section id="map" class="sec-yellow page-head">
+  <div class="container">
+    <div class="map-head reveal">
+      <span class="sticker">📍 访客贴纸墙</span>
+      <h2>谁来过我的小窝<span class="wave-hand"> 🗺️</span></h2>
+      <p>每一只来过的陌生人都会变成一颗小星星,钉在他所在的城市上。<br>被访问 <b id="mapTotal">0</b> 座城市的星星点亮(づ￣ ³￣)づ</p>
+    </div>
+
+    <div class="map-card reveal">
+      <svg id="worldMap" viewBox="0 0 1000 520" role="img" aria-label="访客世界地图" class="world-map">
+        <!-- 海洋网格背景 -->
+        <defs>
+          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="currentColor" stroke-width="0.6" opacity="0.08" />
+          </pattern>
+        </defs>
+        <rect width="1000" height="520" fill="url(#grid)" class="map-sea" />
+
+        <!-- 简化大陆轮廓(低多边形风,等距圆柱投影 1000x520) -->
+        <g class="map-land" fill="currentColor" opacity="0.14">
+          <!-- 亚洲+中国主体 -->
+          <path d="M330 150 L370 140 L410 148 L440 160 L470 150 L505 162 L530 175 L520 195 L560 205 L575 228 L560 245 L575 262 L560 275 L545 262 L525 270 L510 290 L492 300 L470 292 L450 305 L430 298 L420 315 L400 310 L390 292 L375 298 L365 280 L350 285 L340 268 L350 252 L338 235 L345 218 L330 205 L322 190 Z" />
+          <!-- 印度 -->
+          <path d="M470 292 L492 300 L500 330 L488 360 L472 348 L462 320 L452 305 Z" />
+          <!-- 东南亚 -->
+          <path d="M525 270 L545 262 L558 285 L548 305 L530 298 L520 285 Z" />
+          <!-- 中东 -->
+          <path d="M420 210 L452 205 L460 225 L445 245 L430 240 L418 228 Z" />
+          <!-- 非洲 -->
+          <path d="M400 280 L430 272 L445 290 L455 310 L440 350 L420 400 L405 430 L388 410 L382 370 L388 340 L395 315 Z" />
+          <!-- 欧洲 -->
+          <path d="M360 130 L395 118 L420 130 L425 155 L410 170 L395 162 L380 172 L368 155 L352 148 Z" />
+          <!-- 北美 -->
+          <path d="M80 90 L130 78 L175 90 L210 105 L225 135 L210 160 L230 180 L225 205 L200 215 L180 235 L160 225 L150 200 L120 195 L95 175 L75 140 Z" />
+          <!-- 南美 -->
+          <path d="M205 260 L235 250 L255 275 L260 310 L250 355 L235 395 L215 405 L200 380 L195 340 L200 300 Z" />
+          <!-- 澳洲 -->
+          <path d="M770 360 L805 348 L840 360 L850 385 L835 405 L800 415 L775 400 L760 385 Z" />
+        </g>
+
+        <!-- 星星由 JS 动态插入 -->
+        <g id="mapStars"></g>
+      </svg>
+
+      <div class="map-side">
+        <h3>🌍 点亮过的城市</h3>
+        <ul id="cityList" class="city-list">
+          <li class="city-empty">还没有星星落地,快来做第一颗 ✨</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <p>© 2026 至尊杰 · 燕京理工学院 · 纯手搓 + AI 协作 · learning and building <span class="sprout">🌱</span></p>
+  </div>
+</footer>
+
+<button class="back-top" id="backTop" aria-label="返回顶部">🚀</button>
+
+<!-- 微信二维码弹窗 -->
+<div class="qr-overlay" id="qrOverlay" role="dialog" aria-label="微信二维码">
+  <div class="card qr-box">
+    <button class="qr-close" id="qrClose" aria-label="关闭">✕</button>
+    <img src="assets/wechat-qr.jpg" alt="至尊杰的微信二维码" />
+    <p>微信扫一扫,加个好友吧 🎉</p>
+  </div>
+</div>
+
+<script src="js/theme.js"></script>
+<script src="js/cities.js"></script>
+<script src="js/map.js"></script>
+<script src="js/main.js"></script>
+<script src="js/holiday-fx.js"></script>
+</body>
+</html>

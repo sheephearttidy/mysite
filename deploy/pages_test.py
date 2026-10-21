@@ -31,12 +31,13 @@ def get_status(path):
 
 
 PAGES = {
-    "index": {"active": "首页", "nav": 6},
-    "about": {"active": "关于我", "nav": 6},
-    "skills": {"active": "技能树", "nav": 6},
-    "works": {"active": "小破项目", "nav": 6},
-    "campus": {"active": "校园日常", "nav": 6},
-    "contact": {"active": "来找我玩", "nav": 6},
+    "index": {"active": "首页", "nav": 7},
+    "about": {"active": "关于我", "nav": 7},
+    "skills": {"active": "技能树", "nav": 7},
+    "works": {"active": "小破项目", "nav": 7},
+    "campus": {"active": "校园日常", "nav": 7},
+    "map": {"active": "来访地图", "nav": 7},
+    "contact": {"active": "来找我玩", "nav": 7},
 }
 
 # 1. 每个页面结构完整

@@ -115,6 +115,11 @@
   box-shadow: 10px 10px 0 var(--pink-shadow);
 }
 
+/* 来访地图:海洋网格变淡,列表分隔线可见 */
+[data-theme="dark"] .map-sea { color: var(--text-3); }
+[data-theme="dark"] .map-land { opacity: .16; }
+[data-theme="dark"] .city-item { border-bottom-color: rgba(255,255,255,.12); }
+
 /* 页脚 */
 [data-theme="dark"] footer { color: var(--text-3); background: var(--cream); }
 

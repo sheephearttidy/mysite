@@ -12,6 +12,8 @@
   .works-grid { grid-template-columns: repeat(2, 1fr); }
   .home-links-grid { grid-template-columns: repeat(2, 1fr); }
   .stats { grid-template-columns: repeat(2, 1fr); }
+  .map-card { grid-template-columns: 1fr; }
+  .map-side { border-left: none; border-top: 3px dashed var(--line); padding-left: 0; padding-top: 18px; }
   section { padding: 64px 0; }
   .nav-links {
     position: absolute; top: 66px; left: 12px; right: 12px;

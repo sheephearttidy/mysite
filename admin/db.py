@@ -73,7 +73,8 @@ CREATE TABLE IF NOT EXISTS visits (
     path TEXT NOT NULL DEFAULT '/', -- 访问路径
     referer TEXT DEFAULT '',        -- 来源域名(已裁剪)
     ua TEXT DEFAULT '',             -- 简化的浏览器/系统标签
-    is_bot INTEGER NOT NULL DEFAULT 0
+    is_bot INTEGER NOT NULL DEFAULT 0,
+    city TEXT DEFAULT ''            -- 访客城市(如 "江苏 南京"),隐私起见不存 IP
 );
 CREATE INDEX IF NOT EXISTS idx_visits_day ON visits(day);
 CREATE INDEX IF NOT EXISTS idx_visits_ts  ON visits(ts);
@@ -403,6 +404,10 @@ def init_db(path):
     DB_PATH = path
     with get_db() as c:
         c.executescript(SCHEMA)
+        # 旧库迁移:visits 表加 city 列(v1.7.0 访客地图)
+        cols = [r["name"] for r in c.execute("PRAGMA table_info(visits)")]
+        if "city" not in cols:
+            c.execute("ALTER TABLE visits ADD COLUMN city TEXT DEFAULT ''")
         if c.execute("SELECT COUNT(*) FROM skills").fetchone()[0] == 0:
             c.executemany(
                 "INSERT INTO skills(name,percent,note,category,color,sort) VALUES(?,?,?,?,?,?)",
@@ -733,13 +738,24 @@ def _classify_ua(ua: str):
     return f"{browser} / {os_name}", is_bot
 
 
-def record_visit(path: str, referer: str, ua: str, day: str, ts: int):
-    """记录一次访问。调用方负责把 referer 裁成域名。"""
+def record_visit(path: str, referer: str, ua: str, day: str, ts: int, city: str = ""):
+    """记录一次访问。调用方负责把 referer 裁成域名,city 可为空(查不到就留空)。"""
     label, is_bot = _classify_ua(ua)
     with get_db() as c:
         c.execute(
-            "INSERT INTO visits(day,ts,path,referer,ua,is_bot) VALUES(?,?,?,?,?,?)",
-            (day, ts, path[:200], referer[:200], label[:60], is_bot))
+            "INSERT INTO visits(day,ts,path,referer,ua,is_bot,city) VALUES(?,?,?,?,?,?,?)",
+            (day, ts, path[:200], referer[:200], label[:60], is_bot, city[:40]))
+
+
+def get_visit_cities(limit: int = 200) -> list:
+    """访客城市聚合(去 IP 化):返回 [{city, count}],按次数降序。空城市不返回。"""
+    with get_db() as c:
+        rows = c.execute(
+            "SELECT city, COUNT(*) n FROM visits "
+            "WHERE city != '' AND is_bot = 0 "
+            "GROUP BY city ORDER BY n DESC, MAX(ts) DESC LIMIT ?",
+            (limit,)).fetchall()
+    return [{"city": r["city"], "count": r["n"]} for r in rows]
 
 
 def get_visit_stats(days: int = 30) -> dict:
@@ -798,5 +814,6 @@ def get_visit_stats(days: int = 30) -> dict:
         "by_ua": by_ua,
         "recent": recent,
         "by_hour": [by_hour.get(h, 0) for h in range(24)],
+        "cities": get_visit_cities(30),
         "days": days,
     }

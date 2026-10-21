@@ -31,10 +31,10 @@ check("前台含防闪脚本", "尽早应用主题" in body or "data-theme-sourc
 check("前台含双 meta", body.count('name="theme-color"') >= 2)
 check("前台含 dark.css", "dark.css" in body)
 
-# CSS 加载顺序:base -> home -> widgets -> dark -> responsive
+# CSS 加载顺序:base -> home -> widgets -> dark -> holidays -> responsive
 import re
 order = re.findall(r'<link[^>]+href="css/([a-z]+\.css)"', body)
-check("CSS 顺序正确", order == ["base.css", "home.css", "widgets.css", "dark.css", "responsive.css"],
+check("CSS 顺序正确", order == ["base.css", "home.css", "widgets.css", "dark.css", "holidays.css", "responsive.css"],
       str(order))
 
 # dark.css 内容

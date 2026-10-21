@@ -421,6 +421,20 @@ function renderDashboard(d) {
   }
   hx.innerHTML = '<span>0:00</span><span>6:00</span><span>12:00</span><span>18:00</span><span>23:00</span>';
 
+  // ---- 访客城市 ----
+  const cities = document.getElementById('dashCities');
+  if (!d.cities || !d.cities.length) {
+    cities.innerHTML = '<p class="hint">还没有城市数据(新访客进来后自动解析,稍等一会儿)</p>';
+  } else {
+    const cmax = Math.max(...d.cities.map(x => x.count), 1);
+    cities.innerHTML = d.cities.map(x => `
+      <div class="rank-row">
+        <span class="rn">📍 ${esc(x.city)}</span>
+        <span class="rb"><i style="width:${Math.round(x.count / cmax * 100)}%"></i></span>
+        <span class="rv">${x.count} 次</span>
+      </div>`).join('');
+  }
+
   // ---- 最近访问 ----
   const recent = document.getElementById('dashRecent');
   if (!d.recent.length) {

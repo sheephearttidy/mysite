@@ -7,6 +7,7 @@
 <meta name="theme-color" content="#fff8ee" media="(prefers-color-scheme: light)" />
 <meta name="theme-color" content="#1c1a21" media="(prefers-color-scheme: dark)" />
 <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}?v={{ asset_ver }}" />
+<link rel="stylesheet" href="{{ url_for('static', filename='css/holidays.css') }}?v={{ asset_ver }}" />
 <script>
   // 尽早应用主题,避免深色模式闪白
   // 优先级:手动选择 > 系统偏好
@@ -20,6 +21,7 @@
     } catch (e) {}
   })();
 </script>
+<script src="{{ url_for('static', filename='js/holiday.js') }}?v={{ asset_ver }}"></script>
 </head>
 <body>
 
@@ -245,6 +247,12 @@
         </div>
 
         <div class="item" style="margin-top:18px">
+          <h3>🗺️ 访客城市分布</h3>
+          <div id="dashCities"></div>
+          <p class="hint" style="margin-top:6px">按 IP 解析到省/市(淘宝 IP 库),只存城市不存 IP;悬停前台地图页的星星可见</p>
+        </div>
+
+        <div class="item" style="margin-top:18px">
           <h3>🧾 最近访问</h3>
           <div id="dashRecent"></div>
         </div>
@@ -463,5 +471,6 @@ window.__ADMIN_MUST_CHANGE__ = {{ 'true' if must_change else 'false' }};
 </script>
 <script src="{{ url_for('static', filename='js/theme.js') }}?v={{ asset_ver }}"></script>
 <script src="{{ url_for('static', filename='js/admin.js') }}?v={{ asset_ver }}"></script>
+<script src="{{ url_for('static', filename='js/holiday-fx.js') }}?v={{ asset_ver }}"></script>
 </body>
 </html>
