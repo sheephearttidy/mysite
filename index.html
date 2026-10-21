@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>至尊杰 · 大学生活实录 🎓</title>
+<meta name="description" content="至尊杰的小窝 —— 燕京理工学院计算机科学与技术,沉迷智能车 AI,正在 learning and building。" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<!-- ================= 导航 ================= -->
+<nav class="nav">
+  <div class="container nav-inner">
+    <a href="#top" class="logo"><span class="dot"></span>至尊杰的小窝</a>
+    <button class="nav-toggle" id="navToggle" aria-label="打开菜单">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
+    <ul class="nav-links" id="navLinks">
+      <li><a href="#about">关于我</a></li>
+      <li><a href="#skills">技能树</a></li>
+      <li><a href="#works">小破项目</a></li>
+      <li><a href="#campus">校园日常</a></li>
+      <li><a href="#contact">来找我玩</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- ================= Hero ================= -->
+<header class="hero" id="top">
+  <span class="doodle d-1">✨</span>
+  <span class="doodle d-2">🏎️</span>
+  <span class="doodle d-3">☁️</span>
+  <span class="doodle d-4">⭐</span>
+  <span class="doodle d-5">🤖</span>
+
+  <div class="container">
+    <div class="hero-grid">
+      <div>
+        <span class="hero-badge">🎓 燕京理工学院 · 计算机科学与技术 · 2026 级</span>
+        <h1>嗨,我是<span class="hl"> 至尊杰 </span>👋</h1>
+        <p class="role">
+          沉迷 <span class="tag-inline">智能车 AI</span> 的 CS 在读生 / 状态:learning and building 🔧
+        </p>
+        <p class="desc">
+          一个让小车自己跑、让 AI 替我打工的大学生。白天上课写代码,晚上调车调参,
+          最大的愿望是我的智能车别再撞墙了(它总有自己的想法)。
+        </p>
+        <div class="btn-row">
+          <a href="#works" class="btn btn-pink">看看我做了啥 👀</a>
+          <a href="#contact" class="btn btn-white">来加个好友 🤝</a>
+        </div>
+      </div>
+
+      <div class="polaroids">
+        <div class="spin-badge">
+          <svg viewBox="0 0 100 100">
+            <defs>
+              <path id="circlePath" d="M50,50 m-36,0 a36,36 0 1,1 72,0 a36,36 0 1,1 -72,0" />
+            </defs>
+            <text font-size="11.5" font-weight="bold" fill="#2d2a32" font-family="Baloo 2, sans-serif" letter-spacing="2">
+              <textPath href="#circlePath">★ SMART CAR ★ 智能车 ★ AI ★ STUDENT ★</textPath>
+            </text>
+          </svg>
+          <span class="center">🏎️</span>
+        </div>
+        <div class="pol pol-1">
+          <div class="pol-img" style="background: var(--teal-bg);">🏎️</div>
+          <div class="pol-cap">我的小车(未撞墙版)</div>
+        </div>
+        <div class="pol pol-2">
+          <div class="pol-img">💻</div>
+          <div class="pol-cap">调参的第 N 个深夜</div>
+        </div>
+        <div class="pol pol-3">
+          <div class="pol-img">🤖</div>
+          <div class="pol-cap">正在调教的 DeepSeek</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 不正经数据统计 -->
+    <div class="stats-wrap">
+      <div class="stats">
+        <div class="stat reveal">
+          <span class="emoji">🏁</span>
+          <div class="num-row"><span data-count="999">0</span><span class="unit"> 次</span></div>
+          <div class="label">小车跑过的圈数(含撞墙)</div>
+        </div>
+        <div class="stat reveal d1">
+          <span class="emoji">🌙</span>
+          <div class="num-row"><span data-count="999">0</span><span class="unit"> 次</span></div>
+          <div class="label">熬夜次数(保守估计)</div>
+        </div>
+        <div class="stat reveal d2">
+          <span class="emoji">💬</span>
+          <div class="num-row"><span data-count="1000">0</span><span class="unit"> 条</span></div>
+          <div class="label">调教 DeepSeek 的 prompt</div>
+        </div>
+        <div class="stat reveal d3">
+          <span class="emoji">🍚</span>
+          <div class="num-row"><span data-count="100">0</span><span class="unit"> %</span></div>
+          <div class="label">干饭热情(从不迟到)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ================= 跑马灯 ================= -->
+<div class="marquee" aria-hidden="true">
+  <div class="marquee-track">
+    <span>🏁 智能车冲鸭 ✨ 别撞墙别撞墙别撞墙 🔧 PID 又调炸了 🤖 DeepSeek 是我兄弟 💻 正在 debug 第 3 小时 🍚 干饭不积极思想有问题 ✨ learning and building ⚡ 今晚一定早睡(第 7 次说)&nbsp;</span>
+    <span>🏁 智能车冲鸭 ✨ 别撞墙别撞墙别撞墙 🔧 PID 又调炸了 🤖 DeepSeek 是我兄弟 💻 正在 debug 第 3 小时 🍚 干饭不积极思想有问题 ✨ learning and building ⚡ 今晚一定早睡(第 7 次说)&nbsp;</span>
+  </div>
+</div>
+
+<!-- ================= 关于 ================= -->
+<section id="about" class="sec-yellow">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="tag">ABOUT ME</span>
+      <h2>关于我这只人类 🧍</h2>
+      <div class="wave-line"></div>
+    </div>
+    <div class="about-grid">
+      <div class="card about-card reveal">
+        <p><strong>是谁:</strong>至尊杰,燕京理工学院计算机科学与技术 2026 级。每天在
+          <span class="sticker-word sw-teal">上课</span>
+          <span class="sticker-word sw-pink">写代码</span>和
+          <span class="sticker-word sw-yellow">调车</span>
+          之间反复横跳。</p>
+        <p><strong>在干嘛:</strong>主攻方向是智能车 AI——从循迹、避障到让小车自己学会跑圈。
+          前后端也都有涉猎,坚信「能用代码解决的事就不算事」。</p>
+        <p><strong>小目标:</strong>让小车稳稳跑完全程不撞墙,顺便把 AI 和 Agent 玩明白,
+          做出真正能跑起来、有人用的东西。</p>
+      </div>
+      <div class="info-cards">
+        <div class="info-card reveal"><span class="ic">🎓</span><div class="k">专业</div><div class="v">计算机科学与技术</div></div>
+        <div class="info-card reveal d1"><span class="ic">🏫</span><div class="k">学校</div><div class="v">燕京理工学院</div></div>
+        <div class="info-card reveal d2"><span class="ic">🔥</span><div class="k">正在沉迷</div><div class="v">智能车 AI</div></div>
+        <div class="info-card reveal d3"><span class="ic">⚡</span><div class="k">当前状态</div><div class="v">learning & building</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 技能 ================= -->
+<section id="skills" class="sec-cream">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="tag">SKILL TREE</span>
+      <h2>技能树(点得很乱)</h2>
+      <div class="wave-line"></div>
+    </div>
+    <div class="skills-cols">
+      <div class="card skill-col col-a reveal">
+        <h3>📖 认真技能</h3>
+        <p class="sub">真的在学的那种</p>
+        <div class="skillbar" style="--w:78%">
+          <div class="skillbar-top"><span>🏎️ 智能车 / 嵌入式</span><span class="pct">78%</span></div>
+          <div class="bar"><div class="fill f-teal"></div></div>
+          <div class="note">主线任务,小车就是我的另一半</div>
+        </div>
+        <div class="skillbar" style="--w:75%">
+          <div class="skillbar-top"><span>🐍 Python</span><span class="pct">75%</span></div>
+          <div class="bar"><div class="fill f-blue"></div></div>
+          <div class="note">调车、调 AI、调 DeepSeek 都靠它</div>
+        </div>
+        <div class="skillbar" style="--w:72%">
+          <div class="skillbar-top"><span>⚙️ C / C++</span><span class="pct">72%</span></div>
+          <div class="bar"><div class="fill f-pink"></div></div>
+          <div class="note">写底层的感觉,又痛又上头</div>
+        </div>
+        <div class="skillbar" style="--w:65%">
+          <div class="skillbar-top"><span>🌐 全栈开发</span><span class="pct">65%</span></div>
+          <div class="bar"><div class="fill f-purple"></div></div>
+          <div class="note">Flask / Node.js / 前端三件套</div>
+        </div>
+      </div>
+      <div class="card skill-col col-b reveal d1">
+        <h3>🎮 被动技能</h3>
+        <p class="sub">不用学,天生就会</p>
+        <div class="skillbar" style="--w:100%">
+          <div class="skillbar-top"><span>🍚 干饭</span><span class="pct">100%</span></div>
+          <div class="bar"><div class="fill f-orange"></div></div>
+          <div class="note">干饭不积极,思想有问题</div>
+        </div>
+        <div class="skillbar" style="--w:99%">
+          <div class="skillbar-top"><span>🌙 熬夜</span><span class="pct">99%</span></div>
+          <div class="bar"><div class="fill f-purple"></div></div>
+          <div class="note">留 1% 是怕妈妈看到这个网页</div>
+        </div>
+        <div class="skillbar" style="--w:96%">
+          <div class="skillbar-top"><span>🤖 调教 AI</span><span class="pct">96%</span></div>
+          <div class="bar"><div class="fill f-teal"></div></div>
+          <div class="note">DeepSeek 见了我都要喊声师傅</div>
+        </div>
+        <div class="skillbar" style="--w:90%">
+          <div class="skillbar-top"><span>🐌 拖延症</span><span class="pct">90%</span></div>
+          <div class="bar"><div class="fill f-yellow"></div></div>
+          <div class="note">正在改,明天开始(占位)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 技能背包:全量装备清单 -->
+    <div class="card stack-card reveal">
+      <h3>🎒 技能背包</h3>
+      <p class="sub">完整装备清单 · 点击属性面板可以看得更清楚(划掉,没有这个功能)</p>
+      <div class="stack-groups">
+        <div>
+          <div class="g-name">💻 语言 LANGUAGES</div>
+          <div class="chips">
+            <span class="chip c-teal">C</span>
+            <span class="chip c-teal">C++</span>
+            <span class="chip c-blue">Python</span>
+            <span class="chip c-yellow">Java</span>
+            <span class="chip c-pink">JavaScript</span>
+            <span class="chip c-purple">TypeScript</span>
+          </div>
+        </div>
+        <div>
+          <div class="g-name">🔧 后端 BACKEND</div>
+          <div class="chips">
+            <span class="chip c-pink">Flask</span>
+            <span class="chip c-teal">Node.js</span>
+            <span class="chip c-yellow">REST API</span>
+          </div>
+        </div>
+        <div>
+          <div class="g-name">🎨 前端 FRONTEND</div>
+          <div class="chips">
+            <span class="chip c-purple">HTML5</span>
+            <span class="chip c-blue">CSS3</span>
+            <span class="chip c-pink">JavaScript</span>
+          </div>
+        </div>
+        <div>
+          <div class="g-name">🗄️ 数据库 DATABASE</div>
+          <div class="chips">
+            <span class="chip c-yellow">MySQL</span>
+            <span class="chip c-teal">Redis</span>
+          </div>
+        </div>
+        <div>
+          <div class="g-name">🐧 运维 OPS</div>
+          <div class="chips">
+            <span class="chip c-teal">Linux</span>
+            <span class="chip c-yellow">Shell</span>
+            <span class="chip c-blue">Docker</span>
+            <span class="chip c-pink">Nginx</span>
+            <span class="chip c-purple">Git</span>
+          </div>
+        </div>
+        <div>
+          <div class="g-name">🛠️ 工具 TOOLS</div>
+          <div class="chips">
+            <span class="chip c-blue">VS Code</span>
+            <span class="chip c-teal">Vim</span>
+            <span class="chip c-yellow">PyCharm</span>
+            <span class="chip c-orange">CMake</span>
+          </div>
+        </div>
+        <div>
+          <div class="g-name">📚 正在学 LEARNING</div>
+          <div class="chips">
+            <span class="chip c-learn">算法 Algorithms</span>
+            <span class="chip c-learn">系统设计 System Design</span>
+            <span class="chip c-learn">AI / Agent</span>
+            <span class="chip c-learn">Web 开发</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 作品 ================= -->
+<section id="works" class="sec-teal">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="tag">PROJECTS</span>
+      <h2>我的小破项目们 🛠️</h2>
+      <div class="wave-line"></div>
+    </div>
+    <div class="works-grid">
+      <article class="card work-card reveal">
+        <div class="work-cover wc-1">🏎️</div>
+        <div class="work-body">
+          <h3>智能车 · 主线任务</h3>
+          <p>正在攻关的核心项目:循迹、避障、PID 控制,目标是让它自己稳稳跑完赛道。</p>
+          <div class="work-meta"><span class="work-pill">进行中</span><a href="https://github.com/sheephearttidy" class="link">GitHub →</a></div>
+        </div>
+      </article>
+      <article class="card work-card reveal d1">
+        <div class="work-cover wc-2">🤖</div>
+        <div class="work-body">
+          <h3>AI / Agent 探索</h3>
+          <p>学习路线上的副本任务:折腾大模型、写 Agent,这个网页就有一部分是 AI 协作的产物。</p>
+          <div class="work-meta"><span class="work-pill">探索中</span><a href="https://github.com/sheephearttidy" class="link">GitHub →</a></div>
+        </div>
+      </article>
+      <article class="card work-card reveal d2">
+        <div class="work-cover wc-3">🌐</div>
+        <div class="work-body">
+          <h3>全栈小项目</h3>
+          <p>Flask / Node.js + 前端三件套练手,从接口到页面一手包办,顺便练 Docker 部署。</p>
+          <div class="work-meta"><span class="work-pill">练手作</span><a href="https://github.com/sheephearttidy" class="link">GitHub →</a></div>
+        </div>
+      </article>
+      <article class="card work-card reveal">
+        <div class="work-cover wc-4">💻</div>
+        <div class="work-body">
+          <h3>GitHub 仓库</h3>
+          <p>所有公开代码都在 @sheephearttidy,欢迎来逛,点个 star 就是最大的鼓励。</p>
+          <div class="work-meta"><span class="work-pill">持续更新</span><a href="https://github.com/sheephearttidy" class="link">GitHub →</a></div>
+        </div>
+      </article>
+      <article class="card work-card reveal d1">
+        <div class="work-cover wc-5">📄</div>
+        <div class="work-body">
+          <h3>这个网页本身</h3>
+          <p>纯 HTML/CSS/JS 手搓的青春贴纸风主页,分文件结构,算是一次小小的前端实战。</p>
+          <div class="work-meta"><span class="work-pill">你现在看着呢</span><a href="https://github.com/sheephearttidy" class="link">GitHub →</a></div>
+        </div>
+      </article>
+      <article class="card work-card reveal d2">
+        <div class="work-cover wc-6">🚧</div>
+        <div class="work-body">
+          <h3>更多项目装修中</h3>
+          <p>位子先占上,等我做出更酷的东西就填进来。敬请期待(并不是敷衍)。</p>
+          <div class="work-meta"><span class="work-pill">敬请期待</span><a href="https://github.com/sheephearttidy" class="link">GitHub →</a></div>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 校园时间线 ================= -->
+<section id="campus" class="sec-pink">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="tag">CAMPUS LIFE</span>
+      <h2>校园打怪升级记录 🗺️</h2>
+      <div class="wave-line"></div>
+    </div>
+    <div class="timeline">
+      <div class="tl-item reveal" data-emoji="🎒">
+        <div class="card tl-card">
+          <span class="time">2026.09</span>
+          <h3>开学!踏入燕京理工</h3>
+          <p>计算机科学与技术 2026 级新生报到,从此笔记本里装的不只是游戏,还有 IDE。</p>
+        </div>
+      </div>
+      <div class="tl-item reveal" data-emoji="💻">
+        <div class="card tl-card">
+          <span class="time">第一学期</span>
+          <h3>Hello World 启动</h3>
+          <p>从 C 语言的 printf 开始,一路学到 C++ / Python,越学越觉得有意思。</p>
+        </div>
+      </div>
+      <div class="tl-item reveal" data-emoji="🏎️">
+        <div class="card tl-card">
+          <span class="time">入坑</span>
+          <h3>一脚踏进智能车</h3>
+          <p>见到智能车的那一刻 DNA 动了:小车 + AI + 代码,这不就是我要搞的东西吗!</p>
+        </div>
+      </div>
+      <div class="tl-item reveal" data-emoji="🤖">
+        <div class="card tl-card">
+          <span class="time">现在</span>
+          <h3>learning and building</h3>
+          <p>学算法、学系统设计、玩 AI 和 Agent,同时把这个网页搓了出来。持续施工中 🔨</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 联系 ================= -->
+<section id="contact" class="sec-cream">
+  <div class="container">
+    <div class="contact-card reveal">
+      <span class="sticker">📬 随时欢迎打扰</span>
+      <h2>来找我玩<span class="wave-hand"> 👋</span></h2>
+      <p>聊智能车、聊 AI、组队打比赛,或者单纯想认识一下都行~<br>看到就会回(除非在调车或在睡觉)。</p>
+      <div class="contact-actions">
+        <a href="#" id="wechatBtn" class="btn btn-teal">💬 微信(点我扫码)</a>
+        <a href="https://github.com/sheephearttidy" class="btn btn-yellow">🐙 GitHub @sheephearttidy</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <p>© 2026 至尊杰 · 燕京理工学院 · 纯手搓 + AI 协作 · learning and building <span class="sprout">🌱</span></p>
+  </div>
+</footer>
+
+<button class="back-top" id="backTop" aria-label="返回顶部">🚀</button>
+
+<!-- 微信二维码弹窗 -->
+<div class="qr-overlay" id="qrOverlay" role="dialog" aria-label="微信二维码">
+  <div class="card qr-box">
+    <button class="qr-close" id="qrClose" aria-label="关闭">✕</button>
+    <img src="assets/wechat-qr.jpg" alt="至尊杰的微信二维码" />
+    <p>微信扫一扫,加个好友吧 🎉</p>
+  </div>
+</div>
+
+<script src="js/main.js"></script>
+</body>
+</html>
