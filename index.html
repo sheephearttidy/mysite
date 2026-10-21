@@ -58,11 +58,15 @@
 </script>
 <script>
   // 尽早应用主题,避免深色模式闪白
+  // 优先级:手动选择 > 系统偏好;都没选过就跟随系统
   (function () {
     try {
       var t = localStorage.getItem('theme');
       if (!t) t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
       if (t === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+      // 告诉 CSS 当前是不是系统在控制,便于按钮显示正确状态
+      document.documentElement.setAttribute('data-theme-source',
+        localStorage.getItem('theme') ? 'manual' : 'system');
     } catch (e) {}
   })();
 </script>
@@ -473,6 +477,7 @@
   </div>
 </div>
 
+<script src="js/theme.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>

@@ -40,11 +40,14 @@ ck("引用了 admin.js", "js/admin.js" in h)
 ck("有数据注入点", "window.__ADMIN_DATA__" in h)
 ck("有改密标记注入", "window.__ADMIN_MUST_CHANGE__" in h)
 ck("无 Jinja 残留", "{{" not in h and "{%" not in h)
-# 内联脚本只应剩数据注入那一小段(渲染后含实际 JSON,可能几 KB)
+# 内联脚本只应剩:数据注入段 + 主题防闪段(v1.5.1 新增,合法)
 inline = re.findall(r"(?s)<script>(.*?)</script>", h)
-ck("内联脚本只剩注入段", len(inline) == 1, f"实得 {len(inline)} 段")
-if inline:
-    js = inline[0]
+inject = [s for s in inline if "window.__" in s]
+foucs = [s for s in inline if "尽早应用主题" in s]
+ck("内联脚本只剩注入段+防闪段", len(inject) == 1 and len(foucs) == 1,
+   f"注入 {len(inject)} 段 防闪 {len(foucs)} 段 合计 {len(inline)}")
+if inject:
+    js = inject[0]
     ck("内联段只有 window 赋值", js.count("window.__") == 2,
        f"实得 {js.count('window.__')} 处")
     ck("内联段无函数定义", "function " not in js)

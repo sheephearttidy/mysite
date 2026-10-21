@@ -4,11 +4,28 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>登录 · 我的小窝后台</title>
+<meta name="theme-color" content="#fff8ee" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#1c1a21" media="(prefers-color-scheme: dark)" />
 <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}?v={{ asset_ver }}" />
+<script>
+  // 尽早应用主题,避免深色模式闪白
+  (function () {
+    try {
+      var t = localStorage.getItem('theme');
+      if (!t) t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      if (t === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+      document.documentElement.setAttribute('data-theme-source',
+        localStorage.getItem('theme') ? 'manual' : 'system');
+    } catch (e) {}
+  })();
+</script>
 </head>
 <body>
 <span class="doodle d1">✨</span><span class="doodle d2">🔒</span>
 <span class="doodle d3">⭐</span><span class="doodle d4">💫</span>
+<button class="theme-btn" id="themeBtn" aria-label="切换深色模式" title="切换深色模式">
+  <span class="ti-sun">☀️</span><span class="ti-moon">🌙</span>
+</button>
 
 <div class="card">
   <div class="lock">🔐</div>
@@ -49,6 +66,7 @@
   <a class="back" href="/">← 回到我的小窝</a>
 </div>
 
+<script src="{{ url_for('static', filename='js/theme.js') }}?v={{ asset_ver }}"></script>
 <script src="{{ url_for('static', filename='js/login.js') }}?v={{ asset_ver }}"></script>
 </body>
 </html>

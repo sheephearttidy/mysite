@@ -1,8 +1,8 @@
 /* ================= 页脚 ================= */
 footer {
-  border-top: 3px solid var(--ink);
+  border-top: 3px solid var(--line);
   padding: 30px 0; text-align: center;
-  color: #8a8494; font-size: 14px; font-weight: 700;
+  color: var(--text-3); font-size: 14px; font-weight: 700;
   background: var(--cream);
 }
 footer .sprout { display: inline-block; animation: grow 2.4s ease-in-out infinite; }
@@ -21,18 +21,18 @@ footer .sprout { display: inline-block; animation: grow 2.4s ease-in-out infinit
 .back-top {
   position: fixed; right: 22px; bottom: 22px; z-index: 99;
   width: 52px; height: 52px; border-radius: 18px;
-  background: var(--yellow); border: 3px solid var(--ink);
-  box-shadow: 5px 5px 0 var(--ink);
+  background: var(--yellow); border: 3px solid var(--line);
+  box-shadow: 5px 5px 0 var(--shadow);
   font-size: 24px; cursor: pointer;
   opacity: 0; pointer-events: none; transition: all .25s ease;
 }
 .back-top.show { opacity: 1; pointer-events: auto; }
-.back-top:hover { transform: translateY(-4px); box-shadow: 7px 9px 0 var(--ink); }
+.back-top:hover { transform: translateY(-4px); box-shadow: 7px 9px 0 var(--shadow); }
 
 /* ================= 微信二维码弹窗 ================= */
 .qr-overlay {
   position: fixed; inset: 0; z-index: 200;
-  background: rgba(45, 42, 50, 0.55);
+  background: var(--overlay);
   display: flex; align-items: center; justify-content: center;
   padding: 22px;
   opacity: 0; pointer-events: none;
@@ -48,7 +48,7 @@ footer .sprout { display: inline-block; animation: grow 2.4s ease-in-out infinit
 }
 .qr-box img {
   display: block; width: 100%;
-  border: 3px solid var(--ink); border-radius: 12px;
+  border: 3px solid var(--line); border-radius: 12px;
   background: var(--paper);
 }
 .qr-box p {
@@ -58,9 +58,9 @@ footer .sprout { display: inline-block; animation: grow 2.4s ease-in-out infinit
 .qr-close {
   position: absolute; top: -14px; right: -14px;
   width: 38px; height: 38px; border-radius: 50%;
-  background: var(--pink); color: #fff;
-  border: 3px solid var(--ink);
-  box-shadow: 3px 3px 0 var(--ink);
+  background: var(--pink); color: var(--on-accent);
+  border: 3px solid var(--line);
+  box-shadow: 3px 3px 0 var(--shadow);
   font-size: 16px; font-weight: 800; cursor: pointer;
   font-family: "Baloo 2", sans-serif;
   transition: transform .2s ease;
@@ -70,22 +70,22 @@ footer .sprout { display: inline-block; animation: grow 2.4s ease-in-out infinit
 /* ================= 技能背包 ================= */
 .stack-card { padding: 26px 30px 24px; margin-top: 30px; transform: rotate(.4deg); }
 .stack-card h3 { font-size: 22px; font-weight: 400; display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
-.stack-card .sub { font-size: 13px; color: #8a8494; font-weight: 700; margin-bottom: 20px; }
+.stack-card .sub { font-size: 13px; color: var(--text-3); font-weight: 700; margin-bottom: 20px; }
 .stack-groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 18px 28px; }
-.g-name { font-size: 13px; font-weight: 800; color: #8a8494; letter-spacing: 1px; margin-bottom: 8px; font-family: "Baloo 2", sans-serif; }
+.g-name { font-size: 13px; font-weight: 800; color: var(--text-3); letter-spacing: 1px; margin-bottom: 8px; font-family: "Baloo 2", sans-serif; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip {
   font-size: 13px; font-weight: 700;
   font-family: "Baloo 2", "PingFang SC", sans-serif;
-  border: 2px solid var(--ink); border-radius: 8px;
+  border: 2px solid var(--line); border-radius: 8px;
   padding: 0 10px; background: var(--paper);
 }
 .c-pink { background: var(--pink-bg); }
 .c-yellow { background: var(--yellow-bg); }
 .c-teal { background: var(--teal-bg); }
 .c-purple { background: var(--purple-bg); }
-.c-orange { background: #ffe8d6; }
-.c-blue { background: #e0f2ff; }
+.c-orange { background: var(--orange-bg); }
+.c-blue { background: var(--blue-bg); }
 .c-learn { background: var(--yellow); }
 
 /* ================= 动态封面底色(后台可配) ================= */
@@ -93,20 +93,20 @@ footer .sprout { display: inline-block; animation: grow 2.4s ease-in-out infinit
 .cover-yellow { background: var(--yellow-bg); }
 .cover-teal { background: var(--teal-bg); }
 .cover-purple { background: var(--purple-bg); }
-.cover-orange { background: #ffe8d6; }
-.cover-blue { background: #e0f2ff; }
+.cover-orange { background: var(--orange-bg); }
+.cover-blue { background: var(--blue-bg); }
 
 /* ================= 深色模式切换按钮 ================= */
 .theme-toggle {
   display: inline-flex; align-items: center; justify-content: center;
   width: 38px; height: 34px; padding: 0;
   background: var(--paper); color: var(--ink);
-  border: 3px solid var(--ink); border-radius: 12px;
-  box-shadow: 3px 3px 0 var(--ink);
+  border: 3px solid var(--line); border-radius: 12px;
+  box-shadow: 3px 3px 0 var(--shadow);
   cursor: pointer; font-size: 16px; line-height: 1;
   transition: all .15s ease;
 }
-.theme-toggle:hover { transform: translate(-1px, -1px) rotate(-4deg); box-shadow: 4px 4px 0 var(--ink); }
+.theme-toggle:hover { transform: translate(-1px, -1px) rotate(-4deg); box-shadow: 4px 4px 0 var(--shadow); }
 .theme-toggle .ti-moon { display: none; }
 [data-theme="dark"] .theme-toggle .ti-sun { display: none; }
 [data-theme="dark"] .theme-toggle .ti-moon { display: inline; }

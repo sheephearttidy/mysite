@@ -1,4 +1,4 @@
-﻿/* ============================================================
+/* ============================================================
    我的小窝 · 交互脚本
    负责所有动效:菜单、滚动显现、技能条、数字滚动、返回顶部
    另外负责从后台 API 拉取技能树/时间线/统计(拉不到就用页面内置内容)
@@ -63,19 +63,8 @@ window.addEventListener('scroll', () => {
 }, { passive: true });
 backTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
 
-// ===== 深色模式切换 =====
-const themeToggle = document.getElementById('themeToggle');
-const applyTheme = t => {
-  if (t === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-  else document.documentElement.removeAttribute('data-theme');
-  try { localStorage.setItem('theme', t); } catch (e) {}
-};
-if (themeToggle) {
-  themeToggle.addEventListener('click', () => {
-    const cur = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
-    applyTheme(cur === 'dark' ? 'light' : 'dark');
-  });
-}
+// ===== 深色模式 =====
+// 主题切换逻辑在 js/theme.js 里(前后台共用同一个文件),这里不用重复实现
 
 // ===== 微信二维码弹窗 =====
 const qrOverlay = document.getElementById('qrOverlay');

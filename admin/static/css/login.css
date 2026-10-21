@@ -1,11 +1,39 @@
 /* ============================================================
    我的小窝 · 后台登录页样式
    配套 admin/templates/login.html
+
+   深色模式在文件末尾,跟前台同一套配色思路
    ============================================================ */
 :root {
-  --ink: #2d2a32; --cream: #fff8ee; --paper: #fff;
-  --pink: #ff6b9d; --yellow: #ffd93d; --teal: #2ec4b6;
+  /* —— 文字 —— */
+  --ink: #2d2a32;
+  --text-2: #55505e;
+  --text-3: #8a8494;
+  --on-accent: #ffffff;
+
+  /* —— 描边与投影 —— */
+  --line: #2d2a32;
+  --shadow: #2d2a32;
+
+  /* —— 底色 —— */
+  --cream: #fff8ee;
+  --paper: #ffffff;
+  --field-bg: #fff8ee;
+  --refresh-bg: rgba(255, 248, 238, 0.9);
+  --cap-bg: #fff8ee;
+
+  /* —— 强调色 —— */
+  --pink: #ff6b9d;
+  --yellow: #ffd93d;
+  --teal: #2ec4b6;
   --purple: #a78bfa;
+
+  /* —— 状态 —— */
+  --err-bg: #ffe4ef;
+  --err-text: #d63384;
+  --blocked-bg: #fff3cd;
+  --blocked-line: #ffc107;
+  --blocked-text: #856404;
 }
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -22,44 +50,44 @@ body {
 @keyframes bob { 0%,100% { transform: translateY(0) rotate(-6deg); } 50% { transform: translateY(-12px) rotate(8deg); } }
 
 .card {
-  background: var(--paper); border: 3px solid var(--ink); border-radius: 24px;
-  box-shadow: 8px 8px 0 var(--ink); padding: 40px 38px 32px;
+  background: var(--paper); border: 3px solid var(--line); border-radius: 24px;
+  box-shadow: 8px 8px 0 var(--shadow); padding: 40px 38px 32px;
   width: 100%; max-width: 420px; position: relative; z-index: 2;
   transform: rotate(-.6deg);
 }
 .lock { font-size: 50px; text-align: center; }
 h1 { font-size: 25px; text-align: center; margin: 8px 0 4px; }
-.sub { text-align: center; color: #8a8494; font-size: 14px; font-weight: 700; margin-bottom: 24px; }
-label { display: block; font-size: 13px; font-weight: 800; color: #6b6577; margin-bottom: 6px; }
+.sub { text-align: center; color: var(--text-3); font-size: 14px; font-weight: 700; margin-bottom: 24px; }
+label { display: block; font-size: 13px; font-weight: 800; color: var(--text-2); margin-bottom: 6px; }
 input {
   width: 100%; padding: 12px 16px; font-size: 16px;
-  border: 3px solid var(--ink); border-radius: 14px;
-  background: var(--cream); outline: none;
+  border: 3px solid var(--line); border-radius: 14px;
+  background: var(--field-bg); color: var(--ink); outline: none;
   font-family: inherit; transition: box-shadow .15s ease;
 }
-input:focus { box-shadow: 4px 4px 0 var(--ink); }
+input:focus { box-shadow: 4px 4px 0 var(--shadow); }
 button {
   width: 100%; margin-top: 20px; padding: 13px;
   font-size: 17px; font-weight: 800; font-family: inherit;
-  background: var(--pink); color: #fff;
-  border: 3px solid var(--ink); border-radius: 14px;
-  box-shadow: 5px 5px 0 var(--ink); cursor: pointer;
+  background: var(--pink); color: var(--on-accent);
+  border: 3px solid var(--line); border-radius: 14px;
+  box-shadow: 5px 5px 0 var(--shadow); cursor: pointer;
   transition: all .15s ease;
 }
-button:hover { transform: translate(-2px,-2px); box-shadow: 7px 7px 0 var(--ink); }
-button:active { transform: translate(3px,3px); box-shadow: 1px 1px 0 var(--ink); }
+button:hover { transform: translate(-2px,-2px); box-shadow: 7px 7px 0 var(--shadow); }
+button:active { transform: translate(3px,3px); box-shadow: 1px 1px 0 var(--shadow); }
 .err {
-  background: #ffe4ef; border: 2px solid var(--pink); border-radius: 12px;
-  color: #d63384; font-size: 14px; font-weight: 700;
+  background: var(--err-bg); border: 2px solid var(--pink); border-radius: 12px;
+  color: var(--err-text); font-size: 14px; font-weight: 700;
   padding: 8px 14px; margin-bottom: 16px; text-align: center;
 }
 .tip {
-  background: var(--cream); border: 2px dashed var(--ink); border-radius: 12px;
-  color: #6b6577; font-size: 13px; font-weight: 700; line-height: 1.6;
+  background: var(--cream); border: 2px dashed var(--line); border-radius: 12px;
+  color: var(--text-2); font-size: 13px; font-weight: 700; line-height: 1.6;
   padding: 8px 12px; margin-bottom: 16px; text-align: center;
 }
 .tip b { color: var(--pink); }
-.back { display: block; text-align: center; margin-top: 18px; color: #8a8494; font-size: 13px; font-weight: 700; text-decoration: none; }
+.back { display: block; text-align: center; margin-top: 18px; color: var(--text-3); font-size: 13px; font-weight: 700; text-decoration: none; }
 .back:hover { color: var(--pink); }
 
 /* 验证码 */
@@ -67,17 +95,69 @@ button:active { transform: translate(3px,3px); box-shadow: 1px 1px 0 var(--ink);
 .cap-row input { flex: 1; min-width: 0; letter-spacing: 4px; text-transform: uppercase; }
 .cap-img {
   width: 130px; height: 46px; flex: none; cursor: pointer;
-  border: 3px solid var(--ink); border-radius: 12px;
-  background: var(--cream); overflow: hidden; position: relative;
+  border: 3px solid var(--line); border-radius: 12px;
+  background: var(--cap-bg); overflow: hidden; position: relative;
   transition: box-shadow .15s ease;
 }
-.cap-img:hover { box-shadow: 3px 3px 0 var(--ink); }
+.cap-img:hover { box-shadow: 3px 3px 0 var(--shadow); }
 .cap-img img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .cap-img .refresh {
   position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-  background: rgba(255,248,238,.9); font-size: 13px; font-weight: 800; color: var(--ink);
+  background: var(--refresh-bg); font-size: 13px; font-weight: 800; color: var(--ink);
   opacity: 0; transition: opacity .15s ease;
 }
 .cap-img:hover .refresh { opacity: 1; }
-.cap-hint { font-size: 12px; font-weight: 700; color: #8a8494; margin-top: 6px; }
-.blocked { background: #fff3cd; border-color: #ffc107; color: #856404; }
+.cap-hint { font-size: 12px; font-weight: 700; color: var(--text-3); margin-top: 6px; }
+.blocked { background: var(--blocked-bg); border-color: var(--blocked-line); color: var(--blocked-text); }
+
+/* ============ 主题切换按钮 ============ */
+.theme-btn {
+  position: fixed; top: 18px; right: 18px; z-index: 10;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 40px; height: 36px; padding: 0;
+  background: var(--paper); color: var(--ink);
+  border: 3px solid var(--line); border-radius: 12px;
+  box-shadow: 3px 3px 0 var(--shadow);
+  cursor: pointer; font-size: 16px; line-height: 1;
+  transition: all .15s ease;
+}
+.theme-btn:hover { transform: translate(-1px, -1px) rotate(-4deg); box-shadow: 4px 4px 0 var(--shadow); }
+.theme-btn .ti-moon { display: none; }
+[data-theme="dark"] .theme-btn .ti-sun { display: none; }
+[data-theme="dark"] .theme-btn .ti-moon { display: inline; }
+
+/* ============================================================
+   深色模式:暖炭灰底 + 降饱和强调色
+   ============================================================ */
+[data-theme="dark"] {
+  --ink: #ece7f0;
+  --text-2: #b3acbe;
+  --text-3: #948da1;
+  --on-accent: #221f28;
+
+  --line: #575060;
+  --shadow: #0d0c10;
+
+  --cream: #1c1a21;
+  --paper: #26232d;
+  --field-bg: #201d27;
+  --refresh-bg: rgba(28, 26, 33, 0.9);
+  --cap-bg: #201d27;
+
+  --pink: #d488a6;
+  --yellow: #d6b24a;
+  --teal: #6fb5ab;
+  --purple: #9d8fc4;
+
+  --err-bg: #4a2f3d;
+  --err-text: #e0a0b4;
+  --blocked-bg: #40381f;
+  --blocked-line: #7a6224;
+  --blocked-text: #e0c882;
+}
+
+/* 验证码图片是黑字透明底,深色下垫浅底保证能看清 */
+[data-theme="dark"] .cap-img img {
+  background: #f2eef5;
+  padding: 2px;
+}

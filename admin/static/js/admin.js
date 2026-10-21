@@ -4,8 +4,8 @@
    所以这个文件是纯静态的,不经过 Jinja 渲染。
    ============================================================ */
 const DATA = window.__ADMIN_DATA__ || {};
-const COLORS = { teal:'#2ec4b6', pink:'#ff6b9d', yellow:'#ffd93d', purple:'#a78bfa', orange:'#ffa94d', blue:'#5aa9ff' };
-const CATS = { serious:'认真技能', passive:'被动技能' };
+// 技能条颜色交给 CSS 的 .bf-* 类,深色模式才能跟着一起变
+const CATS = { serious: '认真技能', passive: '被动技能' };
 
 function toast(msg) {
   const t = document.getElementById('toast');
@@ -461,7 +461,7 @@ function renderSkills() {
       </div>
       <h3>${esc(s.name)}</h3>
       <div class="meta">${s.percent}%</div>
-      <div class="bar-mini"><i style="width:${s.percent}%;background:${COLORS[s.color] || '#2ec4b6'}"></i></div>
+      <div class="bar-mini"><i class="bf-${escAttr(s.color || 'teal')}" style="width:${s.percent}%"></i></div>
       ${s.note ? `<div class="note">${esc(s.note)}</div>` : ''}
       <div class="ops">
         <button class="op edit" onclick="editItem('skills', ${s.id})">✏️ 编辑</button>

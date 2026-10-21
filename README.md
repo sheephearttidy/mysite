@@ -21,6 +21,7 @@
 | `v1.3.0` | 分享卡片 + SEO 基础(og 标签/favicon/robots/sitemap/JSON-LD);自建访问统计 + 后台数据看板 |
 | `v1.4.0` | 登录图形验证码(纯标准库 SVG、一次性、答案哈希存储);安全设置面板全面扩充(7 项可调参数、封锁 IP 管理、会话踢下线、15 类操作审计、应急解锁工具);移除简历 PDF 下载功能 |
 | `v1.5.0` | 前后台样式与脚本全部分文件:前台 `style.css` 拆成 5 个分层文件,后台内联 CSS/JS 抽成 `admin/static/`,`admin.html` 从 1745 行降到 448 行;静态资源自动加缓存版本号 |
+| `v1.5.1` | 前后台统一暗色模式(低饱和莫兰迪配色,保持可爱):前台颜色全部变量化分层,大面积区块不再发闷;后台管理页与登录页同步支持暗色;主题切换改为「跟随系统 + 手动按钮」,前后台共用 `theme.js`,带防闪烁脚本 |
 
 ## 预览
 
@@ -158,8 +159,11 @@ window.__ADMIN_MUST_CHANGE__ = {{ 'true' if must_change else 'false' }};
 
 ## 深色模式
 
-导航栏右侧 ☀️/🌙 按钮切换,偏好存在 `localStorage`。首次访问跟随系统设置。
-配色通过 `[data-theme="dark"]` 覆盖 `:root` 变量实现,想调深色配色改 `style.css` 里那段即可。
+前后台都支持暗色:导航栏 / 后台右上角有 ☀️/🌙 按钮,点击手动切换;没点过就一直跟随系统偏好(系统切了页面实时跟着变),选择存在 `localStorage`。
+
+切换逻辑前后台共用同一个 `js/theme.js`(优先级:手动选择 > 系统偏好),页面 `<head>` 里有防闪烁脚本,深色用户打开不会闪白。
+
+配色通过 `[data-theme="dark"]` 覆盖 `:root` 变量实现,变量按语义分层(文字 / 描边 / 阴影 / 底色 / 强调色各管各的),所以深色下不会出现浅色的描边或投影。
 
 ## 想改内容去哪改
 
@@ -168,7 +172,10 @@ window.__ADMIN_MUST_CHANGE__ = {{ 'true' if must_change else 'false' }};
 | 技能 / 时间线 / 统计 / 项目墙 / 关于我 | 后台 <https://imyxj.xyz/admin> 在线改(推荐) |
 | 图片素材 | 后台上传,或直接替换 `assets/` 里的文件 |
 | 名字、首屏大字、跑马灯文案、联系方式按钮 | `index.html`(这几块没做进后台) |
-| 配色 | `css/style.css` 顶部 `:root`(深色模式在同文件 `[data-theme="dark"]`) |
+| 前台配色(浅色) | `css/base.css` 顶部 `:root` |
+| 前台配色(深色) | `css/dark.css` 的 `[data-theme="dark"]` 块 |
+| 后台配色(浅色) | `admin/static/css/admin.css` 顶部 `:root` |
+| 后台配色(深色) | `admin/static/css/admin.css` 底部 `[data-theme="dark"]` 块 |
 | 微信二维码 | 替换 `assets/wechat-qr.jpg`(保持文件名不变最省事) |
 
 ## 部署结构(线上)
