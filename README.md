@@ -14,6 +14,7 @@
 |---|---|
 | `v1.0.0` | 纯静态贴纸风主页(全内容写死在 HTML 里) |
 | `v1.1.0` | 新增后台管理系统:技能树 / 校园日常 / 趣味统计可在线编辑,前台动态加载(后台挂了自动回退到内置内容) |
+| `v1.1.1` | 后台密码机制升级:初始密码 `admin`,首次登录自动弹窗强制引导修改;右上角「🔑 改密码」随时可改;密码哈希从环境变量迁移进数据库 |
 
 ## 预览
 
@@ -34,14 +35,14 @@ my-portfolio/
 ├── assets/
 │   └── wechat-qr.jpg     ← 微信二维码
 └── admin/                ← 后台管理系统(Flask + SQLite)
-    ├── app.py            ← 路由 / API / 登录
-    ├── db.py             ← 建表 + 初始数据 + 增删改查
-    ├── gen_pass.py       ← 生成管理员密码哈希的小工具
+    ├── app.py            ← 路由 / API / 登录 / 改密码
+    ├── db.py             ← 建表 + 初始数据 + 增删改查 + 密码哈希
+    ├── gen_pass.py       ← 生成密码哈希的小工具(备用)
     ├── requirements.txt
     ├── templates/
-    │   ├── login.html    ← 后台登录页
-    │   └── admin.html    ← 后台管理页(增删改都在这)
-    └── data/mysite.db    ← SQLite 数据库(gitignore,首次启动自动生成)
+    │   ├── login.html    ← 后台登录页(初始密码提示在这里)
+    │   └── admin.html    ← 后台管理页(增删改 + 改密码弹窗)
+    └── data/mysite.db    ← SQLite 数据库(gitignore,首次启动自动生成,初始密码 admin)
 ```
 
 ## 后台能管什么
@@ -75,14 +76,11 @@ Flask 服务由 systemd 守护(mysite-admin.service),开机自启、挂了自动
 
 ## 后台密码
 
-部署时通过环境变量注入,不进代码不进仓库:
-
-```bash
-cd admin && python gen_pass.py "你的密码"
-# 输出 pbkdf2:120000:xxxx:yyyy 写进 /etc/mysite-admin.env 的 MYSITE_ADMIN_PASS_HASH
-```
-
-连续输错 8 次会封 IP 10 分钟,所以别乱试我的密码 😏
+- **初始密码是 `admin`**,第一次用 admin 登录后台会自动弹出改密码窗口,改完才算完事(改密码规则:至少 6 位、不能还是 `admin`、要输两遍确认)
+- 没改初始密码期间:登录页会提示「首次使用初始密码 admin」,后台顶部挂黄色警示横幅
+- 改完密码会强制退出重新登录;之后随时点后台右上角「🔑 改密码」再改
+- 密码以 PBKDF2(120k 迭代)哈希存在数据库 settings 表里,明文不落盘
+- 连续输错 8 次封 IP 10 分钟,所以别乱试我的密码 😏
 
 ---
 

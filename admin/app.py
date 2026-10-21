@@ -5,7 +5,6 @@
 
 import os
 import time
-import hashlib
 from datetime import datetime, timezone, timedelta
 from functools import wraps
 
@@ -20,7 +19,6 @@ app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=7)
 
 ADMIN_USER = os.environ.get("MYSITE_ADMIN_USER", "admin")
-ADMIN_PASS_HASH = os.environ.get("MYSITE_ADMIN_PASS_HASH")  # pbkdf2:iters:salt:hash
 
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "mysite.db")
 
@@ -42,18 +40,8 @@ def login_required(f):
 
 
 def check_admin_password(pwd: str) -> bool:
-    """格式 pbkdf2:迭代次数:salt_hex:hash_hex"""
-    if not ADMIN_PASS_HASH:
-        return False
-    parts = ADMIN_PASS_HASH.split(":")
-    if len(parts) != 4 or parts[0] != "pbkdf2":
-        return False
-    _, iters, salt_hex, hash_hex = parts
-    try:
-        calc = hashlib.pbkdf2_hmac("sha256", pwd.encode(), bytes.fromhex(salt_hex), int(iters))
-        return calc.hex() == hash_hex
-    except ValueError:
-        return False
+    """密码哈希存在数据库 settings 表里"""
+    return db.verify_password(pwd, db.get_pass_hash() or "")
 
 
 def rate_limit_ok(ip: str) -> bool:
@@ -99,7 +87,8 @@ def api_health():
 def login():
     if session.get("user"):
         return redirect(url_for("admin"))
-    return render_template("login.html")
+    # 初始密码还没改过 → 登录页显示初始密码提示
+    return render_template("login.html", initial=db.must_change_password())
 
 
 @app.post("/admin/login")
@@ -131,7 +120,34 @@ def admin():
         "timeline": db.get_timeline(),
         "stats": db.get_stats(),
     }
-    return render_template("admin.html", data=data)  # data 会被 tojson 过滤器安全转义
+    # 初始密码还没改过 → 前端弹窗提示修改
+    return render_template("admin.html", data=data,
+                           must_change=db.must_change_password())
+
+
+# ---------------- 改密码 ----------------
+
+@app.post("/api/password")
+@login_required
+def change_password():
+    """已登录状态下修改自己的密码"""
+    body = request.get_json(force=True, silent=True) or {}
+    old_pwd = body.get("old", "")
+    new_pwd = body.get("new", "")
+
+    if not db.verify_password(old_pwd, db.get_pass_hash() or ""):
+        return jsonify(error="旧密码不对哦"), 400
+    if len(new_pwd) < 6:
+        return jsonify(error="新密码至少 6 位啦"), 400
+    if new_pwd == old_pwd:
+        return jsonify(error="新密码不能和旧密码一样"), 400
+    if new_pwd == db.DEFAULT_ADMIN_PASS:
+        return jsonify(error="不能还用 admin 当密码!换一个"), 400
+
+    db.set_pass_hash(db.hash_password(new_pwd))
+    db.clear_must_change()
+    session.clear()  # 改完强制重新登录,用新密码
+    return jsonify(ok=True)
 
 
 # ---------------- 后台 CRUD API(需登录) ----------------
@@ -213,7 +229,7 @@ def delete_stat(sid):
 
 # ---------------- 模板过滤器 ----------------
 
-# (ts 过滤器暂时用不上,保留备用)
+# (备用)
 
 
 # ---------------- 启动 ----------------

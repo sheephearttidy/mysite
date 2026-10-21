@@ -102,9 +102,52 @@
     position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%) rotate(-1deg);
     background: var(--ink); color: var(--yellow); font-weight: 800; font-size: 14px;
     padding: 10px 22px; border-radius: 14px; box-shadow: 4px 4px 0 rgba(45,42,50,.3);
-    opacity: 0; pointer-events: none; transition: opacity .25s ease; z-index: 50;
+    opacity: 0; pointer-events: none; transition: opacity .25s ease; z-index: 60;
   }
   #toast.show { opacity: 1; }
+
+  /* 初始密码警示横幅 */
+  .warnbar {
+    background: var(--yellow-bg); border-bottom: 3px solid var(--ink);
+    padding: 10px 0; text-align: center; font-size: 14px; font-weight: 700;
+    margin-bottom: 26px;
+  }
+  .warnbar a { color: var(--pink); font-weight: 800; }
+
+  /* 改密码弹窗 */
+  .pmodal {
+    display: none; position: fixed; inset: 0; z-index: 100;
+    background: rgba(45,42,50,.45); align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  .pmodal.open { display: flex; }
+  .pcard {
+    background: var(--paper); border: 3px solid var(--ink); border-radius: 22px;
+    box-shadow: 8px 8px 0 var(--ink); padding: 30px 28px;
+    width: 100%; max-width: 380px; transform: rotate(-.6deg);
+  }
+  .pcard h3 { font-size: 20px; text-align: center; margin-bottom: 4px; }
+  .pcard .psub { text-align: center; font-size: 13px; color: #8a8494; font-weight: 700; margin-bottom: 20px; }
+  .pcard input {
+    width: 100%; padding: 10px 14px; font-size: 15px; font-family: inherit;
+    border: 3px solid var(--ink); border-radius: 12px; background: var(--cream);
+    outline: none; margin-bottom: 12px;
+  }
+  .pcard input:focus { box-shadow: 3px 3px 0 var(--ink); }
+  .pcard .perr {
+    background: #ffe4ef; border: 2px solid var(--pink); border-radius: 10px;
+    color: #d63384; font-size: 13px; font-weight: 700; padding: 6px 12px;
+    margin-bottom: 12px; display: none;
+  }
+  .pbtns { display: flex; gap: 10px; margin-top: 6px; }
+  .pbtns button {
+    flex: 1; padding: 11px; font-size: 15px; font-weight: 800; font-family: inherit;
+    border: 3px solid var(--ink); border-radius: 12px; cursor: pointer;
+    box-shadow: 4px 4px 0 var(--ink); transition: all .15s ease;
+  }
+  .pbtns .ok { background: var(--teal); color: #fff; }
+  .pbtns .no { background: var(--cream); color: var(--ink); }
+  .pbtns button:hover { transform: translate(-1px,-1px); }
 </style>
 </head>
 <body>
@@ -113,11 +156,19 @@
   <div class="wrap topbar-in">
     <h1>🏠 我的小窝 · <span>后台管理</span></h1>
     <div class="actions">
+      <button class="a-btn" onclick="openPassModal()">🔑 改密码</button>
       <a class="a-btn yellow" href="/" target="_blank">👀 看看主页</a>
       <a class="a-btn" href="/admin/logout">🚪 退出登录</a>
     </div>
   </div>
 </div>
+
+{% if must_change %}
+<div class="warnbar">
+  ⚠️ 你还在用初始密码 <b>admin</b>,太危险啦!点
+  <a href="javascript:void(0)" onclick="openPassModal()">这里马上改掉</a>
+</div>
+{% endif %}
 
 <div class="wrap">
 
@@ -154,6 +205,22 @@
 </div>
 
 <div id="toast"></div>
+
+<!-- 改密码弹窗 -->
+<div class="pmodal" id="passModal">
+  <div class="pcard">
+    <h3>🔑 修改密码</h3>
+    <p class="psub" id="passSub">改完要用新密码重新登录哦</p>
+    <div class="perr" id="passErr"></div>
+    <input type="password" id="oldPass" placeholder="当前密码" autocomplete="current-password" />
+    <input type="password" id="newPass" placeholder="新密码(至少 6 位)" autocomplete="new-password" />
+    <input type="password" id="newPass2" placeholder="再输一遍新密码" autocomplete="new-password" />
+    <div class="pbtns">
+      <button class="no" onclick="closePassModal()">取消</button>
+      <button class="ok" onclick="submitPassword()">💾 确认修改</button>
+    </div>
+  </div>
+</div>
 
 <script>
 const DATA = {{ data | tojson }};
@@ -333,6 +400,55 @@ async function delItem(kind, id) {
 }
 
 renderAll();
+
+/* ---------- 改密码 ---------- */
+const MUST_CHANGE = {{ 'true' if must_change else 'false' }};
+const passModal = document.getElementById('passModal');
+
+function openPassModal() {
+  document.getElementById('passErr').style.display = 'none';
+  document.getElementById('passSub').textContent = MUST_CHANGE
+    ? '检测到初始密码 admin,必须马上改一个!' : '改完要用新密码重新登录哦';
+  passModal.classList.add('open');
+  setTimeout(() => document.getElementById('oldPass').focus(), 50);
+}
+function closePassModal() { passModal.classList.remove('open'); }
+
+async function submitPassword() {
+  const err = document.getElementById('passErr');
+  const old1 = document.getElementById('oldPass').value;
+  const new1 = document.getElementById('newPass').value;
+  const new2 = document.getElementById('newPass2').value;
+  err.style.display = 'none';
+
+  if (new1 !== new2) { showPerr('两次输入的新密码不一样'); return; }
+  if (new1.length < 6) { showPerr('新密码至少 6 位啦'); return; }
+  if (new1 === 'admin') { showPerr('不能还用 admin 当密码!换一个'); return; }
+
+  try {
+    const res = await fetch('/api/password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ old: old1, new: new1 })
+    });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok) { showPerr(j.error || '出错了,再试试'); return; }
+    alert('密码改好啦!现在用新密码重新登录一次 ✅');
+    location.href = '/admin/login';
+  } catch { showPerr('网络出问题了,再试试'); }
+}
+
+function showPerr(msg) {
+  const err = document.getElementById('passErr');
+  err.textContent = msg;
+  err.style.display = 'block';
+}
+
+passModal.addEventListener('click', e => { if (e.target === passModal) closePassModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closePassModal(); });
+
+// 初始密码未改 → 自动弹窗提醒
+if (MUST_CHANGE) setTimeout(openPassModal, 400);
 </script>
 </body>
 </html>

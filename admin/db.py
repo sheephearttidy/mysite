@@ -3,7 +3,9 @@
 # 所有函数线程安全(每次调用独立连接)
 # ============================================================
 
+import os
 import sqlite3
+import hashlib
 from contextlib import contextmanager
 
 DB_PATH = None
@@ -35,6 +37,11 @@ CREATE TABLE IF NOT EXISTS stats (
     unit TEXT NOT NULL DEFAULT '',
     label TEXT NOT NULL,
     sort INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
 );
 """
 
@@ -69,6 +76,64 @@ SEED = {
 }
 
 
+# ---------------- 密码(PBKDF2) ----------------
+
+def hash_password(pwd: str, iters: int = 120_000, salt: bytes | None = None) -> str:
+    """返回 pbkdf2:iters:salt_hex:hash_hex"""
+    salt = salt or os.urandom(16)
+    digest = hashlib.pbkdf2_hmac("sha256", pwd.encode(), salt, iters)
+    return f"pbkdf2:{iters}:{salt.hex()}:{digest.hex()}"
+
+
+def verify_password(pwd: str, stored: str) -> bool:
+    if not stored:
+        return False
+    parts = stored.split(":")
+    if len(parts) != 4 or parts[0] != "pbkdf2":
+        return False
+    _, iters, salt_hex, hash_hex = parts
+    try:
+        calc = hashlib.pbkdf2_hmac("sha256", pwd.encode(), bytes.fromhex(salt_hex), int(iters))
+        return calc.hex() == hash_hex
+    except ValueError:
+        return False
+
+
+# ---------------- settings(key-value) ----------------
+
+def get_setting(key: str, default=None):
+    with get_db() as c:
+        row = c.execute("SELECT value FROM settings WHERE key=?", (key,)).fetchone()
+        return row["value"] if row else default
+
+
+def set_setting(key: str, value: str):
+    with get_db() as c:
+        c.execute("INSERT INTO settings(key,value) VALUES(?,?) "
+                  "ON CONFLICT(key) DO UPDATE SET value=excluded.value", (key, value))
+
+
+def get_pass_hash() -> str | None:
+    return get_setting("pass_hash")
+
+
+def set_pass_hash(h: str):
+    set_setting("pass_hash", h)
+
+
+def must_change_password() -> bool:
+    return get_setting("must_change_pass", "1") == "1"
+
+
+def clear_must_change():
+    set_setting("must_change_pass", "0")
+
+
+# ---------------- 初始建库 ----------------
+
+DEFAULT_ADMIN_PASS = "admin"  # 初始密码,首次登录会被要求修改
+
+
 @contextmanager
 def get_db():
     conn = sqlite3.connect(DB_PATH, timeout=10)
@@ -98,6 +163,11 @@ def init_db(path):
             c.executemany(
                 "INSERT INTO stats(emoji,number,unit,label,sort) VALUES(?,?,?,?,?)",
                 SEED["stats"])
+        # 初始密码 admin,标记必须修改
+        if c.execute("SELECT COUNT(*) FROM settings WHERE key='pass_hash'").fetchone()[0] == 0:
+            c.execute("INSERT INTO settings(key,value) VALUES('pass_hash',?)",
+                      (hash_password(DEFAULT_ADMIN_PASS),))
+            c.execute("INSERT INTO settings(key,value) VALUES('must_change_pass','1')")
 
 
 # ---------------- skills ----------------

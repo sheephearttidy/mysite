@@ -56,6 +56,12 @@
     color: #d63384; font-size: 14px; font-weight: 700;
     padding: 8px 14px; margin-bottom: 16px; text-align: center;
   }
+  .tip {
+    background: var(--cream); border: 2px dashed var(--ink); border-radius: 12px;
+    color: #6b6577; font-size: 13px; font-weight: 700; line-height: 1.6;
+    padding: 8px 12px; margin-bottom: 16px; text-align: center;
+  }
+  .tip b { color: var(--pink); }
   .back { display: block; text-align: center; margin-top: 18px; color: #8a8494; font-size: 13px; font-weight: 700; text-decoration: none; }
   .back:hover { color: var(--pink); }
 </style>
@@ -70,6 +76,11 @@
   <p class="sub">只有主人才能进来的神秘领域</p>
   {% if get_flashed_messages() %}
   <div class="err">{{ get_flashed_messages()[0] }}</div>
+  {% endif %}
+  {% if initial %}
+  <div class="tip">
+    🌱 首次使用:初始密码是 <b>admin</b>,<br />登录后会提醒你马上修改
+  </div>
   {% endif %}
   <form method="post">
     <label for="password">暗号(密码)</label>
