@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>登录 · 我的小窝后台</title>
+<style>
+  :root {
+    --ink: #2d2a32; --cream: #fff8ee; --paper: #fff;
+    --pink: #ff6b9d; --yellow: #ffd93d; --teal: #2ec4b6;
+    --purple: #a78bfa;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "Baloo 2", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--cream); color: var(--ink);
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    padding: 20px; overflow-x: hidden;
+  }
+  .doodle { position: fixed; font-size: 30px; animation: bob 3.5s ease-in-out infinite; pointer-events: none; }
+  .d1 { top: 12%; left: 8%; }
+  .d2 { top: 18%; right: 10%; animation-delay: .6s; font-size: 38px; }
+  .d3 { bottom: 15%; left: 12%; animation-delay: 1.2s; }
+  .d4 { bottom: 20%; right: 8%; animation-delay: .3s; }
+  @keyframes bob { 0%,100% { transform: translateY(0) rotate(-6deg); } 50% { transform: translateY(-12px) rotate(8deg); } }
+
+  .card {
+    background: var(--paper); border: 3px solid var(--ink); border-radius: 24px;
+    box-shadow: 8px 8px 0 var(--ink); padding: 44px 40px 36px;
+    width: 100%; max-width: 400px; position: relative; z-index: 2;
+    transform: rotate(-.6deg);
+  }
+  .lock { font-size: 52px; text-align: center; }
+  h1 { font-size: 26px; text-align: center; margin: 8px 0 4px; }
+  .sub { text-align: center; color: #8a8494; font-size: 14px; font-weight: 700; margin-bottom: 26px; }
+  label { display: block; font-size: 13px; font-weight: 800; color: #6b6577; margin-bottom: 6px; }
+  input {
+    width: 100%; padding: 12px 16px; font-size: 16px;
+    border: 3px solid var(--ink); border-radius: 14px;
+    background: var(--cream); outline: none;
+    font-family: inherit; transition: box-shadow .15s ease;
+  }
+  input:focus { box-shadow: 4px 4px 0 var(--ink); }
+  button {
+    width: 100%; margin-top: 20px; padding: 13px;
+    font-size: 17px; font-weight: 800; font-family: inherit;
+    background: var(--pink); color: #fff;
+    border: 3px solid var(--ink); border-radius: 14px;
+    box-shadow: 5px 5px 0 var(--ink); cursor: pointer;
+    transition: all .15s ease;
+  }
+  button:hover { transform: translate(-2px,-2px); box-shadow: 7px 7px 0 var(--ink); }
+  button:active { transform: translate(3px,3px); box-shadow: 1px 1px 0 var(--ink); }
+  .err {
+    background: #ffe4ef; border: 2px solid var(--pink); border-radius: 12px;
+    color: #d63384; font-size: 14px; font-weight: 700;
+    padding: 8px 14px; margin-bottom: 16px; text-align: center;
+  }
+  .back { display: block; text-align: center; margin-top: 18px; color: #8a8494; font-size: 13px; font-weight: 700; text-decoration: none; }
+  .back:hover { color: var(--pink); }
+</style>
+</head>
+<body>
+<span class="doodle d1">✨</span><span class="doodle d2">🔒</span>
+<span class="doodle d3">⭐</span><span class="doodle d4">💫</span>
+
+<div class="card">
+  <div class="lock">🔐</div>
+  <h1>我的小窝 · 后台</h1>
+  <p class="sub">只有主人才能进来的神秘领域</p>
+  {% if get_flashed_messages() %}
+  <div class="err">{{ get_flashed_messages()[0] }}</div>
+  {% endif %}
+  <form method="post">
+    <label for="password">暗号(密码)</label>
+    <input type="password" id="password" name="password" required autofocus
+           placeholder="输入管理员密码" autocomplete="current-password" />
+    <button type="submit">开门!🚪</button>
+  </form>
+  <a class="back" href="/">← 回到我的小窝</a>
+</div>
+</body>
+</html>

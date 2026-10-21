@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>管理 · 我的小窝后台</title>
+<style>
+  :root {
+    --ink: #2d2a32; --cream: #fff8ee; --paper: #fff;
+    --pink: #ff6b9d; --pink-bg: #ffe4ef;
+    --yellow: #ffd93d; --yellow-bg: #fff3d0;
+    --teal: #2ec4b6; --teal-bg: #dcf5f1;
+    --purple: #a78bfa; --purple-bg: #efe7ff;
+    --red: #ff4d6d;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "Baloo 2", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--cream); color: var(--ink); line-height: 1.7;
+    -webkit-font-smoothing: antialiased; padding-bottom: 60px;
+  }
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 0 20px; }
+
+  /* 顶栏 */
+  .topbar {
+    background: var(--paper); border-bottom: 3px solid var(--ink);
+    padding: 14px 0; margin-bottom: 30px;
+  }
+  .topbar-in { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+  .topbar h1 { font-size: 20px; }
+  .topbar h1 span { color: var(--pink); }
+  .actions { display: flex; gap: 10px; }
+  .a-btn {
+    font-size: 14px; font-weight: 800; text-decoration: none; cursor: pointer;
+    padding: 6px 16px; border-radius: 12px;
+    border: 2px solid var(--ink); background: var(--paper); color: var(--ink);
+    box-shadow: 3px 3px 0 var(--ink); transition: all .15s ease;
+    font-family: inherit;
+  }
+  .a-btn:hover { transform: translate(-1px,-1px); box-shadow: 4px 4px 0 var(--ink); }
+  .a-btn.pink { background: var(--pink); color: #fff; }
+  .a-btn.yellow { background: var(--yellow); }
+
+  /* 区块 */
+  .sec { margin-bottom: 40px; }
+  .sec-head { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .sec-head h2 { font-size: 22px; }
+  .sec-head .add {
+    font-size: 13px; font-weight: 800; cursor: pointer;
+    background: var(--teal); color: #fff; border: 2px solid var(--ink);
+    border-radius: 999px; padding: 2px 14px;
+    box-shadow: 3px 3px 0 var(--ink); font-family: inherit;
+  }
+  .hint { font-size: 13px; color: #8a8494; font-weight: 700; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+
+  .item {
+    background: var(--paper); border: 3px solid var(--ink); border-radius: 18px;
+    box-shadow: 5px 5px 0 var(--ink); padding: 16px 18px;
+  }
+  .item-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .badge {
+    font-size: 12px; font-weight: 800; border: 2px solid var(--ink);
+    border-radius: 999px; padding: 1px 10px;
+  }
+  .badge.serious { background: var(--teal-bg); }
+  .badge.passive { background: var(--pink-bg); }
+  .item h3 { font-size: 17px; margin-bottom: 4px; }
+  .item .meta { font-size: 13px; color: #6b6577; }
+  .item .note { font-size: 13px; color: #a09aa8; margin-top: 4px; }
+  .bar-mini { height: 10px; border: 2px solid var(--ink); border-radius: 99px; background: var(--cream); overflow: hidden; margin-top: 8px; }
+  .bar-mini i { display: block; height: 100%; }
+
+  .ops { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .op {
+    font-size: 12px; font-weight: 800; cursor: pointer; font-family: inherit;
+    border: 2px solid var(--ink); border-radius: 10px; padding: 2px 12px;
+    background: var(--paper); box-shadow: 2px 2px 0 var(--ink); color: var(--ink);
+    transition: all .12s ease;
+  }
+  .op:hover { transform: translate(-1px,-1px); }
+  .op.edit { background: var(--yellow); }
+  .op.del { background: #ffe4ef; color: var(--red); }
+  .op.save { background: var(--teal); color: #fff; }
+  .op.cancel { background: var(--cream); }
+
+  /* 编辑态表单 */
+  .ef { width: 100%; margin-bottom: 8px; }
+  .ef label { display: block; font-size: 12px; font-weight: 800; color: #6b6577; }
+  .ef input, .ef select, .ef textarea {
+    width: 100%; padding: 7px 10px; font-size: 14px; font-family: inherit;
+    border: 2px solid var(--ink); border-radius: 10px; background: var(--cream);
+    outline: none;
+  }
+  .ef textarea { resize: vertical; min-height: 56px; }
+  .ef-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+  /* toast */
+  #toast {
+    position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%) rotate(-1deg);
+    background: var(--ink); color: var(--yellow); font-weight: 800; font-size: 14px;
+    padding: 10px 22px; border-radius: 14px; box-shadow: 4px 4px 0 rgba(45,42,50,.3);
+    opacity: 0; pointer-events: none; transition: opacity .25s ease; z-index: 50;
+  }
+  #toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="wrap topbar-in">
+    <h1>🏠 我的小窝 · <span>后台管理</span></h1>
+    <div class="actions">
+      <a class="a-btn yellow" href="/" target="_blank">👀 看看主页</a>
+      <a class="a-btn" href="/admin/logout">🚪 退出登录</a>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- 技能树 -->
+  <section class="sec">
+    <div class="sec-head">
+      <h2>🎯 技能树管理</h2>
+      <button class="add" onclick="editItem('skills', null)">＋ 新增技能</button>
+      <span class="hint">认真技能 / 被动技能都会同步到主页</span>
+    </div>
+    <div class="grid" id="list-skills"></div>
+  </section>
+
+  <!-- 校园时间线 -->
+  <section class="sec">
+    <div class="sec-head">
+      <h2>🗺️ 校园日常管理</h2>
+      <button class="add" onclick="editItem('timeline', null)">＋ 新增事件</button>
+      <span class="hint">主页「校园打怪升级记录」板块</span>
+    </div>
+    <div class="grid" id="list-timeline"></div>
+  </section>
+
+  <!-- 趣味统计 -->
+  <section class="sec">
+    <div class="sec-head">
+      <h2>🧮 趣味统计管理</h2>
+      <button class="add" onclick="editItem('stats', null)">＋ 新增统计</button>
+      <span class="hint">奶茶几杯、熬夜几次这种离谱数据</span>
+    </div>
+    <div class="grid" id="list-stats"></div>
+  </section>
+
+</div>
+
+<div id="toast"></div>
+
+<script>
+const DATA = {{ data | tojson }};
+const COLORS = { teal:'#2ec4b6', pink:'#ff6b9d', yellow:'#ffd93d', purple:'#a78bfa', orange:'#ffa94d', blue:'#5aa9ff' };
+const CATS = { serious:'认真技能', passive:'被动技能' };
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 1800);
+}
+
+async function api(method, path, body) {
+  const opt = { method, headers: {'Content-Type':'application/json'} };
+  if (body) opt.body = JSON.stringify(body);
+  const res = await fetch(path, opt);
+  if (res.status === 401) { location.href = '/admin/login'; throw new Error('unauthorized'); }
+  if (!res.ok && res.status !== 204) {
+    const j = await res.json().catch(() => ({}));
+    throw new Error(j.error || res.status);
+  }
+  return res.status === 204 ? null : res.json();
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s ?? ''; return d.innerHTML; }
+
+/* ---------- 列表渲染 ---------- */
+function renderAll() {
+  renderSkills(); renderTimeline(); renderStats();
+}
+
+function renderSkills() {
+  const box = document.getElementById('list-skills');
+  box.innerHTML = DATA.skills.map(s => `
+    <div class="item">
+      <div class="item-top">
+        <span class="badge ${s.category}">${CATS[s.category] || s.category}</span>
+        <span class="meta">#${s.sort}</span>
+      </div>
+      <h3>${esc(s.name)}</h3>
+      <div class="meta">${s.percent}%</div>
+      <div class="bar-mini"><i style="width:${s.percent}%;background:${COLORS[s.color] || '#2ec4b6'}"></i></div>
+      ${s.note ? `<div class="note">${esc(s.note)}</div>` : ''}
+      <div class="ops">
+        <button class="op edit" onclick="editItem('skills', ${s.id})">✏️ 编辑</button>
+        <button class="op del" onclick="delItem('skills', ${s.id})">🗑️ 删除</button>
+      </div>
+    </div>`).join('') || '<p class="hint">还没有技能,点上面的「新增技能」加一个吧~</p>';
+}
+
+function renderTimeline() {
+  const box = document.getElementById('list-timeline');
+  box.innerHTML = DATA.timeline.map(e => `
+    <div class="item">
+      <div class="item-top">
+        <span class="badge serious">${esc(e.emoji)} ${esc(e.time_label)}</span>
+        <span class="meta">#${e.sort}</span>
+      </div>
+      <h3>${esc(e.title)}</h3>
+      ${e.content ? `<div class="note">${esc(e.content)}</div>` : ''}
+      <div class="ops">
+        <button class="op edit" onclick="editItem('timeline', ${e.id})">✏️ 编辑</button>
+        <button class="op del" onclick="delItem('timeline', ${e.id})">🗑️ 删除</button>
+      </div>
+    </div>`).join('') || '<p class="hint">时间线还是空的,记录一件校园大事吧~</p>';
+}
+
+function renderStats() {
+  const box = document.getElementById('list-stats');
+  box.innerHTML = DATA.stats.map(s => `
+    <div class="item">
+      <div class="item-top">
+        <span class="badge passive">${esc(s.emoji)} ${esc(s.number)}${esc(s.unit)}</span>
+        <span class="meta">#${s.sort}</span>
+      </div>
+      <h3>${esc(s.label)}</h3>
+      <div class="ops">
+        <button class="op edit" onclick="editItem('stats', ${s.id})">✏️ 编辑</button>
+        <button class="op del" onclick="delItem('stats', ${s.id})">🗑️ 删除</button>
+      </div>
+    </div>`).join('') || '<p class="hint">还没有趣味数据,来一个?~</p>';
+}
+
+/* ---------- 编辑 / 新增 ---------- */
+const FIELDS = {
+  skills: [
+    { k:'name',    label:'技能名(可带 emoji)', type:'text' },
+    { k:'percent', label:'熟练度 %',           type:'number', min:0, max:100 },
+    { k:'note',    label:'吐槽小字',           type:'text' },
+    { k:'category',label:'分类',               type:'select', opts:CATS },
+    { k:'color',   label:'进度条颜色',          type:'select',
+      opts:{teal:'薄荷绿', pink:'粉', yellow:'黄', purple:'紫', orange:'橙', blue:'蓝'} },
+    { k:'sort',    label:'排序(小的在前)',     type:'number' },
+  ],
+  timeline: [
+    { k:'emoji',      label:'图标 emoji',      type:'text' },
+    { k:'time_label', label:'时间(如 2026.09 / 现在)', type:'text' },
+    { k:'title',      label:'标题',            type:'text' },
+    { k:'content',    label:'内容描述',        type:'textarea' },
+    { k:'sort',       label:'排序(小的在前)',  type:'number' },
+  ],
+  stats: [
+    { k:'emoji',  label:'图标 emoji',       type:'text' },
+    { k:'number', label:'数字',             type:'number' },
+    { k:'unit',   label:'单位(如 杯 / 次)', type:'text' },
+    { k:'label',  label:'说明文字',          type:'text' },
+    { k:'sort',   label:'排序(小的在前)',   type:'number' },
+  ],
+};
+
+function editItem(kind, id) {
+  const list = DATA[kind];
+  const item = id ? list.find(x => x.id === id) : null;
+  const fields = FIELDS[kind];
+
+  const card = event.target.closest('.item') || document.getElementById('list-' + kind);
+  const box = item ? event.target.closest('.item') : document.getElementById('list-' + kind);
+
+  const form = document.createElement('div');
+  form.className = 'item';
+  form.style.borderColor = 'var(--teal)';
+  form.innerHTML = fields.map(f => {
+    const v = item ? (item[f.k] ?? '') : '';
+    if (f.type === 'select') {
+      return `<div class="ef"><label>${f.label}</label><select data-k="${f.k}">${
+        Object.entries(f.opts).map(([val, txt]) =>
+          `<option value="${val}" ${v === val ? 'selected' : ''}>${txt}</option>`).join('')
+      }</select></div>`;
+    }
+    if (f.type === 'textarea') {
+      return `<div class="ef"><label>${f.label}</label><textarea data-k="${f.k}">${esc(v)}</textarea></div>`;
+    }
+    return `<div class="ef"><label>${f.label}</label>
+      <input data-k="${f.k}" type="${f.type}" ${f.min !== undefined ? `min="${f.min}" max="${f.max}"` : ''} value="${esc(v)}" /></div>`;
+  }).join('') + `
+    <div class="ops">
+      <button class="op save" id="btn-save">💾 保存</button>
+      <button class="op cancel" id="btn-cancel">取消</button>
+    </div>`;
+
+  // 新增:表单插到列表最前面;编辑:替换原卡片
+  if (item) { box.replaceWith(form); } else { box.prepend(form); }
+  form.querySelector('input, select, textarea').focus();
+
+  form.querySelector('#btn-cancel').onclick = () => renderAll();
+  form.querySelector('#btn-save').onclick = async () => {
+    const body = {};
+    form.querySelectorAll('[data-k]').forEach(el => {
+      body[el.dataset.k] = el.type === 'number' ? parseInt(el.value || '0', 10) : el.value.trim();
+    });
+    try {
+      if (item) {
+        await api('PUT', `/api/${kind}/${id}`, body);
+        Object.assign(item, body);
+        toast('保存成功 ✅');
+      } else {
+        const row = await api('POST', `/api/${kind}`, body);
+        list.push(row);
+        toast('新增成功 🎉');
+      }
+      renderAll();
+    } catch (e) { toast('出错了:' + e.message + ' 😵'); }
+  };
+}
+
+async function delItem(kind, id) {
+  const list = DATA[kind];
+  const item = list.find(x => x.id === id);
+  const name = item ? (item.name || item.title || item.label) : '';
+  if (!confirm(`确定删除「${name}」吗?删了就没了哦!`)) return;
+  try {
+    await api('DELETE', `/api/${kind}/${id}`);
+    DATA[kind] = list.filter(x => x.id !== id);
+    toast('已删除 🗑️');
+    renderAll();
+  } catch (e) { toast('出错了:' + e.message + ' 😵'); }
+}
+
+renderAll();
+</script>
+</body>
+</html>

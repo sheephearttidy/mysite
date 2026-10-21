@@ -1,10 +1,13 @@
 /* ============================================================
    我的小窝 · 交互脚本
    负责所有动效:菜单、滚动显现、技能条、数字滚动、返回顶部
-   改内容请去 index.html,一般不用动这个文件
+   另外负责从后台 API 拉取技能树/时间线/统计(拉不到就用页面内置内容)
    ============================================================ */
 
 console.log('%c 嗨!你打开了控制台,是想看看这个网页的秘密吗 👀', 'font-size:14px;color:#ff6b9d;font-weight:bold;');
+
+// ===== 工具:HTML 转义 =====
+const esc = s => { const d = document.createElement('div'); d.textContent = s ?? ''; return d.innerHTML; };
 
 // ===== 移动端汉堡菜单 =====
 const navToggle = document.getElementById('navToggle');
@@ -20,7 +23,8 @@ const io = new IntersectionObserver(entries => {
     if (e.isIntersecting) { e.target.classList.add('visible'); io.unobserve(e.target); }
   });
 }, { threshold: 0.12 });
-document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+const observeReveals = root => document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+observeReveals();
 
 // ===== 技能条动画(滚到可视区域时填充) =====
 const barIO = new IntersectionObserver(entries => {
@@ -28,7 +32,8 @@ const barIO = new IntersectionObserver(entries => {
     if (e.isIntersecting) { e.target.classList.add('visible'); barIO.unobserve(e.target); }
   });
 }, { threshold: 0.4 });
-document.querySelectorAll('.skillbar').forEach(el => barIO.observe(el));
+const observeSkillbars = () => document.querySelectorAll('.skillbar').forEach(el => barIO.observe(el));
+observeSkillbars();
 
 // ===== 数字滚动动画 =====
 const counterIO = new IntersectionObserver(entries => {
@@ -46,7 +51,8 @@ const counterIO = new IntersectionObserver(entries => {
     counterIO.unobserve(el);
   });
 }, { threshold: 0.5 });
-document.querySelectorAll('[data-count]').forEach(el => counterIO.observe(el));
+const observeCounters = () => document.querySelectorAll('[data-count]').forEach(el => counterIO.observe(el));
+observeCounters();
 
 // ===== 返回顶部按钮 =====
 const backTop = document.getElementById('backTop');
@@ -67,3 +73,69 @@ wechatBtn.addEventListener('click', e => {
 qrClose.addEventListener('click', closeQr);
 qrOverlay.addEventListener('click', e => { if (e.target === qrOverlay) closeQr(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeQr(); });
+
+// ============================================================
+// 动态内容:从后台拉取技能树 / 时间线 / 统计数据
+// 拉取失败(本地打开 / 后台挂了)就什么都不做,页面内置内容兜底
+// ============================================================
+
+async function loadDynamicContent() {
+  let data;
+  try {
+    const res = await fetch('/api/content');
+    if (!res.ok) return;
+    data = await res.json();
+  } catch { return; }   // 本地 file:// 打开或后台不在线,静默回退
+
+  // ---- 技能树 ----
+  if (Array.isArray(data.skills) && data.skills.length) {
+    const cols = { serious: document.querySelector('.skills-cols .col-a .skillbar')?.parentElement, passive: null };
+    const colA = document.querySelector('.skills-cols .col-a');
+    const colB = document.querySelector('.skills-cols .col-b');
+    if (colA && colB) {
+      const render = s => `
+        <div class="skillbar" style="--w:${s.percent}%">
+          <div class="skillbar-top"><span>${esc(s.name)}</span><span class="pct">${s.percent}%</span></div>
+          <div class="bar"><div class="fill f-${esc(s.color)}"></div></div>
+          ${s.note ? `<div class="note">${esc(s.note)}</div>` : ''}
+        </div>`;
+      colA.innerHTML = '<h3>📖 认真技能</h3><p class="sub">真的在学的那种</p>' +
+        data.skills.filter(s => s.category === 'serious').map(render).join('');
+      colB.innerHTML = '<h3>🎮 被动技能</h3><p class="sub">不用学,天生就会</p>' +
+        data.skills.filter(s => s.category === 'passive').map(render).join('');
+      observeSkillbars();
+    }
+  }
+
+  // ---- 趣味统计 ----
+  if (Array.isArray(data.stats) && data.stats.length) {
+    const statsBox = document.querySelector('.stats');
+    if (statsBox) {
+      statsBox.innerHTML = data.stats.map((s, i) => `
+        <div class="stat reveal d${(i % 4) + 1}">
+          <span class="emoji">${esc(s.emoji)}</span>
+          <div class="num-row"><span data-count="${s.number}">0</span><span class="unit"> ${esc(s.unit)}</span></div>
+          <div class="label">${esc(s.label)}</div>
+        </div>`).join('');
+      observeCounters();
+      observeReveals();
+    }
+  }
+
+  // ---- 校园时间线 ----
+  if (Array.isArray(data.timeline) && data.timeline.length) {
+    const tl = document.querySelector('.timeline');
+    if (tl) {
+      tl.innerHTML = data.timeline.map(e => `
+        <div class="tl-item reveal" data-emoji="${esc(e.emoji)}">
+          <div class="card tl-card">
+            <span class="time">${esc(e.time_label)}</span>
+        <h3>${esc(e.title)}</h3>
+        <p>${esc(e.content)}</p>
+          </div>
+        </div>`).join('');
+      observeReveals();
+    }
+  }
+}
+loadDynamicContent();
