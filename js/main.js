@@ -1,4 +1,4 @@
-/* ============================================================
+﻿/* ============================================================
    我的小窝 · 交互脚本
    负责所有动效:菜单、滚动显现、技能条、数字滚动、返回顶部
    另外负责从后台 API 拉取技能树/时间线/统计(拉不到就用页面内置内容)
@@ -222,32 +222,4 @@ loadDynamicContent();
     body: payload,
     keepalive: true,
   }).catch(() => {});
-})();
-
-/* ================= 简历打印 ================= */
-(function initResume() {
-  const btn = document.getElementById('resumeBtn');
-  const hint = document.getElementById('printHint');
-  if (!btn || !hint) return;
-
-  const open = () => hint.classList.add('show');
-  const close = () => hint.classList.remove('show');
-
-  btn.addEventListener('click', open);
-  document.getElementById('cancelPrintBtn').addEventListener('click', close);
-  hint.addEventListener('click', e => { if (e.target === hint) close(); });
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && hint.classList.contains('show')) close();
-  });
-
-  document.getElementById('doPrintBtn').addEventListener('click', () => {
-    close();
-    // 打印前把所有 reveal 动画元素直接显示,避免打印出来是空白
-    document.querySelectorAll('.reveal').forEach(el => {
-      el.style.opacity = '1';
-      el.style.transform = 'none';
-    });
-    // 等一帧再调用,确保样式已应用
-    setTimeout(() => window.print(), 120);
-  });
 })();

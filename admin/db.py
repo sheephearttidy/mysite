@@ -4,6 +4,7 @@
 # ============================================================
 
 import os
+import time
 import sqlite3
 import hashlib
 from contextlib import contextmanager
@@ -76,6 +77,35 @@ CREATE TABLE IF NOT EXISTS visits (
 );
 CREATE INDEX IF NOT EXISTS idx_visits_day ON visits(day);
 CREATE INDEX IF NOT EXISTS idx_visits_ts  ON visits(ts);
+
+-- 登录失败记录(落库版,重启不丢)
+CREATE TABLE IF NOT EXISTS login_fails (
+    ip TEXT PRIMARY KEY,
+    count INTEGER NOT NULL DEFAULT 0,
+    blocked_until INTEGER NOT NULL DEFAULT 0,
+    last_ts INTEGER NOT NULL DEFAULT 0
+);
+
+-- 操作审计日志
+CREATE TABLE IF NOT EXISTS audit (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts INTEGER NOT NULL,
+    ip TEXT DEFAULT '',
+    action TEXT NOT NULL,           -- login_ok / login_fail / captcha_fail / ...
+    detail TEXT DEFAULT '',
+    ua TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_audit_ts ON audit(ts);
+
+-- 登录会话(可远程踢下线)
+CREATE TABLE IF NOT EXISTS sessions (
+    sid TEXT PRIMARY KEY,           -- 会话指纹(随机串,不存 cookie 原文)
+    ip TEXT DEFAULT '',
+    ua TEXT DEFAULT '',
+    created INTEGER NOT NULL,
+    last_seen INTEGER NOT NULL,
+    revoked INTEGER NOT NULL DEFAULT 0
+);
 """
 
 # 首次建库时灌入的初始数据(与 v1.0.0 静态页一致)
@@ -192,6 +222,163 @@ def must_change_password() -> bool:
 
 def clear_must_change():
     set_setting("must_change_pass", "0")
+
+
+# ---------------- 登录失败记录(落库) ----------------
+
+def get_fail(ip: str) -> tuple[int, int]:
+    """返回 (失败次数, 封锁截止时间戳)"""
+    with get_db() as c:
+        row = c.execute(
+            "SELECT count, blocked_until FROM login_fails WHERE ip=?", (ip,)).fetchone()
+        return (row["count"], row["blocked_until"]) if row else (0, 0)
+
+
+def bump_fail(ip: str, threshold: int, block_seconds: int) -> tuple[int, int]:
+    """失败次数 +1,达到阈值则封锁。返回新的 (次数, 封锁截止)"""
+    now = int(time.time())
+    cnt, blocked = get_fail(ip)
+    cnt += 1
+    if cnt >= threshold:
+        blocked = now + block_seconds
+        cnt = 0
+    with get_db() as c:
+        c.execute(
+            """INSERT INTO login_fails(ip,count,blocked_until,last_ts) VALUES(?,?,?,?)
+               ON CONFLICT(ip) DO UPDATE SET
+                 count=excluded.count,
+                 blocked_until=excluded.blocked_until,
+                 last_ts=excluded.last_ts""",
+            (ip, cnt, blocked, now))
+    return cnt, blocked
+
+
+def clear_fails(ip: str):
+    with get_db() as c:
+        c.execute("DELETE FROM login_fails WHERE ip=?", (ip,))
+
+
+def list_blocked():
+    """当前还在封锁中的 IP 列表"""
+    now = int(time.time())
+    with get_db() as c:
+        rows = c.execute(
+            "SELECT * FROM login_fails WHERE blocked_until > ? ORDER BY blocked_until DESC",
+            (now,)).fetchall()
+        return [dict(r) for r in rows]
+
+
+def unblock(ip: str):
+    with get_db() as c:
+        cur = c.execute("DELETE FROM login_fails WHERE ip=?", (ip,))
+        return cur.rowcount > 0
+
+
+# ---------------- 审计日志 ----------------
+
+def add_audit(action: str, ip: str = "", detail: str = "", ua: str = ""):
+    with get_db() as c:
+        c.execute(
+            "INSERT INTO audit(ts,ip,action,detail,ua) VALUES(?,?,?,?,?)",
+            (int(time.time()), ip[:64], action[:40], detail[:300], ua[:200]))
+
+
+def list_audit(limit: int = 100):
+    with get_db() as c:
+        rows = c.execute(
+            "SELECT * FROM audit ORDER BY ts DESC LIMIT ?", (limit,)).fetchall()
+        return [dict(r) for r in rows]
+
+
+def clear_audit(before_ts: int = None):
+    with get_db() as c:
+        if before_ts:
+            cur = c.execute("DELETE FROM audit WHERE ts < ?", (before_ts,))
+        else:
+            cur = c.execute("DELETE FROM audit")
+        return cur.rowcount
+
+
+# ---------------- 会话管理 ----------------
+
+def add_session(sid: str, ip: str, ua: str):
+    now = int(time.time())
+    with get_db() as c:
+        c.execute(
+            "INSERT OR REPLACE INTO sessions(sid,ip,ua,created,last_seen,revoked) "
+            "VALUES(?,?,?,?,?,0)", (sid, ip[:64], ua[:200], now, now))
+
+
+def touch_session(sid: str):
+    with get_db() as c:
+        c.execute("UPDATE sessions SET last_seen=? WHERE sid=?",
+                  (int(time.time()), sid))
+
+
+def session_revoked(sid: str) -> bool:
+    """True 表示这个会话已被踢下线(或根本不存在)"""
+    with get_db() as c:
+        row = c.execute("SELECT revoked FROM sessions WHERE sid=?", (sid,)).fetchone()
+        if not row:
+            return True
+        return row["revoked"] == 1
+
+
+def revoke_session(sid: str):
+    with get_db() as c:
+        c.execute("UPDATE sessions SET revoked=1 WHERE sid=?", (sid,))
+
+
+def revoke_all_sessions(keep_sid: str = None):
+    with get_db() as c:
+        if keep_sid:
+            cur = c.execute("UPDATE sessions SET revoked=1 WHERE sid<>?", (keep_sid,))
+        else:
+            cur = c.execute("UPDATE sessions SET revoked=1")
+        return cur.rowcount
+
+
+def list_sessions():
+    with get_db() as c:
+        rows = c.execute(
+            "SELECT * FROM sessions WHERE revoked=0 ORDER BY last_seen DESC").fetchall()
+        return [dict(r) for r in rows]
+
+
+def purge_old_sessions(days: int = 30):
+    """清理很早以前的会话记录,避免表无限增长"""
+    cutoff = int(time.time()) - days * 86400
+    with get_db() as c:
+        cur = c.execute("DELETE FROM sessions WHERE last_seen < ?", (cutoff,))
+        return cur.rowcount
+
+
+# ---------------- 安全设置项 ----------------
+
+SEC_DEFAULTS = {
+    "sec_captcha": "1",          # 登录验证码开关
+    "sec_captcha_len": "4",      # 验证码位数
+    "sec_fail_threshold": "5",   # 几次失败后封锁
+    "sec_block_minutes": "15",   # 封锁时长(分钟)
+    "sec_session_hours": "168",  # 会话有效期(小时)
+    "sec_idle_minutes": "60",    # 空闲多久自动登出(分钟)
+    "sec_audit_keep": "500",     # 审计日志保留条数
+}
+
+
+def get_sec(key: str):
+    return get_setting(key, SEC_DEFAULTS.get(key, ""))
+
+
+def set_sec(key: str, value: str):
+    set_setting(key, str(value))
+
+
+def get_sec_all() -> dict:
+    out = {}
+    for k, d in SEC_DEFAULTS.items():
+        out[k] = get_setting(k, d)
+    return out
 
 
 # ---------------- 初始建库 ----------------

@@ -9,6 +9,7 @@ import json
 import time
 import uuid
 import shutil
+import base64
 from datetime import datetime, timezone, timedelta
 from functools import wraps
 
@@ -16,6 +17,7 @@ from flask import (Flask, request, jsonify, render_template,
                    redirect, url_for, session, flash, send_from_directory)
 
 import db
+import captcha
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("MYSITE_SECRET_KEY", os.urandom(24))
@@ -59,8 +61,8 @@ MAGIC = {
 }
 MAX_UPLOAD_BYTES = 5 * 1024 * 1024  # 单张图 5MB
 
-# 简单防爆破:同 IP 连续失败 8 次,封 10 分钟
-_failed = {}  # ip -> [count, blocked_until]
+# 简单防爆破:失败次数落库(重启不丢),阈值和封锁时长可在后台调
+# 旧的内存版 _failed 已废弃,统一走 db.get_fail / db.bump_fail
 
 
 def client_ip() -> str:
@@ -88,6 +90,37 @@ def login_required(f):
             if request.path.startswith("/api/"):
                 return jsonify(error="unauthorized"), 401
             return redirect(url_for("login", next=request.path))
+
+        # 会话是否被远程踢下线
+        sid = session.get("sid")
+        if sid and db.session_revoked(sid):
+            session.clear()
+            if request.path.startswith("/api/"):
+                return jsonify(error="session_revoked"), 401
+            flash("这个登录已被踢下线,请重新登录", "error")
+            return redirect(url_for("login"))
+
+        # 空闲超时自动登出
+        try:
+            idle_limit = int(db.get_sec("sec_idle_minutes")) * 60
+        except (TypeError, ValueError):
+            idle_limit = 3600
+        now = int(time.time())
+        last = session.get("last_seen", now)
+        if idle_limit > 0 and now - last > idle_limit:
+            if sid:
+                db.revoke_session(sid)
+            session.clear()
+            db.add_audit("session_idle", client_ip(), "空闲超时自动登出",
+                         request.headers.get("User-Agent", ""))
+            if request.path.startswith("/api/"):
+                return jsonify(error="idle_timeout"), 401
+            flash("太久没操作,已经自动登出了", "error")
+            return redirect(url_for("login"))
+
+        session["last_seen"] = now
+        if sid:
+            db.touch_session(sid)
         return f(*args, **kwargs)
     return wrapper
 
@@ -98,23 +131,29 @@ def check_admin_password(pwd: str) -> bool:
 
 
 def rate_limit_ok(ip: str) -> bool:
-    rec = _failed.get(ip)
-    if rec and rec[1] > time.time():
-        return False  # 封禁中
-    return True
+    """是否未被封锁"""
+    _, blocked_until = db.get_fail(ip)
+    return blocked_until <= time.time()
 
 
-def record_fail(ip: str):
-    rec = _failed.get(ip) or [0, 0]
-    rec[0] += 1
-    if rec[0] >= 8:
-        rec[1] = time.time() + 600  # 封 10 分钟
-        rec[0] = 0
-    _failed[ip] = rec
+def record_fail(ip: str, reason: str = "密码错误"):
+    """记一次失败,达到阈值就封锁"""
+    try:
+        threshold = int(db.get_sec("sec_fail_threshold"))
+        minutes = int(db.get_sec("sec_block_minutes"))
+    except (TypeError, ValueError):
+        threshold, minutes = 5, 15
+    threshold = max(1, threshold)
+    cnt, blocked = db.bump_fail(ip, threshold, minutes * 60)
+    ua = request.headers.get("User-Agent", "")
+    if blocked > time.time():
+        db.add_audit("login_block", ip, f"失败 {threshold} 次,封锁 {minutes} 分钟", ua)
+    else:
+        db.add_audit("login_fail", ip, f"{reason}({cnt}/{threshold})", ua)
 
 
 def clear_fail(ip: str):
-    _failed.pop(ip, None)
+    db.clear_fails(ip)
 
 
 # ---------------- 前台 API(公开,只读) ----------------
@@ -195,25 +234,99 @@ def login():
     if session.get("user"):
         return redirect(url_for("admin"))
     # 初始密码还没改过 → 登录页显示初始密码提示
-    return render_template("login.html", initial=db.must_change_password())
+    return render_template("login.html",
+                           initial=db.must_change_password(),
+                           captcha_on=_captcha_on(),
+                           ip=client_ip())
+
+
+def _captcha_on() -> bool:
+    return db.get_sec("sec_captcha") == "1"
+
+
+@app.get("/admin/captcha.svg")
+def captcha_image():
+    """生成一张新验证码,答案摘要和签发时间写进 session"""
+    try:
+        length = int(db.get_sec("sec_captcha_len"))
+    except (TypeError, ValueError):
+        length = 4
+    length = max(3, min(length, 6))
+
+    cap = captcha.make_captcha(length)
+    session["cap_digest"] = captcha.answer_digest(cap["text"])
+    session["cap_at"] = time.time()
+    session["cap_token"] = cap["token"]
+
+    resp = app.response_class(cap["svg"], mimetype="image/svg+xml")
+    # 绝不能缓存验证码,否则刷新拿到同一张
+    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    resp.headers["Pragma"] = "no-cache"
+    resp.headers["Expires"] = "0"
+    return resp
 
 
 @app.post("/admin/login")
 def login_post():
     ip = client_ip()
+    ua = request.headers.get("User-Agent", "")
     pwd = request.form.get("password", "")
-    if rate_limit_ok(ip) and check_admin_password(pwd):
-        clear_fail(ip)
-        session["user"] = ADMIN_USER
-        session.permanent = True
-        return redirect(url_for("admin"))
-    record_fail(ip)
-    flash("密码不对哦,再想想?🤔", "error")
-    return redirect(url_for("login"))
+    given = request.form.get("captcha", "")
+
+    # 1. 是否在封锁中
+    if not rate_limit_ok(ip):
+        _, blocked_until = db.get_fail(ip)
+        left = int(blocked_until - time.time())
+        db.add_audit("login_blocked", ip, "封锁期内尝试登录", ua)
+        flash(f"尝试太频繁啦,请 {max(1, left // 60)} 分钟后再来", "error")
+        return redirect(url_for("login"))
+
+    # 2. 验证码(开关可关,但默认开)
+    if _captcha_on():
+        ok, why = captcha.verify_captcha(
+            given, session.get("cap_digest"), session.get("cap_at"))
+        # 验证码一次性:不管对错都作废
+        session.pop("cap_digest", None)
+        session.pop("cap_at", None)
+        session.pop("cap_token", None)
+        if not ok:
+            record_fail(ip, f"验证码错误:{why}")
+            flash(why, "error")
+            return redirect(url_for("login"))
+
+    # 3. 密码
+    if not check_admin_password(pwd):
+        record_fail(ip, "密码错误")
+        flash("密码不对哦,再想想?🤔", "error")
+        return redirect(url_for("login"))
+
+    # 4. 成功
+    clear_fail(ip)
+    sid = base64.urlsafe_b64encode(os.urandom(24)).decode().rstrip("=")
+    session.clear()                     # 防会话固定攻击
+    session["user"] = ADMIN_USER
+    session["sid"] = sid
+    session["last_seen"] = int(time.time())
+    session.permanent = True
+    # 会话有效期按后台设置走(默认 168 小时 = 7 天)
+    try:
+        hours = max(1, int(db.get_sec("sec_session_hours")))
+    except (TypeError, ValueError):
+        hours = 168
+    app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(hours=hours)
+    db.add_session(sid, ip, ua)
+    db.add_audit("login_ok", ip, "登录成功", ua)
+    db.purge_old_sessions(30)
+    return redirect(url_for("admin"))
 
 
 @app.get("/admin/logout")
 def logout():
+    sid = session.get("sid")
+    if sid:
+        db.revoke_session(sid)
+    db.add_audit("logout", client_ip(), "主动退出",
+                 request.headers.get("User-Agent", ""))
     session.clear()
     return redirect(url_for("login"))
 
@@ -255,8 +368,144 @@ def change_password():
 
     db.set_pass_hash(db.hash_password(new_pwd))
     db.clear_must_change()
+    db.add_audit("pass_change", client_ip(), "修改后台密码",
+                 request.headers.get("User-Agent", ""))
     session.clear()  # 改完强制重新登录,用新密码
     return jsonify(ok=True)
+
+
+# ---------------- 安全管理 API(需登录) ----------------
+
+@app.get("/api/security/settings")
+@login_required
+def get_sec_settings():
+    return jsonify(db.get_sec_all())
+
+
+@app.post("/api/security/settings")
+@login_required
+def save_sec_settings():
+    """保存安全设置。只接受已知的键,并做范围校验。"""
+    body = request.get_json(force=True, silent=True) or {}
+
+    # 键 -> (最小值, 最大值)
+    limits = {
+        "sec_captcha": (0, 1),
+        "sec_captcha_len": (3, 6),
+        "sec_fail_threshold": (1, 50),
+        "sec_block_minutes": (1, 1440),
+        "sec_session_hours": (1, 720),
+        "sec_idle_minutes": (0, 1440),
+        "sec_audit_keep": (50, 5000),
+    }
+    changed = []
+    for key, (lo, hi) in limits.items():
+        if key not in body:
+            continue
+        try:
+            val = int(body[key])
+        except (TypeError, ValueError):
+            return jsonify(error=f"{key} 必须是数字"), 400
+        if not (lo <= val <= hi):
+            return jsonify(error=f"{key} 必须在 {lo}~{hi} 之间"), 400
+        db.set_sec(key, val)
+        changed.append(key)
+
+    if not changed:
+        return jsonify(error="没有要保存的项"), 400
+
+    db.add_audit("sec_settings", client_ip(),
+                 "修改安全设置:" + ",".join(changed),
+                 request.headers.get("User-Agent", ""))
+    return jsonify(ok=True, changed=changed, settings=db.get_sec_all())
+
+
+@app.get("/api/security/overview")
+@login_required
+def sec_overview():
+    """安全面板一屏所需的数据"""
+    s = db.get_sec_all()
+    now = int(time.time())
+    blocked = db.list_blocked()
+    sessions = db.list_sessions()
+    cur_sid = session.get("sid")
+    for x in sessions:
+        x["current"] = (x["sid"] == cur_sid)
+
+    # 最近 24 小时的登录失败次数
+    fails_24h = 0
+    for a in db.list_audit(500):
+        if a["action"] in ("login_fail", "captcha_fail", "login_block"):
+            if now - a["ts"] <= 86400:
+                fails_24h += 1
+
+    return jsonify(
+        settings=s,
+        blocked=blocked,
+        sessions=sessions,
+        current_sid=cur_sid,
+        fails_24h=fails_24h,
+        must_change=db.must_change_password(),
+        server_time=now,
+    )
+
+
+@app.get("/api/security/audit")
+@login_required
+def get_audit():
+    try:
+        limit = int(request.args.get("limit", 100))
+    except (TypeError, ValueError):
+        limit = 100
+    limit = max(10, min(limit, 500))
+    return jsonify(rows=db.list_audit(limit))
+
+
+@app.delete("/api/security/audit")
+@login_required
+def delete_audit():
+    n = db.clear_audit()
+    db.add_audit("audit_clear", client_ip(), f"清空审计日志 {n} 条",
+                 request.headers.get("User-Agent", ""))
+    return jsonify(ok=True, deleted=n)
+
+
+@app.post("/api/security/unblock")
+@login_required
+def unblock_ip():
+    body = request.get_json(force=True, silent=True) or {}
+    ip = (body.get("ip") or "").strip()
+    if not ip:
+        return jsonify(error="缺少 IP"), 400
+    ok = db.unblock(ip)
+    db.add_audit("unblock", client_ip(), f"解除封锁 {ip}",
+                 request.headers.get("User-Agent", ""))
+    return jsonify(ok=ok)
+
+
+@app.post("/api/security/revoke")
+@login_required
+def revoke_session_api():
+    body = request.get_json(force=True, silent=True) or {}
+    sid = (body.get("sid") or "").strip()
+    if not sid:
+        return jsonify(error="缺少会话 id"), 400
+    if sid == session.get("sid"):
+        return jsonify(error="不能踢掉当前这个会话"), 400
+    db.revoke_session(sid)
+    db.add_audit("revoke_session", client_ip(), "踢下线一个会话",
+                 request.headers.get("User-Agent", ""))
+    return jsonify(ok=True)
+
+
+@app.post("/api/security/revoke-all")
+@login_required
+def revoke_all_api():
+    """踢掉除自己以外的所有会话"""
+    n = db.revoke_all_sessions(keep_sid=session.get("sid"))
+    db.add_audit("revoke_all", client_ip(), f"踢下线其他所有会话({n} 个)",
+                 request.headers.get("User-Agent", ""))
+    return jsonify(ok=True, revoked=n)
 
 
 # ---------------- 后台 CRUD API(需登录) ----------------
@@ -431,6 +680,8 @@ def upload_image():
         out.write(raw)
     os.chmod(path, 0o644)   # nginx 要能读
 
+    db.add_audit("upload", client_ip(), f"上传图片 {name}({len(raw)} 字节)",
+                 request.headers.get("User-Agent", ""))
     return jsonify(ok=True, url=f"{UPLOAD_URL}/{name}",
                    size=len(raw), name=name)
 
@@ -467,6 +718,8 @@ def delete_upload(name):
     if not os.path.isfile(p):
         return jsonify(error="not found"), 404
     os.remove(p)
+    db.add_audit("upload_del", client_ip(), f"删除图片 {name}",
+                 request.headers.get("User-Agent", ""))
     return "", 204
 
 
@@ -487,6 +740,8 @@ def export_data():
     }
     body = json.dumps(payload, ensure_ascii=False, indent=2)
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    db.add_audit("export", client_ip(), "导出数据备份",
+                 request.headers.get("User-Agent", ""))
     resp = app.response_class(body, mimetype="application/json")
     resp.headers["Content-Disposition"] = f'attachment; filename="mysite-backup-{stamp}.json"'
     return resp
@@ -506,6 +761,9 @@ def import_data():
 
     replace = bool(payload.get("replace"))
     counts = db.import_payload(payload, replace=replace)
+    db.add_audit("import", client_ip(),
+                 f"导入数据 replace={replace} {counts}",
+                 request.headers.get("User-Agent", ""))
     return jsonify(ok=True, replace=replace, counts=counts)
 
 

@@ -26,13 +26,13 @@
 
   .card {
     background: var(--paper); border: 3px solid var(--ink); border-radius: 24px;
-    box-shadow: 8px 8px 0 var(--ink); padding: 44px 40px 36px;
-    width: 100%; max-width: 400px; position: relative; z-index: 2;
+    box-shadow: 8px 8px 0 var(--ink); padding: 40px 38px 32px;
+    width: 100%; max-width: 420px; position: relative; z-index: 2;
     transform: rotate(-.6deg);
   }
-  .lock { font-size: 52px; text-align: center; }
-  h1 { font-size: 26px; text-align: center; margin: 8px 0 4px; }
-  .sub { text-align: center; color: #8a8494; font-size: 14px; font-weight: 700; margin-bottom: 26px; }
+  .lock { font-size: 50px; text-align: center; }
+  h1 { font-size: 25px; text-align: center; margin: 8px 0 4px; }
+  .sub { text-align: center; color: #8a8494; font-size: 14px; font-weight: 700; margin-bottom: 24px; }
   label { display: block; font-size: 13px; font-weight: 800; color: #6b6577; margin-bottom: 6px; }
   input {
     width: 100%; padding: 12px 16px; font-size: 16px;
@@ -64,6 +64,26 @@
   .tip b { color: var(--pink); }
   .back { display: block; text-align: center; margin-top: 18px; color: #8a8494; font-size: 13px; font-weight: 700; text-decoration: none; }
   .back:hover { color: var(--pink); }
+
+  /* 验证码 */
+  .cap-row { display: flex; gap: 10px; align-items: stretch; }
+  .cap-row input { flex: 1; min-width: 0; letter-spacing: 4px; text-transform: uppercase; }
+  .cap-img {
+    width: 130px; height: 46px; flex: none; cursor: pointer;
+    border: 3px solid var(--ink); border-radius: 12px;
+    background: var(--cream); overflow: hidden; position: relative;
+    transition: box-shadow .15s ease;
+  }
+  .cap-img:hover { box-shadow: 3px 3px 0 var(--ink); }
+  .cap-img img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  .cap-img .refresh {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    background: rgba(255,248,238,.9); font-size: 13px; font-weight: 800; color: var(--ink);
+    opacity: 0; transition: opacity .15s ease;
+  }
+  .cap-img:hover .refresh { opacity: 1; }
+  .cap-hint { font-size: 12px; font-weight: 700; color: #8a8494; margin-top: 6px; }
+  .blocked { background: #fff3cd; border-color: #ffc107; color: #856404; }
 </style>
 </head>
 <body>
@@ -75,20 +95,55 @@
   <h1>我的小窝 · 后台</h1>
   <p class="sub">只有主人才能进来的神秘领域</p>
   {% if get_flashed_messages() %}
-  <div class="err">{{ get_flashed_messages()[0] }}</div>
+  <div class="err{% if '分钟后再来' in get_flashed_messages()[0] %} blocked{% endif %}">
+    {{ get_flashed_messages()[0] }}
+  </div>
   {% endif %}
   {% if initial %}
   <div class="tip">
     🌱 首次使用:初始密码是 <b>admin</b>,<br />登录后会提醒你马上修改
   </div>
   {% endif %}
-  <form method="post">
+  <form method="post" id="loginForm">
     <label for="password">暗号(密码)</label>
-    <input type="password" id="password" name="password" required autofocus
+    <input type="password" id="password" name="password" required
+           {% if not captcha_on %}autofocus{% endif %}
            placeholder="输入管理员密码" autocomplete="current-password" />
+
+    {% if captcha_on %}
+    <label for="captcha" style="margin-top:16px">验证码</label>
+    <div class="cap-row">
+      <input type="text" id="captcha" name="captcha" required autofocus
+             maxlength="6" inputmode="text" autocapitalize="characters"
+             autocomplete="off" spellcheck="false" placeholder="看右边" />
+      <div class="cap-img" id="capBox" title="点一下换一张">
+        <img id="capImg" src="/admin/captcha.svg" alt="验证码" />
+        <div class="refresh">🔄 换一张</div>
+      </div>
+    </div>
+    <p class="cap-hint">看不清?点图片换一张,3 分钟内有效</p>
+    {% endif %}
+
     <button type="submit">开门!🚪</button>
   </form>
   <a class="back" href="/">← 回到我的小窝</a>
 </div>
+
+{% if captcha_on %}
+<script>
+  const box = document.getElementById('capBox');
+  const img = document.getElementById('capImg');
+  let n = 0;
+  box.addEventListener('click', () => {
+    // 加时间戳强制绕过浏览器缓存
+    img.src = '/admin/captcha.svg?t=' + Date.now() + '-' + (++n);
+    document.getElementById('captcha').value = '';
+    document.getElementById('captcha').focus();
+  });
+  img.addEventListener('error', () => {
+    box.innerHTML = '<div class="refresh" style="opacity:1">加载失败,点此重试</div>';
+  });
+</script>
+{% endif %}
 </body>
 </html>
