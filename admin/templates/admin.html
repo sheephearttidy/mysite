@@ -246,6 +246,8 @@ async function api(method, path, body) {
 }
 
 function esc(s) { const d = document.createElement('div'); d.textContent = s ?? ''; return d.innerHTML; }
+// 属性值(双引号包裹)专用:额外转义引号,防 " 逃逸出属性
+function escAttr(s) { return esc(s).replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
 
 /* ---------- 列表渲染 ---------- */
 function renderAll() {
@@ -354,7 +356,7 @@ function editItem(kind, id) {
       return `<div class="ef"><label>${f.label}</label><textarea data-k="${f.k}">${esc(v)}</textarea></div>`;
     }
     return `<div class="ef"><label>${f.label}</label>
-      <input data-k="${f.k}" type="${f.type}" ${f.min !== undefined ? `min="${f.min}" max="${f.max}"` : ''} value="${esc(v)}" /></div>`;
+      <input data-k="${f.k}" type="${f.type}" ${f.min !== undefined ? `min="${f.min}" max="${f.max}"` : ''} value="${escAttr(v)}" /></div>`;
   }).join('') + `
     <div class="ops">
       <button class="op save" id="btn-save">💾 保存</button>

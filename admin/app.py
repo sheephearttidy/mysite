@@ -16,7 +16,10 @@ import db
 app = Flask(__name__)
 app.secret_key = os.environ.get("MYSITE_SECRET_KEY", os.urandom(24))
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_SECURE"] = True      # 只走 HTTPS
+app.config["SESSION_COOKIE_HTTPONLY"] = True    # 禁止 JS 读取
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=7)
+app.config["MAX_CONTENT_LENGTH"] = 64 * 1024    # 请求体上限 64KB,防内存放大
 
 ADMIN_USER = os.environ.get("MYSITE_ADMIN_USER", "admin")
 
@@ -24,6 +27,22 @@ DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "mysi
 
 # 简单防爆破:同 IP 连续失败 8 次,封 10 分钟
 _failed = {}  # ip -> [count, blocked_until]
+
+
+def client_ip() -> str:
+    """取真实客户端 IP。
+
+    nginx 用 `proxy_set_header X-Real-IP $remote_addr` 覆盖写入(客户端伪造无效),
+    X-Forwarded-For 已被 nginx 改为 $remote_addr,这里只作兜底。
+    """
+    ip = request.headers.get("X-Real-IP")
+    if ip:
+        return ip.strip()
+    xff = request.headers.get("X-Forwarded-For")
+    if xff:
+        # 取最后一跳(由可信代理追加),而不是客户端可伪造的第一段
+        return xff.split(",")[-1].strip()
+    return request.remote_addr or "x"
 
 
 # ---------------- 鉴权 ----------------
@@ -93,7 +112,7 @@ def login():
 
 @app.post("/admin/login")
 def login_post():
-    ip = request.headers.get("X-Forwarded-For", request.remote_addr or "x").split(",")[0].strip()
+    ip = client_ip()
     pwd = request.form.get("password", "")
     if rate_limit_ok(ip) and check_admin_password(pwd):
         clear_fail(ip)

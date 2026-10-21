@@ -18,7 +18,8 @@ Desktop.ini
 # 后台 Python
 __pycache__/
 *.pyc
-admin/data/          # SQLite 数据库(内容数据,不进仓库)
+# SQLite 数据库(内容数据,不进仓库)
+admin/data/
 admin/venv/
 venv/
 .env

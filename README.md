@@ -15,6 +15,7 @@
 | `v1.0.0` | 纯静态贴纸风主页(全内容写死在 HTML 里) |
 | `v1.1.0` | 新增后台管理系统:技能树 / 校园日常 / 趣味统计可在线编辑,前台动态加载(后台挂了自动回退到内置内容) |
 | `v1.1.1` | 后台密码机制升级:初始密码 `admin`,首次登录自动弹窗强制引导修改;右上角「🔑 改密码」随时可改;密码哈希从环境变量迁移进数据库 |
+| `v1.1.2` | 安全加固:修复登录限速伪造绕过、后台降权运行、安全响应头、Cookie Secure、请求体限制、SSH 仅公钥 |
 
 ## 预览
 
@@ -81,6 +82,19 @@ Flask 服务由 systemd 守护(mysite-admin.service),开机自启、挂了自动
 - 改完密码会强制退出重新登录;之后随时点后台右上角「🔑 改密码」再改
 - 密码以 PBKDF2(120k 迭代)哈希存在数据库 settings 表里,明文不落盘
 - 连续输错 8 次封 IP 10 分钟,所以别乱试我的密码 😏
+
+## 安全加固(v1.1.2)
+
+| 层面 | 措施 |
+|---|---|
+| 登录防爆破 | nginx 层 `limit_req` 限速(10 次/分钟/IP,基于真实 TCP 源,`X-Forwarded-For` 改为 `$remote_addr` **覆盖**,伪造无效);应用层再叠 8 次/10 分钟封锁 |
+| 运行权限 | 后台以专用系统用户 `mysite` 运行(非 root);`data/` 750、数据库 640、`/etc/mysite-admin.env` 640 root:mysite |
+| 传输安全 | 全站 HTTPS,HSTS 一年;Session Cookie 带 `Secure` + `HttpOnly` + `SameSite=Lax` |
+| 响应头 | `X-Content-Type-Options` / `X-Frame-Options` / `Referrer-Policy` / `Permissions-Policy`;`server_tokens off` 隐藏版本 |
+| 输入防护 | 请求体上限 64KB;`escAttr()` 对属性值额外转义引号,防属性逃逸 XSS |
+| 资源隔离 | 隐藏文件(`.git`/`.env`)与 `.db/.sql/.py/.bak` 一律 403;数据库和源码不在 webroot 可访问路径 |
+| SSH | 仅公钥登录(`PasswordAuthentication no`),root 仅密钥(`prohibit-password`),`MaxAuthTries 3` |
+| 备份 | 加固前的 nginx / app.py / sshd_config / env 均备份在服务器 `/root/*.bak.*` |
 
 ---
 

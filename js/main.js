@@ -8,6 +8,8 @@ console.log('%c 嗨!你打开了控制台,是想看看这个网页的秘密吗 �
 
 // ===== 工具:HTML 转义 =====
 const esc = s => { const d = document.createElement('div'); d.textContent = s ?? ''; return d.innerHTML; };
+// 放进 HTML 属性(双引号包裹)时用这个:额外转义引号,防属性逃逸
+const escAttr = s => esc(s).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
 // ===== 移动端汉堡菜单 =====
 const navToggle = document.getElementById('navToggle');
@@ -127,7 +129,7 @@ async function loadDynamicContent() {
     const tl = document.querySelector('.timeline');
     if (tl) {
       tl.innerHTML = data.timeline.map(e => `
-        <div class="tl-item reveal" data-emoji="${esc(e.emoji)}">
+        <div class="tl-item reveal" data-emoji="${escAttr(e.emoji)}">
           <div class="card tl-card">
             <span class="time">${esc(e.time_label)}</span>
         <h3>${esc(e.title)}</h3>
