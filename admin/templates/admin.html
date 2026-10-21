@@ -19,17 +19,116 @@
     background: var(--cream); color: var(--ink); line-height: 1.7;
     -webkit-font-smoothing: antialiased; padding-bottom: 60px;
   }
-  .wrap { max-width: 1000px; margin: 0 auto; padding: 0 20px; }
 
-  /* 顶栏 */
-  .topbar {
-    background: var(--paper); border-bottom: 3px solid var(--ink);
-    padding: 14px 0; margin-bottom: 30px;
+  /* ============ 布局:左侧边栏 + 右侧内容 ============ */
+  .layout { display: flex; min-height: 100vh; align-items: stretch; }
+
+  /* 侧边栏 */
+  .sidebar {
+    width: 248px; flex-shrink: 0;
+    background: var(--paper);
+    border-right: 3px solid var(--ink);
+    display: flex; flex-direction: column;
+    position: sticky; top: 0; height: 100vh;
+    z-index: 40;
   }
-  .topbar-in { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
-  .topbar h1 { font-size: 20px; }
-  .topbar h1 span { color: var(--pink); }
-  .actions { display: flex; gap: 10px; }
+  .sb-brand {
+    padding: 18px 18px 14px;
+    border-bottom: 3px solid var(--ink);
+    background: var(--yellow-bg);
+  }
+  .sb-brand .sb-title {
+    font-family: "ZCOOL KuaiLe", "Baloo 2", sans-serif;
+    font-size: 18px; line-height: 1.3;
+  }
+  .sb-brand .sb-title span { color: var(--pink); }
+  .sb-brand .sb-tagline {
+    font-size: 11px; font-weight: 800; color: #8a8494;
+    letter-spacing: 1px; margin-top: 2px;
+  }
+
+  .sb-nav { flex: 1; overflow-y: auto; padding: 12px 10px 18px; }
+  .sb-group { margin-bottom: 4px; }
+  .sb-group-btn {
+    width: 100%; display: flex; align-items: center; gap: 8px;
+    padding: 8px 10px; font-size: 14px; font-weight: 800;
+    font-family: inherit; color: var(--ink);
+    background: transparent; border: 2px solid transparent; border-radius: 10px;
+    cursor: pointer; text-align: left;
+    transition: background .15s ease, border-color .15s ease;
+  }
+  .sb-group-btn:hover { background: var(--cream); border-color: var(--ink); }
+  .sb-group-btn .caret {
+    margin-left: auto; font-size: 11px; opacity: .6;
+    transition: transform .2s ease;
+  }
+  .sb-group.collapsed .caret { transform: rotate(-90deg); }
+  .sb-sub {
+    list-style: none; margin: 2px 0 6px;
+    padding-left: 8px;
+    border-left: 2px dashed rgba(45,42,50,.22);
+    margin-left: 16px;
+  }
+  .sb-group.collapsed .sb-sub { display: none; }
+  .sb-link {
+    display: flex; align-items: center; gap: 7px;
+    padding: 6px 10px; margin: 2px 0;
+    font-size: 13.5px; font-weight: 700; color: #55505e;
+    text-decoration: none; border-radius: 9px;
+    border: 2px solid transparent;
+    transition: all .13s ease;
+  }
+  .sb-link:hover {
+    background: var(--cream); color: var(--ink);
+    border-color: var(--ink);
+  }
+  .sb-link.active {
+    background: var(--teal-bg); color: var(--ink);
+    border-color: var(--ink); font-weight: 800;
+    box-shadow: 2px 2px 0 var(--ink);
+  }
+  .sb-link .sb-count {
+    margin-left: auto; font-size: 11px; font-weight: 800;
+    background: var(--cream); border: 2px solid var(--ink);
+    border-radius: 999px; padding: 0 7px; line-height: 1.5;
+  }
+  .sb-link.active .sb-count { background: var(--paper); }
+
+  .sb-foot {
+    border-top: 3px solid var(--ink);
+    padding: 10px; display: flex; flex-direction: column; gap: 6px;
+  }
+  .sb-foot .a-btn { width: 100%; text-align: center; }
+
+  /* 主区域 */
+  .main { flex: 1; min-width: 0; padding: 0 0 60px; }
+  .main-head {
+    position: sticky; top: 0; z-index: 30;
+    background: rgba(255, 248, 238, 0.94);
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    border-bottom: 3px solid var(--ink);
+    padding: 14px 26px;
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  }
+  .main-head h1 { font-size: 19px; flex: 1; min-width: 180px; }
+  .main-head .crumb { font-size: 12px; font-weight: 800; color: #8a8494; }
+  .panels { padding: 26px; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* 移动端抽屉 */
+  .sb-toggle {
+    display: none; font-size: 20px; line-height: 1;
+    background: var(--paper); border: 3px solid var(--ink);
+    border-radius: 10px; padding: 3px 11px; cursor: pointer;
+    box-shadow: 3px 3px 0 var(--ink); font-family: inherit; color: var(--ink);
+  }
+  .sb-scrim {
+    display: none; position: fixed; inset: 0; z-index: 39;
+    background: rgba(45,42,50,.45);
+  }
+  .sb-scrim.show { display: block; }
+
   .a-btn {
     font-size: 14px; font-weight: 800; text-decoration: none; cursor: pointer;
     padding: 6px 16px; border-radius: 12px;
@@ -42,8 +141,7 @@
   .a-btn.yellow { background: var(--yellow); }
 
   /* 区块 */
-  .sec { margin-bottom: 40px; }
-  .sec-head { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .sec-head { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
   .sec-head h2 { font-size: 22px; }
   .sec-head .add {
     font-size: 13px; font-weight: 800; cursor: pointer;
@@ -172,115 +270,246 @@
   }
   .up-item .up-ops .copy { background: var(--yellow); }
   .up-item .up-ops .rm { background: #ffe4ef; color: var(--red); }
+
+  .seclist { list-style: none; margin-top: 10px; font-size: 13.5px; font-weight: 700; color: #55505e; }
+  .seclist li { padding: 4px 0; }
+  .seclist code {
+    background: var(--cream); border: 2px solid var(--ink);
+    border-radius: 6px; padding: 0 5px; font-size: 12.5px;
+  }
+
+  /* ============ 响应式:小屏侧边栏变抽屉 ============ */
+  @media (max-width: 860px) {
+    .sidebar {
+      position: fixed; left: 0; top: 0; height: 100vh;
+      transform: translateX(-100%);
+      transition: transform .22s ease;
+      box-shadow: 6px 0 0 rgba(45,42,50,.15);
+    }
+    .sidebar.open { transform: translateX(0); }
+    .sb-toggle { display: block; }
+    .panels { padding: 16px; }
+    .main-head { padding: 12px 16px; }
+    .grid { grid-template-columns: 1fr; }
+  }
 </style>
 </head>
 <body>
 
-<div class="topbar">
-  <div class="wrap topbar-in">
-    <h1>🏠 我的小窝 · <span>后台管理</span></h1>
-    <div class="actions">
-      <button class="a-btn" onclick="openPassModal()">🔑 改密码</button>
-      <a class="a-btn yellow" href="/" target="_blank">👀 看看主页</a>
+<div class="layout">
+
+  <!-- ================= 左侧边栏:多级导航 ================= -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sb-brand">
+      <div class="sb-title">🏠 我的小窝<br><span>后台管理</span></div>
+      <div class="sb-tagline">SITE ADMIN</div>
+    </div>
+
+    <nav class="sb-nav">
+      <!-- 组:内容管理 -->
+      <div class="sb-group" data-group="content">
+        <button class="sb-group-btn" onclick="toggleGroup(this)">
+          📝 内容管理 <span class="caret">▾</span>
+        </button>
+        <ul class="sb-sub">
+          <li><a class="sb-link" data-panel="skills" href="#skills">
+            🎯 技能树 <span class="sb-count" id="cnt-skills">0</span></a></li>
+          <li><a class="sb-link" data-panel="timeline" href="#timeline">
+            🗺️ 校园日常 <span class="sb-count" id="cnt-timeline">0</span></a></li>
+          <li><a class="sb-link" data-panel="stats" href="#stats">
+            🧮 趣味统计 <span class="sb-count" id="cnt-stats">0</span></a></li>
+          <li><a class="sb-link" data-panel="works" href="#works">
+            🛠️ 项目墙 <span class="sb-count" id="cnt-works">0</span></a></li>
+        </ul>
+      </div>
+
+      <!-- 组:个人信息 -->
+      <div class="sb-group" data-group="profile">
+        <button class="sb-group-btn" onclick="toggleGroup(this)">
+          🧍 个人信息 <span class="caret">▾</span>
+        </button>
+        <ul class="sb-sub">
+          <li><a class="sb-link" data-panel="profile-about" href="#profile-about">
+            ✍️ 自我介绍 <span class="sb-count" id="cnt-about">0</span></a></li>
+          <li><a class="sb-link" data-panel="profile-info" href="#profile-info">
+            🪪 信息卡片 <span class="sb-count" id="cnt-info">0</span></a></li>
+        </ul>
+      </div>
+
+      <!-- 组:媒体 -->
+      <div class="sb-group" data-group="media">
+        <button class="sb-group-btn" onclick="toggleGroup(this)">
+          🖼️ 媒体资源 <span class="caret">▾</span>
+        </button>
+        <ul class="sb-sub">
+          <li><a class="sb-link" data-panel="uploads" href="#uploads">
+            🖼️ 图片库 <span class="sb-count" id="cnt-uploads">0</span></a></li>
+        </ul>
+      </div>
+
+      <!-- 组:站点维护 -->
+      <div class="sb-group" data-group="system">
+        <button class="sb-group-btn" onclick="toggleGroup(this)">
+          ⚙️ 站点维护 <span class="caret">▾</span>
+        </button>
+        <ul class="sb-sub">
+          <li><a class="sb-link" data-panel="backup" href="#backup">💾 数据备份</a></li>
+          <li><a class="sb-link" data-panel="security" href="#security">🔐 安全设置</a></li>
+        </ul>
+      </div>
+    </nav>
+
+    <div class="sb-foot">
+      <a class="a-btn yellow" href="/" target="_blank" rel="noopener">👀 看看主页</a>
       <a class="a-btn" href="/admin/logout">🚪 退出登录</a>
     </div>
-  </div>
-</div>
+  </aside>
 
-{% if must_change %}
-<div class="warnbar">
-  ⚠️ 你还在用初始密码 <b>admin</b>,太危险啦!点
-  <a href="javascript:void(0)" onclick="openPassModal()">这里马上改掉</a>
-</div>
-{% endif %}
+  <div class="sb-scrim" id="sbScrim"></div>
 
-<div class="wrap">
-
-  <!-- 技能树 -->
-  <section class="sec">
-    <div class="sec-head">
-      <h2>🎯 技能树管理</h2>
-      <button class="add" onclick="editItem('skills', null)">＋ 新增技能</button>
-      <span class="hint">认真技能 / 被动技能都会同步到主页</span>
+  <!-- ================= 右侧主区域 ================= -->
+  <main class="main">
+    <div class="main-head">
+      <button class="sb-toggle" id="sbToggle" aria-label="打开菜单">☰</button>
+      <h1 id="panelTitle">🎯 技能树管理</h1>
+      <span class="crumb" id="panelCrumb">内容管理 / 技能树</span>
+      <button class="a-btn" onclick="openPassModal()">🔑 改密码</button>
     </div>
-    <div class="grid" id="list-skills"></div>
-  </section>
 
-  <!-- 校园时间线 -->
-  <section class="sec">
-    <div class="sec-head">
-      <h2>🗺️ 校园日常管理</h2>
-      <button class="add" onclick="editItem('timeline', null)">＋ 新增事件</button>
-      <span class="hint">主页「校园打怪升级记录」板块</span>
+    {% if must_change %}
+    <div class="warnbar">
+      ⚠️ 你还在用初始密码 <b>admin</b>,太危险啦!点
+      <a href="javascript:void(0)" onclick="openPassModal()">这里马上改掉</a>
     </div>
-    <div class="grid" id="list-timeline"></div>
-  </section>
+    {% endif %}
 
-  <!-- 趣味统计 -->
-  <section class="sec">
-    <div class="sec-head">
-      <h2>🧮 趣味统计管理</h2>
-      <button class="add" onclick="editItem('stats', null)">＋ 新增统计</button>
-      <span class="hint">奶茶几杯、熬夜几次这种离谱数据</span>
-    </div>
-    <div class="grid" id="list-stats"></div>
-  </section>
+    <div class="panels">
 
-  <!-- 项目墙 -->
-  <section class="sec">
-    <div class="sec-head">
-      <h2>🛠️ 项目墙管理</h2>
-      <button class="add" onclick="editItem('works', null)">＋ 新增项目</button>
-      <span class="hint">主页「我的小破项目们」板块</span>
-    </div>
-    <div class="grid" id="list-works"></div>
-  </section>
+      <!-- 技能树 -->
+      <section class="panel active" id="panel-skills">
+        <div class="sec-head">
+          <h2>🎯 技能树管理</h2>
+          <button class="add" onclick="editItem('skills', null)">＋ 新增技能</button>
+          <span class="hint">认真技能 / 被动技能都会同步到主页</span>
+        </div>
+        <div class="grid" id="list-skills"></div>
+      </section>
 
-  <!-- 关于我 -->
-  <section class="sec">
-    <div class="sec-head">
-      <h2>🧍 关于我管理</h2>
-      <button class="add" onclick="editItem('profile', null)">＋ 新增</button>
-      <span class="hint">「关于」板块:自我介绍段落 + 右侧信息卡片</span>
-    </div>
-    <div class="grid" id="list-profile"></div>
-  </section>
+      <!-- 校园时间线 -->
+      <section class="panel" id="panel-timeline">
+        <div class="sec-head">
+          <h2>🗺️ 校园日常管理</h2>
+          <button class="add" onclick="editItem('timeline', null)">＋ 新增事件</button>
+          <span class="hint">主页「校园打怪升级记录」板块</span>
+        </div>
+        <div class="grid" id="list-timeline"></div>
+      </section>
 
-  <!-- 图片上传 -->
-  <section class="sec">
-    <div class="sec-head">
-      <h2>🖼️ 图片管理</h2>
-      <span class="hint">传上去的图可以直接用在页面里,支持 png/jpg/gif/webp,单张 ≤5MB</span>
-    </div>
-    <div class="item">
-      <div class="upload-zone" id="uploadZone">
-        <input type="file" id="fileInput" accept="image/png,image/jpeg,image/gif,image/webp" hidden />
-        <button class="op edit" onclick="document.getElementById('fileInput').click()">📁 选择图片上传</button>
-        <span class="hint" id="uploadHint">也可以直接把图片拖到这里</span>
-      </div>
-      <div class="up-grid" id="upGrid"></div>
-    </div>
-  </section>
+      <!-- 趣味统计 -->
+      <section class="panel" id="panel-stats">
+        <div class="sec-head">
+          <h2>🧮 趣味统计管理</h2>
+          <button class="add" onclick="editItem('stats', null)">＋ 新增统计</button>
+          <span class="hint">奶茶几杯、熬夜几次这种离谱数据</span>
+        </div>
+        <div class="grid" id="list-stats"></div>
+      </section>
 
-  <!-- 备份 -->
-  <section class="sec">
-    <div class="sec-head">
-      <h2>💾 数据备份</h2>
-      <span class="hint">导出所有内容为 JSON;换服务器或改坏了可以一键恢复</span>
-    </div>
-    <div class="item">
-      <div class="ops" style="margin-top:0">
-        <a class="op save" href="/api/export" download>⬇️ 导出全部数据</a>
-        <button class="op edit" onclick="document.getElementById('importInput').click()">⬆️ 从 JSON 恢复</button>
-        <input type="file" id="importInput" accept="application/json,.json" hidden />
-        <button class="op del" onclick="importReplace()">⚠️ 清空并恢复</button>
-      </div>
-      <p class="hint" style="margin-top:10px">
-        「从 JSON 恢复」= 合并(同 id 覆盖,新的追加);「清空并恢复」= 先删光再导入,谨慎使用
-      </p>
-    </div>
-  </section>
+      <!-- 项目墙 -->
+      <section class="panel" id="panel-works">
+        <div class="sec-head">
+          <h2>🛠️ 项目墙管理</h2>
+          <button class="add" onclick="editItem('works', null)">＋ 新增项目</button>
+          <span class="hint">主页「我的小破项目们」板块</span>
+        </div>
+        <div class="grid" id="list-works"></div>
+      </section>
 
+      <!-- 自我介绍 -->
+      <section class="panel" id="panel-profile-about">
+        <div class="sec-head">
+          <h2>✍️ 自我介绍段落</h2>
+          <button class="add" onclick="editProfileKind('about')">＋ 新增段落</button>
+          <span class="hint">「关于我」卡片里的每段话,按顺序排列</span>
+        </div>
+        <div class="grid" id="list-profile-about"></div>
+      </section>
+
+      <!-- 信息卡片 -->
+      <section class="panel" id="panel-profile-info">
+        <div class="sec-head">
+          <h2>🪪 信息卡片</h2>
+          <button class="add" onclick="editProfileKind('info')">＋ 新增卡片</button>
+          <span class="hint">「关于我」右侧的四个小卡片</span>
+        </div>
+        <div class="grid" id="list-profile-info"></div>
+      </section>
+
+      <!-- 图片库 -->
+      <section class="panel" id="panel-uploads">
+        <div class="sec-head">
+          <h2>🖼️ 图片库</h2>
+          <span class="hint">支持 png/jpg/gif/webp,单张 ≤5MB,传完可直接复制路径</span>
+        </div>
+        <div class="item">
+          <div class="upload-zone" id="uploadZone">
+            <input type="file" id="fileInput" accept="image/png,image/jpeg,image/gif,image/webp" hidden />
+            <button class="op edit" onclick="document.getElementById('fileInput').click()">📁 选择图片上传</button>
+            <span class="hint" id="uploadHint">也可以直接把图片拖到这里</span>
+          </div>
+          <div class="up-grid" id="upGrid"></div>
+        </div>
+      </section>
+
+      <!-- 数据备份 -->
+      <section class="panel" id="panel-backup">
+        <div class="sec-head">
+          <h2>💾 数据备份</h2>
+          <span class="hint">导出所有内容为 JSON;换服务器或改坏了可以一键恢复</span>
+        </div>
+        <div class="item">
+          <div class="ops" style="margin-top:0">
+            <a class="op save" href="/api/export" download>⬇️ 导出全部数据</a>
+            <button class="op edit" onclick="document.getElementById('importInput').click()">⬆️ 从 JSON 恢复</button>
+            <input type="file" id="importInput" accept="application/json,.json" hidden />
+            <button class="op del" onclick="importReplace()">⚠️ 清空并恢复</button>
+          </div>
+          <p class="hint" style="margin-top:10px">
+            「从 JSON 恢复」= 合并(同 id 覆盖,新的追加);「清空并恢复」= 先删光再导入,谨慎使用
+          </p>
+        </div>
+      </section>
+
+      <!-- 安全设置 -->
+      <section class="panel" id="panel-security">
+        <div class="sec-head">
+          <h2>🔐 安全设置</h2>
+          <span class="hint">密码、会话、登录防护</span>
+        </div>
+        <div class="item">
+          <h3>🔑 后台密码</h3>
+          <p class="hint" style="margin-top:6px">
+            密码以 PBKDF2 哈希存在数据库里,明文不落盘。建议定期更换。
+          </p>
+          <div class="ops">
+            <button class="op edit" onclick="openPassModal()">🔑 修改密码</button>
+          </div>
+        </div>
+        <div class="item" style="margin-top:14px">
+          <h3>🛡️ 当前防护状态</h3>
+          <ul class="seclist">
+            <li>✅ 全站 HTTPS + HSTS</li>
+            <li>✅ Session Cookie 带 Secure / HttpOnly / SameSite</li>
+            <li>✅ 登录限速:nginx 10 次/分钟 + 应用层 8 次/10 分钟封锁</li>
+            <li>✅ 后台以专用用户 <code>mysite</code> 运行(非 root)</li>
+            <li>✅ 数据库与源码不在 webroot 可访问路径</li>
+            <li>✅ SSH 仅公钥登录</li>
+          </ul>
+        </div>
+      </section>
+
+    </div>
+  </main>
 </div>
 
 <div id="toast"></div>
@@ -332,6 +561,100 @@ function escAttr(s) { return esc(s).replace(/"/g, '&quot;').replace(/'/g, '&#39;
 function renderAll() {
   renderSkills(); renderTimeline(); renderStats();
   renderWorks(); renderProfile();
+  updateCounts();
+}
+
+/* ---------- 侧边栏导航 ---------- */
+const PANELS = {
+  'skills':        { title:'🎯 技能树管理',    crumb:'内容管理 / 技能树' },
+  'timeline':      { title:'🗺️ 校园日常管理',  crumb:'内容管理 / 校园日常' },
+  'stats':         { title:'🧮 趣味统计管理',  crumb:'内容管理 / 趣味统计' },
+  'works':         { title:'🛠️ 项目墙管理',    crumb:'内容管理 / 项目墙' },
+  'profile-about': { title:'✍️ 自我介绍段落',  crumb:'个人信息 / 自我介绍' },
+  'profile-info':  { title:'🪪 信息卡片',      crumb:'个人信息 / 信息卡片' },
+  'uploads':       { title:'🖼️ 图片库',        crumb:'媒体资源 / 图片库' },
+  'backup':        { title:'💾 数据备份',      crumb:'站点维护 / 数据备份' },
+  'security':      { title:'🔐 安全设置',      crumb:'站点维护 / 安全设置' },
+};
+
+function showPanel(name) {
+  if (!PANELS[name]) name = 'skills';
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  const el = document.getElementById('panel-' + name);
+  if (el) el.classList.add('active');
+
+  document.querySelectorAll('.sb-link').forEach(a =>
+    a.classList.toggle('active', a.dataset.panel === name));
+
+  document.getElementById('panelTitle').textContent = PANELS[name].title;
+  document.getElementById('panelCrumb').textContent = PANELS[name].crumb;
+
+  // 记住当前面板
+  try { localStorage.setItem('admin_panel', name); } catch (e) {}
+  // 小屏切面板后收起抽屉
+  closeSidebar();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+document.querySelectorAll('.sb-link').forEach(a => {
+  a.addEventListener('click', e => {
+    e.preventDefault();
+    showPanel(a.dataset.panel);
+    history.replaceState(null, '', '#' + a.dataset.panel);
+  });
+});
+
+// 分组折叠
+function toggleGroup(btn) {
+  btn.parentElement.classList.toggle('collapsed');
+  saveGroups();
+}
+function saveGroups() {
+  const state = {};
+  document.querySelectorAll('.sb-group').forEach(g => {
+    state[g.dataset.group] = g.classList.contains('collapsed');
+  });
+  try { localStorage.setItem('admin_groups', JSON.stringify(state)); } catch (e) {}
+}
+function restoreGroups() {
+  try {
+    const state = JSON.parse(localStorage.getItem('admin_groups') || '{}');
+    document.querySelectorAll('.sb-group').forEach(g => {
+      if (state[g.dataset.group]) g.classList.add('collapsed');
+    });
+  } catch (e) {}
+}
+
+// 移动端抽屉
+const sidebar = document.getElementById('sidebar');
+const sbScrim = document.getElementById('sbScrim');
+document.getElementById('sbToggle').addEventListener('click', () => {
+  sidebar.classList.toggle('open');
+  sbScrim.classList.toggle('show', sidebar.classList.contains('open'));
+});
+sbScrim.addEventListener('click', closeSidebar);
+function closeSidebar() {
+  sidebar.classList.remove('open');
+  sbScrim.classList.remove('show');
+}
+
+// 数量角标
+function updateCounts() {
+  const set = (id, n) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = n;
+  };
+  set('cnt-skills', DATA.skills.length);
+  set('cnt-timeline', DATA.timeline.length);
+  set('cnt-stats', DATA.stats.length);
+  set('cnt-works', DATA.works.length);
+  set('cnt-about', DATA.profile.filter(p => p.kind === 'about').length);
+  set('cnt-info', DATA.profile.filter(p => p.kind === 'info').length);
+}
+
+// 按类型新增 profile 时预填 kind
+function editProfileKind(kind) {
+  editItem('profile', null, { kind });
 }
 
 function renderSkills() {
@@ -405,9 +728,8 @@ function renderWorks() {
 }
 
 function renderProfile() {
-  const box = document.getElementById('list-profile');
   const KIND = { about:'自我介绍', info:'信息卡片' };
-  box.innerHTML = DATA.profile.map(p => `
+  const make = p => `
     <div class="item">
       <div class="item-top">
         <span class="badge ${p.kind === 'about' ? 'serious' : 'passive'}">${esc(p.emoji)} ${KIND[p.kind] || p.kind}</span>
@@ -419,7 +741,15 @@ function renderProfile() {
         <button class="op edit" onclick="editItem('profile', ${p.id})">✏️ 编辑</button>
         <button class="op del" onclick="delItem('profile', ${p.id})">🗑️ 删除</button>
       </div>
-    </div>`).join('') || '<p class="hint">「关于我」还是空的~</p>';
+    </div>`;
+
+  const abouts = DATA.profile.filter(p => p.kind === 'about');
+  const infos = DATA.profile.filter(p => p.kind === 'info');
+
+  document.getElementById('list-profile-about').innerHTML =
+    abouts.map(make).join('') || '<p class="hint">还没有自我介绍段落~</p>';
+  document.getElementById('list-profile-info').innerHTML =
+    infos.map(make).join('') || '<p class="hint">还没有信息卡片~</p>';
 }
 
 /* ---------- 编辑 / 新增 ---------- */
@@ -467,19 +797,26 @@ const FIELDS = {
   ],
 };
 
-function editItem(kind, id) {
+function editItem(kind, id, preset) {
   const list = DATA[kind];
   const item = id ? list.find(x => x.id === id) : null;
   const fields = FIELDS[kind];
 
-  const card = event.target.closest('.item') || document.getElementById('list-' + kind);
-  const box = item ? event.target.closest('.item') : document.getElementById('list-' + kind);
+  // profile 拆成两个面板,按 kind 找到对应的列表容器
+  const targetKind = item ? item.kind : (preset && preset.kind);
+  const listId = kind === 'profile'
+    ? (targetKind === 'about' ? 'list-profile-about' : 'list-profile-info')
+    : 'list-' + kind;
+
+  const box = item
+    ? event.target.closest('.item')
+    : document.getElementById(listId);
 
   const form = document.createElement('div');
   form.className = 'item';
   form.style.borderColor = 'var(--teal)';
   form.innerHTML = fields.map(f => {
-    const v = item ? (item[f.k] ?? '') : '';
+    const v = item ? (item[f.k] ?? '') : (preset && preset[f.k] !== undefined ? preset[f.k] : '');
     if (f.type === 'select') {
       return `<div class="ef"><label>${f.label}</label><select data-k="${f.k}">${
         Object.entries(f.opts).map(([val, txt]) =>
@@ -499,7 +836,8 @@ function editItem(kind, id) {
 
   // 新增:表单插到列表最前面;编辑:替换原卡片
   if (item) { box.replaceWith(form); } else { box.prepend(form); }
-  form.querySelector('input, select, textarea').focus();
+  const first = form.querySelector('input, select, textarea');
+  if (first) first.focus();
 
   form.querySelector('#btn-cancel').onclick = () => renderAll();
   form.querySelector('#btn-save').onclick = async () => {
@@ -690,7 +1028,22 @@ function showPerr(msg) {
 }
 
 passModal.addEventListener('click', e => { if (e.target === passModal) closePassModal(); });
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closePassModal(); });
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closePassModal(); closeSidebar(); }
+});
+
+/* ---------- 初始化 ---------- */
+renderAll();
+restoreGroups();
+
+// 恢复上次看的面板;没有就用 URL hash;再没有就技能树
+(function initPanel() {
+  let name = location.hash.replace('#', '');
+  if (!PANELS[name]) {
+    try { name = localStorage.getItem('admin_panel') || 'skills'; } catch (e) { name = 'skills'; }
+  }
+  showPanel(name);
+})();
 
 // 初始密码未改 → 自动弹窗提醒
 if (MUST_CHANGE) setTimeout(openPassModal, 400);
