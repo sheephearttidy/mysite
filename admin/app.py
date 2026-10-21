@@ -4,12 +4,16 @@
 # ============================================================
 
 import os
+import io
+import json
 import time
+import uuid
+import shutil
 from datetime import datetime, timezone, timedelta
 from functools import wraps
 
 from flask import (Flask, request, jsonify, render_template,
-                   redirect, url_for, session, flash)
+                   redirect, url_for, session, flash, send_from_directory)
 
 import db
 
@@ -19,11 +23,41 @@ app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["SESSION_COOKIE_SECURE"] = True      # 只走 HTTPS
 app.config["SESSION_COOKIE_HTTPONLY"] = True    # 禁止 JS 读取
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=7)
-app.config["MAX_CONTENT_LENGTH"] = 64 * 1024    # 请求体上限 64KB,防内存放大
+# 全局上限按上传放宽,但普通 JSON 接口另有更严格的检查(见 before_request)
+app.config["MAX_CONTENT_LENGTH"] = 8 * 1024 * 1024
+
+JSON_MAX_BYTES = 64 * 1024   # 普通 JSON 请求体上限 64KB
+
+
+@app.before_request
+def limit_json_body():
+    """除图片上传外,请求体一律不得超过 64KB(防内存放大)"""
+    if request.path == "/api/upload":
+        return None
+    if request.content_length and request.content_length > JSON_MAX_BYTES:
+        return jsonify(error="请求体太大了"), 413
+    return None
 
 ADMIN_USER = os.environ.get("MYSITE_ADMIN_USER", "admin")
 
-DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "mysite.db")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_PATH = os.path.join(BASE_DIR, "data", "mysite.db")
+
+# 上传目录:放在静态站下面,前台可直接引用
+WEBROOT = os.path.dirname(BASE_DIR)                       # /var/www/mysite
+UPLOAD_DIR = os.path.join(WEBROOT, "assets", "uploads")
+UPLOAD_URL = "/assets/uploads"
+
+# 只允许这几种图片,且校验真实文件头(防改扩展名的 webshell)
+ALLOWED_EXT = {"png": "png", "jpg": "jpeg", "jpeg": "jpeg",
+               "gif": "gif", "webp": "webp"}
+MAGIC = {
+    b"\x89PNG\r\n\x1a\n": "png",
+    b"\xff\xd8\xff": "jpg",
+    b"GIF87a": "gif",
+    b"GIF89a": "gif",
+}
+MAX_UPLOAD_BYTES = 5 * 1024 * 1024  # 单张图 5MB
 
 # 简单防爆破:同 IP 连续失败 8 次,封 10 分钟
 _failed = {}  # ip -> [count, blocked_until]
@@ -92,6 +126,8 @@ def api_content():
         skills=db.get_skills(),
         timeline=db.get_timeline(),
         stats=db.get_stats(),
+        works=db.get_works(),
+        profile=db.get_profile(),
     )
 
 
@@ -138,6 +174,8 @@ def admin():
         "skills": db.get_skills(),
         "timeline": db.get_timeline(),
         "stats": db.get_stats(),
+        "works": db.get_works(),
+        "profile": db.get_profile(),
     }
     # 初始密码还没改过 → 前端弹窗提示修改
     return render_template("admin.html", data=data,
@@ -246,13 +284,185 @@ def delete_stat(sid):
     return ("", 204) if ok else (jsonify(error="not found"), 404)
 
 
+# ---------------- works(项目墙) ----------------
+
+@app.post("/api/works")
+@login_required
+def add_work():
+    item = request.get_json(force=True, silent=True) or {}
+    return jsonify(db.insert_work(item)), 201
+
+
+@app.put("/api/works/<int:wid>")
+@login_required
+def update_work(wid):
+    item = request.get_json(force=True, silent=True) or {}
+    row = db.update_work(wid, item)
+    if not row:
+        return jsonify(error="not found"), 404
+    return jsonify(row)
+
+
+@app.delete("/api/works/<int:wid>")
+@login_required
+def delete_work(wid):
+    ok = db.delete_work(wid)
+    return ("", 204) if ok else (jsonify(error="not found"), 404)
+
+
+# ---------------- profile(关于我 / 信息卡片) ----------------
+
+@app.post("/api/profile")
+@login_required
+def add_profile():
+    item = request.get_json(force=True, silent=True) or {}
+    return jsonify(db.insert_profile(item)), 201
+
+
+@app.put("/api/profile/<int:pid>")
+@login_required
+def update_profile(pid):
+    item = request.get_json(force=True, silent=True) or {}
+    row = db.update_profile(pid, item)
+    if not row:
+        return jsonify(error="not found"), 404
+    return jsonify(row)
+
+
+@app.delete("/api/profile/<int:pid>")
+@login_required
+def delete_profile(pid):
+    ok = db.delete_profile(pid)
+    return ("", 204) if ok else (jsonify(error="not found"), 404)
+
+
+# ---------------- 图片上传 ----------------
+
+def sniff_image(head: bytes) -> str | None:
+    """根据文件头判断真实类型,认不出就返回 None"""
+    for magic, kind in MAGIC.items():
+        if head.startswith(magic):
+            return kind
+    # WEBP: RIFF....WEBP
+    if head[:4] == b"RIFF" and head[8:12] == b"WEBP":
+        return "webp"
+    return None
+
+
+@app.post("/api/upload")
+@login_required
+def upload_image():
+    """后台传图,返回可直接引用的 URL"""
+    f = request.files.get("file")
+    if not f or not f.filename:
+        return jsonify(error="没有选文件"), 400
+
+    ext = f.filename.rsplit(".", 1)[-1].lower() if "." in f.filename else ""
+    if ext not in ALLOWED_EXT:
+        return jsonify(error="只支持 png / jpg / gif / webp"), 400
+
+    raw = f.read(MAX_UPLOAD_BYTES + 1)
+    if len(raw) > MAX_UPLOAD_BYTES:
+        return jsonify(error="图片太大了,请压缩到 5MB 以内"), 400
+
+    real = sniff_image(raw[:16])
+    if real is None:
+        return jsonify(error="这个文件不是真正的图片"), 400
+    # 扩展名和真实类型对不上 → 以真实类型为准
+    if ALLOWED_EXT[ext] != real and not (ext == "jpg" and real == "jpeg"):
+        ext = "jpg" if real == "jpeg" else real
+
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    name = f"{datetime.now().strftime('%Y%m%d')}-{uuid.uuid4().hex[:12]}.{ext}"
+    path = os.path.join(UPLOAD_DIR, name)
+    with open(path, "wb") as out:
+        out.write(raw)
+    os.chmod(path, 0o644)   # nginx 要能读
+
+    return jsonify(ok=True, url=f"{UPLOAD_URL}/{name}",
+                   size=len(raw), name=name)
+
+
+@app.get("/api/uploads")
+@login_required
+def list_uploads():
+    """列出已上传的图片,方便后台挑图/删图"""
+    if not os.path.isdir(UPLOAD_DIR):
+        return jsonify(items=[])
+    items = []
+    for fn in sorted(os.listdir(UPLOAD_DIR), reverse=True):
+        if fn.rsplit(".", 1)[-1].lower() not in ALLOWED_EXT:
+            continue
+        p = os.path.join(UPLOAD_DIR, fn)
+        if not os.path.isfile(p):
+            continue
+        items.append({
+            "name": fn,
+            "url": f"{UPLOAD_URL}/{fn}",
+            "size": os.path.getsize(p),
+            "mtime": datetime.fromtimestamp(os.path.getmtime(p)).strftime("%Y-%m-%d %H:%M"),
+        })
+    return jsonify(items=items)
+
+
+@app.delete("/api/uploads/<name>")
+@login_required
+def delete_upload(name):
+    # 防路径穿越:只允许纯文件名
+    if "/" in name or "\\" in name or name.startswith("."):
+        return jsonify(error="非法文件名"), 400
+    p = os.path.join(UPLOAD_DIR, name)
+    if not os.path.isfile(p):
+        return jsonify(error="not found"), 404
+    os.remove(p)
+    return "", 204
+
+
+# ---------------- 数据导出 / 导入(备份) ----------------
+
+@app.get("/api/export")
+@login_required
+def export_data():
+    """导出全部内容为 JSON(不含密码哈希)"""
+    payload = {
+        "version": 1,
+        "exported_at": datetime.now(timezone.utc).isoformat(),
+        "skills": db.get_skills(),
+        "timeline": db.get_timeline(),
+        "stats": db.get_stats(),
+        "works": db.get_works(),
+        "profile": db.get_profile(),
+    }
+    body = json.dumps(payload, ensure_ascii=False, indent=2)
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    resp = app.response_class(body, mimetype="application/json")
+    resp.headers["Content-Disposition"] = f'attachment; filename="mysite-backup-{stamp}.json"'
+    return resp
+
+
+@app.post("/api/import")
+@login_required
+def import_data():
+    """从 JSON 恢复内容。默认合并(按 id 覆盖),replace=true 则先清空"""
+    payload = request.get_json(force=True, silent=True)
+    if not isinstance(payload, dict):
+        return jsonify(error="文件格式不对,需要导出的 JSON"), 400
+
+    kinds = ("skills", "timeline", "stats", "works", "profile")
+    if not any(isinstance(payload.get(k), list) for k in kinds):
+        return jsonify(error="里面没有可恢复的数据"), 400
+
+    replace = bool(payload.get("replace"))
+    counts = db.import_payload(payload, replace=replace)
+    return jsonify(ok=True, replace=replace, counts=counts)
+
+
 # ---------------- 模板过滤器 ----------------
 
 # (备用)
 
 
 # ---------------- 启动 ----------------
-
 # gunicorn 导入本模块时不走 __main__,所以建库必须放模块级
 os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
 db.init_db(DB_PATH)

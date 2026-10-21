@@ -63,6 +63,20 @@ window.addEventListener('scroll', () => {
 }, { passive: true });
 backTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
 
+// ===== 深色模式切换 =====
+const themeToggle = document.getElementById('themeToggle');
+const applyTheme = t => {
+  if (t === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+  else document.documentElement.removeAttribute('data-theme');
+  try { localStorage.setItem('theme', t); } catch (e) {}
+};
+if (themeToggle) {
+  themeToggle.addEventListener('click', () => {
+    const cur = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+    applyTheme(cur === 'dark' ? 'light' : 'dark');
+  });
+}
+
 // ===== 微信二维码弹窗 =====
 const qrOverlay = document.getElementById('qrOverlay');
 const wechatBtn = document.getElementById('wechatBtn');
@@ -135,6 +149,49 @@ async function loadDynamicContent() {
         <h3>${esc(e.title)}</h3>
         <p>${esc(e.content)}</p>
           </div>
+        </div>`).join('');
+      observeReveals();
+    }
+  }
+
+  // ---- 项目墙 ----
+  if (Array.isArray(data.works) && data.works.length) {
+    const grid = document.getElementById('worksGrid');
+    if (grid) {
+      grid.innerHTML = data.works.map((w, i) => `
+        <article class="card work-card reveal d${i % 3}">
+          <div class="work-cover cover-${escAttr(w.cover)}">${esc(w.emoji)}</div>
+          <div class="work-body">
+            <h3>${esc(w.title)}</h3>
+            <p>${esc(w.desc)}</p>
+            <div class="work-meta">
+              <span class="work-pill">${esc(w.pill)}</span>
+              ${w.link ? `<a href="${escAttr(w.link)}" class="link" target="_blank" rel="noopener noreferrer">去看看 →</a>` : ''}
+            </div>
+          </div>
+        </article>`).join('');
+      observeReveals();
+    }
+  }
+
+  // ---- 关于我(自我介绍段落 + 信息卡片) ----
+  if (Array.isArray(data.profile) && data.profile.length) {
+    const abouts = data.profile.filter(p => p.kind === 'about');
+    const infos = data.profile.filter(p => p.kind === 'info');
+
+    const aboutCard = document.getElementById('aboutCard');
+    if (aboutCard && abouts.length) {
+      aboutCard.innerHTML = abouts.map(p =>
+        `<p><strong>${esc(p.label)}:</strong>${esc(p.value)}</p>`).join('');
+    }
+
+    const infoBox = document.getElementById('infoCards');
+    if (infoBox && infos.length) {
+      infoBox.innerHTML = infos.map((p, i) => `
+        <div class="info-card reveal d${i % 4}">
+          <span class="ic">${esc(p.emoji)}</span>
+          <div class="k">${esc(p.label)}</div>
+          <div class="v">${esc(p.value)}</div>
         </div>`).join('');
       observeReveals();
     }

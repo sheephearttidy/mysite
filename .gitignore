@@ -23,3 +23,5 @@ admin/data/
 admin/venv/
 venv/
 .env
+# 后台上传的图片(运行时数据,不进仓库)
+assets/uploads/

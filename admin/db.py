@@ -39,6 +39,26 @@ CREATE TABLE IF NOT EXISTS stats (
     sort INTEGER NOT NULL DEFAULT 0
 );
 
+CREATE TABLE IF NOT EXISTS works (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    emoji TEXT NOT NULL DEFAULT '🛠️',
+    cover TEXT NOT NULL DEFAULT 'pink',   -- 封面底色 key: pink/yellow/teal/purple/orange/blue
+    title TEXT NOT NULL,
+    desc TEXT DEFAULT '',
+    pill TEXT DEFAULT '进行中',            -- 状态小标签
+    link TEXT DEFAULT '',                  -- 外部链接,空则不显示
+    sort INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS profile (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    kind TEXT NOT NULL DEFAULT 'info',     -- about(自我介绍段落) / info(信息卡片)
+    emoji TEXT DEFAULT '',
+    label TEXT DEFAULT '',                 -- about: 小标题; info: 卡片标题
+    value TEXT DEFAULT '',                 -- about: 正文; info: 卡片内容
+    sort INTEGER NOT NULL DEFAULT 0
+);
+
 CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
@@ -72,6 +92,38 @@ SEED = {
         ("🌙", 999, " 次", "熬夜次数(保守估计)", 2),
         ("💬", 1000, " 条", "调教 DeepSeek 的 prompt", 3),
         ("🍚", 100, " %", "干饭热情(从不迟到)", 4),
+    ],
+    "works": [
+        ("🏎️", "pink", "智能车 · 主线任务",
+         "正在攻关的核心项目:循迹、避障、PID 控制,目标是让它自己稳稳跑完赛道。",
+         "进行中", "https://github.com/sheephearttidy", 1),
+        ("🤖", "yellow", "AI / Agent 探索",
+         "学习路线上的副本任务:折腾大模型、写 Agent,这个网页就有一部分是 AI 协作的产物。",
+         "探索中", "https://github.com/sheephearttidy", 2),
+        ("🌐", "teal", "全栈小项目",
+         "Flask / Node.js + 前端三件套练手,从接口到页面一手包办,顺便练 Docker 部署。",
+         "练手作", "https://github.com/sheephearttidy", 3),
+        ("💻", "purple", "GitHub 仓库",
+         "所有公开代码都在 @sheephearttidy,欢迎来逛,点个 star 就是最大的鼓励。",
+         "持续更新", "https://github.com/sheephearttidy", 4),
+        ("📄", "orange", "这个网页本身",
+         "纯 HTML/CSS/JS 手搓的青春贴纸风主页,分文件结构,算是一次小小的前端实战。",
+         "你现在看着呢", "https://github.com/sheephearttidy", 5),
+        ("🚧", "blue", "更多项目装修中",
+         "位子先占上,等我做出更酷的东西就填进来。敬请期待(并不是敷衍)。",
+         "敬请期待", "https://github.com/sheephearttidy", 6),
+    ],
+    "profile": [
+        ("about", "", "是谁",
+         "至尊杰,燕京理工学院计算机科学与技术 2026 级。每天在上课、写代码和调车之间反复横跳。", 1),
+        ("about", "", "在干嘛",
+         "主攻方向是智能车 AI——从循迹、避障到让小车自己学会跑圈。前后端也都有涉猎,坚信「能用代码解决的事就不算事」。", 2),
+        ("about", "", "小目标",
+         "让小车稳稳跑完全程不撞墙,顺便把 AI 和 Agent 玩明白,做出真正能跑起来、有人用的东西。", 3),
+        ("info", "🎓", "专业", "计算机科学与技术", 1),
+        ("info", "🏫", "学校", "燕京理工学院", 2),
+        ("info", "🔥", "正在沉迷", "智能车 AI", 3),
+        ("info", "⚡", "当前状态", "learning & building", 4),
     ],
 }
 
@@ -163,6 +215,14 @@ def init_db(path):
             c.executemany(
                 "INSERT INTO stats(emoji,number,unit,label,sort) VALUES(?,?,?,?,?)",
                 SEED["stats"])
+        if c.execute("SELECT COUNT(*) FROM works").fetchone()[0] == 0:
+            c.executemany(
+                "INSERT INTO works(emoji,cover,title,desc,pill,link,sort) VALUES(?,?,?,?,?,?,?)",
+                SEED["works"])
+        if c.execute("SELECT COUNT(*) FROM profile").fetchone()[0] == 0:
+            c.executemany(
+                "INSERT INTO profile(kind,emoji,label,value,sort) VALUES(?,?,?,?,?)",
+                SEED["profile"])
         # 初始密码 admin,标记必须修改
         if c.execute("SELECT COUNT(*) FROM settings WHERE key='pass_hash'").fetchone()[0] == 0:
             c.execute("INSERT INTO settings(key,value) VALUES('pass_hash',?)",
@@ -294,3 +354,133 @@ def delete_stat(sid):
     with get_db() as c:
         cur = c.execute("DELETE FROM stats WHERE id=?", (sid,))
         return cur.rowcount > 0
+
+
+# ---------------- works(项目墙) ----------------
+
+def get_works():
+    with get_db() as c:
+        rows = c.execute("SELECT * FROM works ORDER BY sort, id").fetchall()
+        return [dict(r) for r in rows]
+
+
+def insert_work(item):
+    with get_db() as c:
+        cur = c.execute(
+            "INSERT INTO works(emoji,cover,title,desc,pill,link,sort) VALUES(?,?,?,?,?,?,?)",
+            (item.get("emoji", "🛠️"), item.get("cover", "pink"), item.get("title", ""),
+             item.get("desc", ""), item.get("pill", "进行中"), item.get("link", ""),
+             int(item.get("sort", 99))))
+        row = c.execute("SELECT * FROM works WHERE id=?", (cur.lastrowid,)).fetchone()
+        return dict(row)
+
+
+def update_work(wid, item):
+    with get_db() as c:
+        row = c.execute("SELECT * FROM works WHERE id=?", (wid,)).fetchone()
+        if not row:
+            return None
+        merged = dict(row)
+        merged.update({k: item[k] for k in
+                       ("emoji", "cover", "title", "desc", "pill", "link") if k in item})
+        if "sort" in item:
+            merged["sort"] = int(item["sort"])
+        c.execute(
+            "UPDATE works SET emoji=?,cover=?,title=?,desc=?,pill=?,link=?,sort=? WHERE id=?",
+            (merged["emoji"], merged["cover"], merged["title"], merged["desc"],
+             merged["pill"], merged["link"], merged["sort"], wid))
+        return merged
+
+
+def delete_work(wid):
+    with get_db() as c:
+        cur = c.execute("DELETE FROM works WHERE id=?", (wid,))
+        return cur.rowcount > 0
+
+
+# ---------------- profile(关于我 / 信息卡片) ----------------
+
+def get_profile():
+    with get_db() as c:
+        rows = c.execute("SELECT * FROM profile ORDER BY kind, sort, id").fetchall()
+        return [dict(r) for r in rows]
+
+
+def insert_profile(item):
+    with get_db() as c:
+        cur = c.execute(
+            "INSERT INTO profile(kind,emoji,label,value,sort) VALUES(?,?,?,?,?)",
+            (item.get("kind", "info"), item.get("emoji", ""), item.get("label", ""),
+             item.get("value", ""), int(item.get("sort", 99))))
+        row = c.execute("SELECT * FROM profile WHERE id=?", (cur.lastrowid,)).fetchone()
+        return dict(row)
+
+
+def update_profile(pid, item):
+    with get_db() as c:
+        row = c.execute("SELECT * FROM profile WHERE id=?", (pid,)).fetchone()
+        if not row:
+            return None
+        merged = dict(row)
+        merged.update({k: item[k] for k in ("kind", "emoji", "label", "value") if k in item})
+        if "sort" in item:
+            merged["sort"] = int(item["sort"])
+        c.execute("UPDATE profile SET kind=?,emoji=?,label=?,value=?,sort=? WHERE id=?",
+                  (merged["kind"], merged["emoji"], merged["label"], merged["value"],
+                   merged["sort"], pid))
+        return merged
+
+
+def delete_profile(pid):
+    with get_db() as c:
+        cur = c.execute("DELETE FROM profile WHERE id=?", (pid,))
+        return cur.rowcount > 0
+
+
+# ---------------- 备份导入 ----------------
+
+IMPORT_FIELDS = {
+    "skills": ("name", "percent", "note", "category", "color", "sort"),
+    "timeline": ("emoji", "time_label", "title", "content", "sort"),
+    "stats": ("emoji", "number", "unit", "label", "sort"),
+    "works": ("emoji", "cover", "title", "desc", "pill", "link", "sort"),
+    "profile": ("kind", "emoji", "label", "value", "sort"),
+}
+
+
+def import_payload(payload: dict, replace: bool = False) -> dict:
+    """把导出的 JSON 写回数据库,返回各表恢复条数
+
+    replace=False:合并 —— 有 id 就覆盖同 id,没 id 就新增
+    replace=True :先清空该表再全量写入
+    """
+    counts = {}
+    with get_db() as c:
+        for table, fields in IMPORT_FIELDS.items():
+            rows = payload.get(table)
+            if not isinstance(rows, list):
+                continue
+            if replace:
+                c.execute(f"DELETE FROM {table}")
+
+            n = 0
+            for row in rows:
+                if not isinstance(row, dict):
+                    continue
+                vals = tuple(row.get(f) for f in fields)
+                rid = row.get("id")
+                if rid is not None and not replace:
+                    exists = c.execute(
+                        f"SELECT 1 FROM {table} WHERE id=?", (rid,)).fetchone()
+                    if exists:
+                        sets = ",".join(f"{f}=?" for f in fields)
+                        c.execute(f"UPDATE {table} SET {sets} WHERE id=?",
+                                  vals + (rid,))
+                        n += 1
+                        continue
+                cols = ",".join(fields)
+                marks = ",".join("?" * len(fields))
+                c.execute(f"INSERT INTO {table}({cols}) VALUES({marks})", vals)
+                n += 1
+            counts[table] = n
+    return counts

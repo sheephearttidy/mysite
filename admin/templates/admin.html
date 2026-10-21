@@ -148,6 +148,30 @@
   .pbtns .ok { background: var(--teal); color: #fff; }
   .pbtns .no { background: var(--cream); color: var(--ink); }
   .pbtns button:hover { transform: translate(-1px,-1px); }
+
+  /* 图片上传 */
+  .upload-zone {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    padding: 16px; border: 3px dashed var(--ink); border-radius: 14px;
+    background: var(--cream); margin-bottom: 16px;
+    transition: background .15s ease, border-color .15s ease;
+  }
+  .upload-zone.dragover { background: var(--teal-bg); border-color: var(--teal); }
+  .up-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+  .up-item {
+    border: 3px solid var(--ink); border-radius: 12px; overflow: hidden;
+    background: var(--cream); box-shadow: 3px 3px 0 var(--ink);
+  }
+  .up-item img { display: block; width: 100%; height: 96px; object-fit: cover; background: #fff; }
+  .up-item .up-meta { padding: 4px 8px 6px; font-size: 11px; font-weight: 700; color: #6b6577; }
+  .up-item .up-ops { display: flex; gap: 4px; padding: 0 8px 8px; }
+  .up-item .up-ops button {
+    flex: 1; font-size: 11px; font-weight: 800; font-family: inherit; cursor: pointer;
+    border: 2px solid var(--ink); border-radius: 7px; padding: 1px 4px;
+    background: var(--paper); color: var(--ink);
+  }
+  .up-item .up-ops .copy { background: var(--yellow); }
+  .up-item .up-ops .rm { background: #ffe4ef; color: var(--red); }
 </style>
 </head>
 <body>
@@ -202,6 +226,61 @@
     <div class="grid" id="list-stats"></div>
   </section>
 
+  <!-- 项目墙 -->
+  <section class="sec">
+    <div class="sec-head">
+      <h2>🛠️ 项目墙管理</h2>
+      <button class="add" onclick="editItem('works', null)">＋ 新增项目</button>
+      <span class="hint">主页「我的小破项目们」板块</span>
+    </div>
+    <div class="grid" id="list-works"></div>
+  </section>
+
+  <!-- 关于我 -->
+  <section class="sec">
+    <div class="sec-head">
+      <h2>🧍 关于我管理</h2>
+      <button class="add" onclick="editItem('profile', null)">＋ 新增</button>
+      <span class="hint">「关于」板块:自我介绍段落 + 右侧信息卡片</span>
+    </div>
+    <div class="grid" id="list-profile"></div>
+  </section>
+
+  <!-- 图片上传 -->
+  <section class="sec">
+    <div class="sec-head">
+      <h2>🖼️ 图片管理</h2>
+      <span class="hint">传上去的图可以直接用在页面里,支持 png/jpg/gif/webp,单张 ≤5MB</span>
+    </div>
+    <div class="item">
+      <div class="upload-zone" id="uploadZone">
+        <input type="file" id="fileInput" accept="image/png,image/jpeg,image/gif,image/webp" hidden />
+        <button class="op edit" onclick="document.getElementById('fileInput').click()">📁 选择图片上传</button>
+        <span class="hint" id="uploadHint">也可以直接把图片拖到这里</span>
+      </div>
+      <div class="up-grid" id="upGrid"></div>
+    </div>
+  </section>
+
+  <!-- 备份 -->
+  <section class="sec">
+    <div class="sec-head">
+      <h2>💾 数据备份</h2>
+      <span class="hint">导出所有内容为 JSON;换服务器或改坏了可以一键恢复</span>
+    </div>
+    <div class="item">
+      <div class="ops" style="margin-top:0">
+        <a class="op save" href="/api/export" download>⬇️ 导出全部数据</a>
+        <button class="op edit" onclick="document.getElementById('importInput').click()">⬆️ 从 JSON 恢复</button>
+        <input type="file" id="importInput" accept="application/json,.json" hidden />
+        <button class="op del" onclick="importReplace()">⚠️ 清空并恢复</button>
+      </div>
+      <p class="hint" style="margin-top:10px">
+        「从 JSON 恢复」= 合并(同 id 覆盖,新的追加);「清空并恢复」= 先删光再导入,谨慎使用
+      </p>
+    </div>
+  </section>
+
 </div>
 
 <div id="toast"></div>
@@ -252,6 +331,7 @@ function escAttr(s) { return esc(s).replace(/"/g, '&quot;').replace(/'/g, '&#39;
 /* ---------- 列表渲染 ---------- */
 function renderAll() {
   renderSkills(); renderTimeline(); renderStats();
+  renderWorks(); renderProfile();
 }
 
 function renderSkills() {
@@ -306,6 +386,42 @@ function renderStats() {
     </div>`).join('') || '<p class="hint">还没有趣味数据,来一个?~</p>';
 }
 
+function renderWorks() {
+  const box = document.getElementById('list-works');
+  box.innerHTML = DATA.works.map(w => `
+    <div class="item">
+      <div class="item-top">
+        <span class="badge serious">${esc(w.emoji)} ${esc(w.pill)}</span>
+        <span class="meta">#${w.sort}</span>
+      </div>
+      <h3>${esc(w.title)}</h3>
+      ${w.desc ? `<div class="note">${esc(w.desc)}</div>` : ''}
+      ${w.link ? `<div class="note">🔗 ${esc(w.link)}</div>` : '<div class="note">(无链接)</div>'}
+      <div class="ops">
+        <button class="op edit" onclick="editItem('works', ${w.id})">✏️ 编辑</button>
+        <button class="op del" onclick="delItem('works', ${w.id})">🗑️ 删除</button>
+      </div>
+    </div>`).join('') || '<p class="hint">项目墙空空的,加个项目吧~</p>';
+}
+
+function renderProfile() {
+  const box = document.getElementById('list-profile');
+  const KIND = { about:'自我介绍', info:'信息卡片' };
+  box.innerHTML = DATA.profile.map(p => `
+    <div class="item">
+      <div class="item-top">
+        <span class="badge ${p.kind === 'about' ? 'serious' : 'passive'}">${esc(p.emoji)} ${KIND[p.kind] || p.kind}</span>
+        <span class="meta">#${p.sort}</span>
+      </div>
+      <h3>${esc(p.label)}</h3>
+      ${p.value ? `<div class="note">${esc(p.value)}</div>` : ''}
+      <div class="ops">
+        <button class="op edit" onclick="editItem('profile', ${p.id})">✏️ 编辑</button>
+        <button class="op del" onclick="delItem('profile', ${p.id})">🗑️ 删除</button>
+      </div>
+    </div>`).join('') || '<p class="hint">「关于我」还是空的~</p>';
+}
+
 /* ---------- 编辑 / 新增 ---------- */
 const FIELDS = {
   skills: [
@@ -330,6 +446,24 @@ const FIELDS = {
     { k:'unit',   label:'单位(如 杯 / 次)', type:'text' },
     { k:'label',  label:'说明文字',          type:'text' },
     { k:'sort',   label:'排序(小的在前)',   type:'number' },
+  ],
+  works: [
+    { k:'emoji', label:'封面 emoji',        type:'text' },
+    { k:'cover', label:'封面底色',           type:'select',
+      opts:{pink:'粉', yellow:'黄', teal:'薄荷绿', purple:'紫', orange:'橙', blue:'蓝'} },
+    { k:'title', label:'项目名',             type:'text' },
+    { k:'desc',  label:'项目描述',           type:'textarea' },
+    { k:'pill',  label:'状态标签(如 进行中)', type:'text' },
+    { k:'link',  label:'链接(留空则不显示)', type:'text' },
+    { k:'sort',  label:'排序(小的在前)',     type:'number' },
+  ],
+  profile: [
+    { k:'kind',  label:'类型',               type:'select',
+      opts:{about:'自我介绍段落', info:'信息卡片'} },
+    { k:'emoji', label:'图标 emoji(信息卡片用)', type:'text' },
+    { k:'label', label:'小标题 / 卡片标题',   type:'text' },
+    { k:'value', label:'正文 / 卡片内容',     type:'textarea' },
+    { k:'sort',  label:'排序(小的在前)',     type:'number' },
   ],
 };
 
@@ -402,6 +536,115 @@ async function delItem(kind, id) {
 }
 
 renderAll();
+
+/* ---------- 图片上传 ---------- */
+const fileInput = document.getElementById('fileInput');
+const uploadZone = document.getElementById('uploadZone');
+
+async function uploadFile(file) {
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) { toast('图片太大了,压缩到 5MB 以内 😵'); return; }
+  const fd = new FormData();
+  fd.append('file', file);
+  toast('上传中...');
+  try {
+    const res = await fetch('/api/upload', { method: 'POST', body: fd });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok) { toast('上传失败:' + (j.error || res.status) + ' 😵'); return; }
+    toast('上传成功 🎉');
+    loadUploads();
+  } catch (e) { toast('网络出错了,再试试 😵'); }
+}
+
+fileInput.addEventListener('change', e => {
+  uploadFile(e.target.files[0]);
+  e.target.value = '';
+});
+
+// 拖拽上传
+['dragenter', 'dragover'].forEach(ev =>
+  uploadZone.addEventListener(ev, e => { e.preventDefault(); uploadZone.classList.add('dragover'); }));
+['dragleave', 'drop'].forEach(ev =>
+  uploadZone.addEventListener(ev, e => { e.preventDefault(); uploadZone.classList.remove('dragover'); }));
+uploadZone.addEventListener('drop', e => {
+  const f = e.dataTransfer.files && e.dataTransfer.files[0];
+  uploadFile(f);
+});
+
+async function loadUploads() {
+  const box = document.getElementById('upGrid');
+  try {
+    const res = await fetch('/api/uploads');
+    if (!res.ok) return;
+    const { items } = await res.json();
+    box.innerHTML = items.map(it => `
+      <div class="up-item">
+        <img src="${escAttr(it.url)}" alt="" loading="lazy" />
+        <div class="up-meta">${(it.size / 1024).toFixed(0)} KB · ${esc(it.mtime)}</div>
+        <div class="up-ops">
+          <button class="copy" onclick="copyUrl('${escAttr(it.url)}')">📋 复制路径</button>
+          <button class="rm" onclick="delUpload('${escAttr(it.name)}')">🗑️</button>
+        </div>
+      </div>`).join('') || '<p class="hint">还没传过图,拖一张进来试试~</p>';
+  } catch {}
+}
+
+function copyUrl(url) {
+  navigator.clipboard.writeText(url).then(
+    () => toast('路径已复制:' + url),
+    () => toast('复制失败,手动选中吧:' + url)
+  );
+}
+
+async function delUpload(name) {
+  if (!confirm('删除这张图?如果页面正在用会变成裂图哦')) return;
+  try {
+    const res = await fetch('/api/uploads/' + encodeURIComponent(name), { method: 'DELETE' });
+    if (!res.ok) { toast('删除失败 😵'); return; }
+    toast('已删除 🗑️');
+    loadUploads();
+  } catch { toast('网络出错了 😵'); }
+}
+loadUploads();
+
+/* ---------- 数据导入 ---------- */
+const importInput = document.getElementById('importInput');
+let pendingReplace = false;
+
+importInput.addEventListener('change', e => {
+  const f = e.target.files[0];
+  e.target.value = '';
+  const replace = pendingReplace;
+  pendingReplace = false;
+  if (f) doImport(f, replace);
+});
+
+function importReplace() {
+  if (!confirm('⚠️ 会先清空所有内容再导入,确定吗?')) return;
+  pendingReplace = true;
+  document.getElementById('importInput').click();
+}
+
+async function doImport(file, replace) {
+  if (!confirm(replace ? '⚠️ 确定清空并恢复?' : '确定用这个文件恢复内容吗?')) return;
+  try {
+    const text = await file.text();
+    const payload = JSON.parse(text);
+    payload.replace = replace;
+    const res = await fetch('/api/import', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok) { toast('恢复失败:' + (j.error || res.status) + ' 😵'); return; }
+    const summary = Object.entries(j.counts || {}).map(([k, v]) => `${k}:${v}`).join(' ');
+    toast('恢复成功 ✅ ' + summary);
+    setTimeout(() => location.reload(), 1200);
+  } catch (err) {
+    toast('文件读取失败,确认是导出的 JSON 吗? 😵');
+  }
+}
 
 /* ---------- 改密码 ---------- */
 const MUST_CHANGE = {{ 'true' if must_change else 'false' }};

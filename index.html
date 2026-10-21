@@ -9,6 +9,16 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="css/style.css" />
+<script>
+  // 尽早应用主题,避免深色模式闪白
+  (function () {
+    try {
+      var t = localStorage.getItem('theme');
+      if (!t) t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      if (t === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+    } catch (e) {}
+  })();
+</script>
 </head>
 <body>
 
@@ -25,6 +35,9 @@
       <li><a href="#works">小破项目</a></li>
       <li><a href="#campus">校园日常</a></li>
       <li><a href="#contact">来找我玩</a></li>
+      <li><button class="theme-toggle" id="themeToggle" aria-label="切换深色模式" title="切换深色模式">
+        <span class="ti-sun">☀️</span><span class="ti-moon">🌙</span>
+      </button></li>
     </ul>
   </div>
 </nav>
@@ -127,7 +140,7 @@
       <div class="wave-line"></div>
     </div>
     <div class="about-grid">
-      <div class="card about-card reveal">
+      <div class="card about-card reveal" id="aboutCard">
         <p><strong>是谁:</strong>至尊杰,燕京理工学院计算机科学与技术 2026 级。每天在
           <span class="sticker-word sw-teal">上课</span>
           <span class="sticker-word sw-pink">写代码</span>和
@@ -138,7 +151,7 @@
         <p><strong>小目标:</strong>让小车稳稳跑完全程不撞墙,顺便把 AI 和 Agent 玩明白,
           做出真正能跑起来、有人用的东西。</p>
       </div>
-      <div class="info-cards">
+      <div class="info-cards" id="infoCards">
         <div class="info-card reveal"><span class="ic">🎓</span><div class="k">专业</div><div class="v">计算机科学与技术</div></div>
         <div class="info-card reveal d1"><span class="ic">🏫</span><div class="k">学校</div><div class="v">燕京理工学院</div></div>
         <div class="info-card reveal d2"><span class="ic">🔥</span><div class="k">正在沉迷</div><div class="v">智能车 AI</div></div>
@@ -287,7 +300,7 @@
       <h2>我的小破项目们 🛠️</h2>
       <div class="wave-line"></div>
     </div>
-    <div class="works-grid">
+    <div class="works-grid" id="worksGrid">
       <article class="card work-card reveal">
         <div class="work-cover wc-1">🏎️</div>
         <div class="work-body">
