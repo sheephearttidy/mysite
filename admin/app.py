@@ -145,9 +145,14 @@ def inject_csp_nonce():
 
 
 # 前台静态站由 nginx 直出,CSP 只需要罩住 Flask 渲染的后台页
+# v2.3.1 修复:去掉 'strict-dynamic'——它会让浏览器忽略 'self' 且只认
+# nonce 链,导致没带 nonce 的外链模块脚本(admin 七模块/theme/qrcode)
+# 全部被拦,后台 JS 整体失效。改为:所有 <script>(内联+外链)统一带
+# nonce;onclick= 行内事件靠 script-src-attr 放行(后台表单体系依赖它)。
 CSP_POLICY = (
     "default-src 'self'; "
-    "script-src 'self' 'nonce-{nonce}' 'strict-dynamic'; "
+    "script-src 'self' 'nonce-{nonce}'; "
+    "script-src-attr 'unsafe-inline'; "
     "style-src 'self' 'unsafe-inline'; "
     "img-src 'self' data:; "
     "font-src 'self' data:; "

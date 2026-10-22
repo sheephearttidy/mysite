@@ -21,7 +21,7 @@
     } catch (e) {}
   })();
 </script>
-<script src="{{ url_for('static', filename='js/holiday.js') }}?v={{ asset_ver }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ url_for('static', filename='js/holiday.js') }}?v={{ asset_ver }}"></script>
 </head>
 <body>
 
@@ -756,16 +756,16 @@
 window.__ADMIN_DATA__ = {{ data | tojson }};
 window.__ADMIN_MUST_CHANGE__ = {{ 'true' if must_change else 'false' }};
 </script>
-<script src="{{ url_for('static', filename='js/theme.js') }}?v={{ asset_ver }}"></script>
-<script src="{{ url_for('static', filename='js/qrcode.min.js') }}?v={{ asset_ver }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ url_for('static', filename='js/theme.js') }}?v={{ asset_ver }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ url_for('static', filename='js/qrcode.min.js') }}?v={{ asset_ver }}"></script>
 <!-- v2.1 拆分:核心工具 → 导航面板 → 内容管理 → 媒体 → 运营 → 收尾(保序即等价) -->
-<script src="{{ url_for('static', filename='js/admin/admin-core.js') }}?v={{ asset_ver }}"></script>
-<script src="{{ url_for('static', filename='js/admin/admin-panel.js') }}?v={{ asset_ver }}"></script>
-<script src="{{ url_for('static', filename='js/admin/admin-content.js') }}?v={{ asset_ver }}"></script>
-<script src="{{ url_for('static', filename='js/admin/admin-media.js') }}?v={{ asset_ver }}"></script>
-<script src="{{ url_for('static', filename='js/admin/admin-ops.js') }}?v={{ asset_ver }}"></script>
-<script src="{{ url_for('static', filename='js/admin/admin-site.js') }}?v={{ asset_ver }}"></script>
-<script src="{{ url_for('static', filename='js/admin/admin-app.js') }}?v={{ asset_ver }}"></script>
-<script src="{{ url_for('static', filename='js/holiday-fx.js') }}?v={{ asset_ver }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ url_for('static', filename='js/admin/admin-core.js') }}?v={{ asset_ver }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ url_for('static', filename='js/admin/admin-panel.js') }}?v={{ asset_ver }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ url_for('static', filename='js/admin/admin-content.js') }}?v={{ asset_ver }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ url_for('static', filename='js/admin/admin-media.js') }}?v={{ asset_ver }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ url_for('static', filename='js/admin/admin-ops.js') }}?v={{ asset_ver }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ url_for('static', filename='js/admin/admin-site.js') }}?v={{ asset_ver }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ url_for('static', filename='js/admin/admin-app.js') }}?v={{ asset_ver }}"></script>
+<script nonce="{{ csp_nonce }}" src="{{ url_for('static', filename='js/holiday-fx.js') }}?v={{ asset_ver }}"></script>
 </body>
 </html>
