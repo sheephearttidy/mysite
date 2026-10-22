@@ -206,3 +206,44 @@ textarea.sf-input { width: 100%; resize: vertical; min-height: 74px; }
   .click-fx { display: none; }
   .like-btn.pop, .like-btn.liked .like-ico { animation: none; }
 }
+
+/* ============================================================
+   v1.9.1 氛围包:主题色切换 + 问候语
+   ============================================================ */
+.accent-btn {
+  position: fixed; right: 18px; bottom: 84px; z-index: 1200;
+  width: 44px; height: 44px; border-radius: 50%;
+  border: 2px solid var(--shadow); background: #fff;
+  box-shadow: 3px 3px 0 var(--shadow); font-size: 19px;
+  cursor: pointer; transition: all .15s ease;
+}
+.accent-btn:hover { transform: translate(-1px, -1px) rotate(-8deg); box-shadow: 4px 4px 0 var(--shadow); }
+.accent-panel {
+  position: fixed; right: 72px; bottom: 84px; z-index: 1200;
+  display: none; gap: 8px; padding: 10px 12px;
+  background: #fff; border: 2px solid var(--shadow); border-radius: 999px;
+  box-shadow: 4px 4px 0 var(--shadow);
+}
+.accent-panel.open { display: flex; }
+.accent-opt {
+  width: 26px; height: 26px; border-radius: 50%;
+  border: 2px solid rgba(0,0,0,.15); cursor: pointer;
+  transition: transform .15s ease;
+}
+.accent-opt:hover { transform: scale(1.2); }
+.accent-opt.on { border-color: #333; transform: scale(1.15); box-shadow: 0 0 0 3px rgba(0,0,0,.08); }
+
+.greet-line, .greet-emoji { font-weight: 700; }
+.greet-emoji { margin-right: 2px; }
+
+[data-theme="dark"] .accent-btn { background: #2a2b33; }
+[data-theme="dark"] .accent-panel { background: #2a2b33; }
+[data-theme="dark"] .accent-opt.on { border-color: #fff; }
+
+@media (max-width: 640px) {
+  .accent-panel { right: 64px; padding: 8px 10px; gap: 6px; }
+  .accent-opt { width: 22px; height: 22px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .accent-btn:hover { transform: none; }
+}
