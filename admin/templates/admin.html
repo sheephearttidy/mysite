@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#1c1a21" media="(prefers-color-scheme: dark)" />
 <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}?v={{ asset_ver }}" />
 <link rel="stylesheet" href="{{ url_for('static', filename='css/holidays.css') }}?v={{ asset_ver }}" />
-<script>
+<script nonce="{{ csp_nonce }}">
   // 尽早应用主题,避免深色模式闪白
   // 优先级:手动选择 > 系统偏好
   (function () {
@@ -632,6 +632,25 @@
               <label class="sf-label">审计日志保留条数<span class="sf-note">超出后只显示最新的</span></label>
               <input class="sf-input" type="number" id="setAuditKeep" min="50" max="5000" />
             </div>
+            <div class="sf-row">
+              <label class="sf-label">密码最小长度(v2.3)<span class="sf-note">改密码时强制校验,6~64 位</span></label>
+              <input class="sf-input" type="number" id="setPassMinlen" min="6" max="64" />
+            </div>
+            <div class="sf-row">
+              <label class="sf-label">密码字符种类下限(v2.3)<span class="sf-note">小写/大写/数字/符号,至少占几种,1~4</span></label>
+              <input class="sf-input" type="number" id="setPassClasses" min="1" max="4" />
+            </div>
+            <div class="sf-row">
+              <label class="sf-label">登录失败时延(秒,v2.3)<span class="sf-note">答错密码后强制等这么久,拖垮爆破速度,0~10</span></label>
+              <input class="sf-input" type="number" id="setLoginDelay" min="0" max="10" />
+            </div>
+            <div class="sf-row">
+              <label class="sf-label">会话绑定登录 IP(v2.3)<span class="sf-note">开启后 Cookie 换网络即失效;IP 会变的网络慎开</span></label>
+              <label class="switch">
+                <input type="checkbox" id="setBindIp" />
+                <span class="slider"></span>
+              </label>
+            </div>
             <div class="ops" style="margin-top:14px">
               <button class="op add" onclick="saveSecSettings()">💾 保存设置</button>
               <button class="op del" onclick="loadSecOverview()">↻ 重新读取</button>
@@ -732,7 +751,7 @@
   </div>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 // 模板数据注入:外部的 admin.js 从这里读取
 window.__ADMIN_DATA__ = {{ data | tojson }};
 window.__ADMIN_MUST_CHANGE__ = {{ 'true' if must_change else 'false' }};

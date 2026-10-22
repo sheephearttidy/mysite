@@ -250,6 +250,11 @@ function renderSecOverview(d) {
   document.getElementById('setIdleMinutes').value = s.sec_idle_minutes ?? 60;
   document.getElementById('setSessionHours').value = s.sec_session_hours || 168;
   document.getElementById('setAuditKeep').value = s.sec_audit_keep || 500;
+  // v2.3 密码策略/失败时延/IP 绑定
+  document.getElementById('setPassMinlen').value = s.sec_pass_minlen || 8;
+  document.getElementById('setPassClasses').value = s.sec_pass_classes || 2;
+  document.getElementById('setLoginDelay').value = s.sec_login_delay ?? 1;
+  document.getElementById('setBindIp').checked = s.sec_bind_ip === '1';
 
   // 封锁列表
   const bl = document.getElementById('secBlockedList');
@@ -307,6 +312,11 @@ async function saveSecSettings() {
     sec_idle_minutes: parseInt(document.getElementById('setIdleMinutes').value, 10),
     sec_session_hours: parseInt(document.getElementById('setSessionHours').value, 10),
     sec_audit_keep: parseInt(document.getElementById('setAuditKeep').value, 10),
+    // v2.3 密码策略/失败时延/IP 绑定
+    sec_pass_minlen: parseInt(document.getElementById('setPassMinlen').value, 10),
+    sec_pass_classes: parseInt(document.getElementById('setPassClasses').value, 10),
+    sec_login_delay: parseInt(document.getElementById('setLoginDelay').value, 10),
+    sec_bind_ip: document.getElementById('setBindIp').checked ? 1 : 0,
   };
   // 前端先挡一次明显非法的值,省一次往返
   for (const [k, v] of Object.entries(body)) {

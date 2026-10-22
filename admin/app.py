@@ -6,6 +6,7 @@
 import os
 import io
 import json
+import re
 import time
 import uuid
 import shutil
@@ -41,6 +42,37 @@ app.config["MAX_CONTENT_LENGTH"] = 8 * 1024 * 1024
 
 JSON_MAX_BYTES = 64 * 1024   # 普通 JSON 请求体上限 64KB
 
+# 本站对外域名(v2.3 Origin/Referer 校验用,防跨站伪造写请求)
+SITE_ORIGIN = os.environ.get("MYSITE_SITE_ORIGIN", "https://imyxj.xyz")
+
+
+@app.before_request
+def verify_write_origin():
+    """写操作(POST/PUT/DELETE)必须来自本站:Origin 优先,Referer 兜底。
+
+    浏览器发起的跨站表单/请求一定会带 Origin 或 Referer,两者都缺失的
+    只有服务器间的调用(curl 等),这类请求本来就没有浏览器会话,直接放行
+    (真正的写接口还有 @login_required 挡着)。
+    """
+    if request.method not in ("POST", "PUT", "DELETE", "PATCH"):
+        return None
+    origin = request.headers.get("Origin", "")
+    if origin:
+        if origin.rstrip("/") != SITE_ORIGIN:
+            db.add_audit("csrf_block", client_ip(),
+                         f"跨站写被拒:{origin} {request.path}")
+            return jsonify(error="非法来源(Origin 校验失败)"), 403
+        return None
+    ref = request.headers.get("Referer", "")
+    if ref:
+        m = re.match(r"^[a-z]+://([^/]+)", ref)
+        host = m.group(1) if m else ""
+        if host and host != request.host:
+            db.add_audit("csrf_block", client_ip(),
+                         f"跨站写被拒:{ref[:80]} {request.path}")
+            return jsonify(error="非法来源(Referer 校验失败)"), 403
+    return None
+
 
 @app.before_request
 def limit_json_body():
@@ -50,6 +82,19 @@ def limit_json_body():
     if request.content_length and request.content_length > JSON_MAX_BYTES:
         return jsonify(error="请求体太大了"), 413
     return None
+
+
+@app.after_request
+def security_headers(resp):
+    """Flask 渲染页统一加安全响应头(前台静态页由 nginx 的 snippet 负责)"""
+    from flask import g
+    if resp.mimetype and resp.mimetype.startswith("text/html"):
+        resp.headers.setdefault(
+            "Content-Security-Policy",
+            CSP_POLICY.format(nonce=getattr(g, "csp_nonce", "")))
+        # 后台页绝不能进任何缓存,否则 nonce 会串页
+        resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    return resp
 
 ADMIN_USER = os.environ.get("MYSITE_ADMIN_USER", "admin")
 
@@ -81,6 +126,37 @@ def _compute_asset_ver() -> str:
 
 
 ASSET_VER = _compute_asset_ver()
+
+# ---------------- v2.3 CSP nonce 基建 ----------------
+# 每个请求一把随机 nonce,模板内联 <script nonce="{{ csp_nonce }}"> 放行,
+# 其余内联/外站脚本一律被 CSP 拦下。页面不缓存 → nonce 不会复用。
+
+
+@app.before_request
+def make_csp_nonce():
+    from flask import g
+    g.csp_nonce = base64.b64encode(os.urandom(18)).decode()
+
+
+@app.context_processor
+def inject_csp_nonce():
+    from flask import g
+    return {"csp_nonce": getattr(g, "csp_nonce", "")}
+
+
+# 前台静态站由 nginx 直出,CSP 只需要罩住 Flask 渲染的后台页
+CSP_POLICY = (
+    "default-src 'self'; "
+    "script-src 'self' 'nonce-{nonce}' 'strict-dynamic'; "
+    "style-src 'self' 'unsafe-inline'; "
+    "img-src 'self' data:; "
+    "font-src 'self' data:; "
+    "connect-src 'self'; "
+    "frame-ancestors 'self'; "
+    "base-uri 'self'; "
+    "form-action 'self'; "
+    "object-src 'none'"
+)
 
 # 上传目录:放在静态站下面,前台可直接引用
 WEBROOT = os.path.dirname(BASE_DIR)                       # /var/www/mysite
@@ -136,6 +212,19 @@ def login_required(f):
                 return jsonify(error="session_revoked"), 401
             flash("这个登录已被踢下线,请重新登录", "error")
             return redirect(url_for("login"))
+
+        # v2.3 可选:会话绑定登录 IP,cookie 被偷到别的网络也用不了
+        if sid and db.get_sec("sec_bind_ip") == "1":
+            bound = session.get("ip")
+            if bound and bound != client_ip():
+                db.revoke_session(sid)
+                session.clear()
+                db.add_audit("ip_mismatch", client_ip(),
+                             f"会话 IP 不一致(登录于 {bound}),已作废")
+                if request.path.startswith("/api/"):
+                    return jsonify(error="ip_mismatch"), 401
+                flash("登录环境变了,为了安全请重新登录", "error")
+                return redirect(url_for("login"))
 
         # 空闲超时自动登出
         try:
@@ -408,6 +497,14 @@ def login():
                            ip=client_ip())
 
 
+@app.get("/admin/static/js/login.js")
+def _no_store_login_js():
+    """login.js 引用了带 nonce 的内联数据源,v2.3 起禁缓存"""
+    resp = send_from_directory(os.path.join(BASE_DIR, "static", "js"), "login.js")
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
+
+
 def _captcha_on() -> bool:
     return db.get_sec("sec_captcha") == "1"
 
@@ -465,6 +562,8 @@ def login_post():
     # 3. 密码
     if not check_admin_password(pwd):
         record_fail(ip, "密码错误")
+        time.sleep(min(2.0, max(0.0,
+                     float(db.get_sec("sec_login_delay") or 1.0))))
         flash("密码不对哦,再想想?🤔", "error")
         return redirect(url_for("login"))
 
@@ -484,6 +583,7 @@ def login_post():
     session["user"] = ADMIN_USER
     session["sid"] = sid
     session["last_seen"] = int(time.time())
+    session["ip"] = ip                  # v2.3:记录登录 IP,供可选绑定用
     session.permanent = True
     # 会话有效期按后台设置走(默认 168 小时 = 7 天)
     try:
@@ -530,6 +630,40 @@ def admin():
 
 # ---------------- 改密码 ----------------
 
+# v2.3 常见弱口令黑名单(全小写比对,命中即拒)
+WEAK_PASSWORDS = {
+    "123456", "12345678", "123456789", "1234567890",
+    "password", "password1", "qwerty", "abc123", "111111", "000000",
+    "admin", "admin123", "root", "toor", "passw0rd", "p@ssw0rd",
+    "iloveyou", "dragon", "monkey", "letmein", "welcome",
+    "qwertyuiop", "1q2w3e4r", "1qaz2wsx", "asd123", "a123456",
+    "88888888", "66666666", "5201314", "147258369", "987654321",
+}
+
+
+def check_password_policy(pwd: str) -> str | None:
+    """按后台可调策略校验新密码。返回 None=通过,否则返回拒绝原因。"""
+    try:
+        min_len = max(6, min(64, int(db.get_sec("sec_pass_minlen") or 8)))
+        min_class = max(1, min(4, int(db.get_sec("sec_pass_classes") or 2)))
+    except (TypeError, ValueError):
+        min_len, min_class = 8, 2
+
+    if len(pwd) < min_len:
+        return f"密码至少 {min_len} 位(后台可调)"
+    classes = sum([
+        bool(re.search(r"[a-z]", pwd)),
+        bool(re.search(r"[A-Z]", pwd)),
+        bool(re.search(r"[0-9]", pwd)),
+        bool(re.search(r"[^A-Za-z0-9]", pwd)),
+    ])
+    if classes < min_class:
+        return f"密码至少要包含 {min_class} 种字符(小写/大写/数字/符号)"
+    if pwd.lower() in WEAK_PASSWORDS:
+        return "这是常见弱密码,换一个"
+    return None
+
+
 @app.post("/api/password")
 @login_required
 def change_password():
@@ -540,8 +674,9 @@ def change_password():
 
     if not db.verify_password(old_pwd, db.get_pass_hash() or ""):
         return jsonify(error="旧密码不对哦"), 400
-    if len(new_pwd) < 6:
-        return jsonify(error="新密码至少 6 位啦"), 400
+    why = check_password_policy(new_pwd)
+    if why:
+        return jsonify(error=why), 400
     if new_pwd == old_pwd:
         return jsonify(error="新密码不能和旧密码一样"), 400
     if new_pwd == db.DEFAULT_ADMIN_PASS:
@@ -633,6 +768,11 @@ def save_sec_settings():
         "sec_session_hours": (1, 720),
         "sec_idle_minutes": (0, 1440),
         "sec_audit_keep": (50, 5000),
+        # v2.3 新增
+        "sec_pass_minlen": (6, 64),
+        "sec_pass_classes": (1, 4),
+        "sec_login_delay": (0, 10),
+        "sec_bind_ip": (0, 1),
     }
     changed = []
     for key, (lo, hi) in limits.items():

@@ -447,6 +447,11 @@ SEC_DEFAULTS = {
     "sec_session_hours": "168",  # 会话有效期(小时)
     "sec_idle_minutes": "60",    # 空闲多久自动登出(分钟)
     "sec_audit_keep": "500",     # 审计日志保留条数
+    # v2.3 新增:密码策略/失败时延/会话 IP 绑定
+    "sec_pass_minlen": "8",      # 密码最小长度(6~64)
+    "sec_pass_classes": "2",     # 至少几种字符(1~4)
+    "sec_login_delay": "1",      # 登录失败时延(秒,0~10)
+    "sec_bind_ip": "0",          # 会话绑定登录 IP(0/1)
 }
 
 # 前台特效设置(与安全设置分开,后台独立面板)
