@@ -378,6 +378,21 @@ select.sf-input:disabled { opacity: .45; cursor: not-allowed; }
 }
 #siteForm .sf-input::placeholder { color: var(--text-3); opacity: .55; }
 
+/* v2.5.1 站点信息面板的次要按钮:暗色主题下 --line 偏灰、--paper 偏深,
+   .a-btn 默认的「深字 + 深底」对比度不够,按钮看着发灰没生效。
+   这里显式给正文色 + 稍亮的底,保证亮/暗两个主题都清楚。 */
+#panel-site-info .a-btn {
+  background: var(--paper);
+  color: var(--ink);
+  border-color: var(--ink);
+}
+#panel-site-info .a-btn.pink {
+  background: var(--pink);
+  color: var(--on-accent);
+  border-color: var(--line);
+}
+#panel-site-info .a-btn:hover { filter: brightness(1.06); }
+
 /* 开关 */
 .switch { position: relative; display: inline-block; width: 50px; height: 27px; flex: none; }
 

@@ -42,6 +42,10 @@ print("=" * 60)
 print("v2.5 生产验证")
 print("=" * 60)
 
+# 先备份线上真实值,测完原样还原 —— 不能把用户自己填的内容冲掉
+ORIG = json.loads(op.open(PROD + "/api/site", timeout=25).read())["values"]
+print("已备份线上原值:", ORIG["site_owner"], "/", ORIG["site_focus"], "/", ORIG["site_credit"])
+
 # 1. 读
 r = json.loads(op.open(PROD + "/api/site", timeout=25).read())
 ck("GET /api/site 正常", "values" in r and "fields" in r)
@@ -65,22 +69,20 @@ p = subprocess.run([CHROME, "--headless=new", "--disable-gpu", "--no-sandbox",
                    capture_output=True, encoding="utf-8", errors="replace", timeout=180)
 dom = p.stdout
 ck("前台渲染新姓名", "测试小明" in dom, "没渲染")
-ck("旧姓名已清除", dom.count("至尊杰") == 0, f"残留 {dom.count('至尊杰')} 处")
+# 留言板里的署名是用户自己写的内容(数据库里的真实留言),不属于站点身份字段,
+# 不该被改名逻辑改写。统计残留时先剔除留言区的署名。
+dom_no_msg = re.sub(r'<b class="msg-name">.*?</b>', '', dom, flags=re.S)
+ck("旧姓名已清除", dom_no_msg.count("至尊杰") == 0,
+   f"残留 {dom_no_msg.count('至尊杰')} 处")
 
-# 3. 改回默认
+# 3. 还原线上真实值(不是恢复默认!用户自己填的 Agent / 版权必须原样还回去)
 req = urllib.request.Request(
     PROD + "/api/site", method="PUT",
-    data=json.dumps({"site_owner": "至尊杰", "site_name": "至尊杰的小窝",
-                     "site_school": "燕京理工学院",
-                     "site_major": "计算机科学与技术", "site_grade": "2026 级",
-                     "site_focus": "智能车 AI",
-                     "site_slogan": "learning and building",
-                     "site_credit": "纯手搓 + AI 协作",
-                     "site_start_year": "2026"}).encode(),
+    data=json.dumps(ORIG).encode(),
     headers={"Content-Type": "application/json"})
 r3 = json.loads(op.open(req, timeout=25).read())
-ck("已恢复默认", r3["values"]["site_owner"] == "至尊杰", r3["values"]["site_owner"])
-ck("学校已恢复", r3["values"]["site_school"] == "燕京理工学院", r3["values"]["site_school"])
+ck("已还原线上原值", r3["values"] == ORIG,
+   f'{r3["values"]} != {ORIG}')
 
 print("\n" + "=" * 60)
 print(f"结果:PASS={PASS}  FAIL={FAIL}")
