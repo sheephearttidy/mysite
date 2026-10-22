@@ -168,7 +168,8 @@ ck("验证码图 200", requests.get(f"{B}/admin/captcha.svg").status_code == 200
 # 面板元素都在
 for pid in ["panel-dashboard", "panel-skills", "panel-timeline", "panel-stats",
             "panel-works", "panel-profile", "panel-uploads", "panel-backup",
-            "panel-security"]:
+            "panel-fx", "panel-sec-pass", "panel-sec-login", "panel-sec-blocked",
+            "panel-sec-sessions", "panel-sec-audit", "panel-sec-status"]:
     ck(f"页面含 {pid}", pid in h)
 
 print()

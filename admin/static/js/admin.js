@@ -46,9 +46,17 @@ const PANELS = {
   'profile-info':  { title:'🪪 信息卡片',      crumb:'个人信息 / 信息卡片' },
   'uploads':       { title:'🖼️ 图片库',        crumb:'媒体资源 / 图片库' },
   'dashboard':     { title:'📊 数据看板',      crumb:'站点维护 / 数据看板' },
+  'fx':            { title:'🎉 前台特效',      crumb:'站点维护 / 前台特效' },
   'backup':        { title:'💾 数据备份',      crumb:'站点维护 / 数据备份' },
-  'security':      { title:'🔐 安全设置',      crumb:'站点维护 / 安全设置' },
+  'sec-pass':      { title:'🔑 后台密码',      crumb:'安全中心 / 后台密码' },
+  'sec-login':     { title:'🛡️ 登录防护',      crumb:'安全中心 / 登录防护' },
+  'sec-blocked':   { title:'⛔ 封锁名单',      crumb:'安全中心 / 封锁名单' },
+  'sec-sessions':  { title:'💻 登录会话',      crumb:'安全中心 / 登录会话' },
+  'sec-audit':     { title:'📜 审计日志',      crumb:'安全中心 / 审计日志' },
+  'sec-status':    { title:'🛡️ 防护状态',      crumb:'安全中心 / 防护状态' },
 };
+
+const SEC_PANELS = ['sec-pass', 'sec-login', 'sec-blocked', 'sec-sessions', 'sec-audit', 'sec-status'];
 
 function showPanel(name) {
   if (!PANELS[name]) name = 'skills';
@@ -65,8 +73,14 @@ function showPanel(name) {
   // 看板:每次进来都刷新一次数据
   if (name === 'dashboard') loadDashboard(DASH_DAYS);
 
-  // 安全面板:刷新状态 + 审计
-  if (name === 'security') { loadSecOverview(); loadAudit(); }
+  // 前台特效面板:读取当前设置
+  if (name === 'fx') loadFxSettings();
+
+  // 安全中心各子面板:按需刷新对应数据
+  if (SEC_PANELS.includes(name)) {
+    loadSecOverview();
+    if (name === 'sec-audit') loadAudit();
+  }
 
   // 图片库:每次进来刷新列表
   if (name === 'uploads' && typeof loadUploads === 'function') loadUploads();
@@ -132,6 +146,90 @@ function updateCounts() {
   set('cnt-works', DATA.works.length);
   set('cnt-about', DATA.profile.filter(p => p.kind === 'about').length);
   set('cnt-info', DATA.profile.filter(p => p.kind === 'info').length);
+}
+
+/* ---------- 前台特效面板 ---------- */
+const FX_KEY_LABEL = {
+  'national-day': '🇨🇳 国庆节(红旗)',
+  'valentine': '💗 情人节(爱心)',
+  'memorial': '🕯️ 国家公祭日(全站黑白)',
+  'new-year': '🎆 元旦(彩带)',
+  'christmas': '🎄 圣诞节(雪花)',
+  'labor': '🧹 劳动节(彩带)',
+  'children': '✈️ 儿童节(纸飞机)',
+  'teacher': '⭐ 教师节(星星)',
+};
+
+async function loadFxSettings() {
+  try {
+    const d = await api('GET', '/api/security/fx');
+    const s = d.settings || d;
+    const mode = s.fx_holiday_mode || 'auto';
+
+    document.getElementById('fxHolidayOn').checked = mode !== 'off';
+    document.getElementById('fxMode').value = mode;
+    document.getElementById('fxKey').value = s.fx_holiday_key || '';
+    document.getElementById('fxEffects').checked = s.fx_effects !== '0';
+    updateFxKeyDisabled();
+  } catch (e) { toast('特效设置加载失败:' + e.message); }
+}
+
+function updateFxKeyDisabled() {
+  const mode = document.getElementById('fxMode').value;
+  const on = document.getElementById('fxHolidayOn').checked;
+  document.getElementById('fxKey').disabled = (mode !== 'manual') || !on;
+}
+
+async function saveFxSettings() {
+  const on = document.getElementById('fxHolidayOn').checked;
+  let mode = document.getElementById('fxMode').value;
+  if (!on) mode = 'off';
+
+  const body = {
+    fx_holiday_mode: mode,
+    fx_holiday_key: mode === 'manual' ? document.getElementById('fxKey').value : '',
+    fx_effects: document.getElementById('fxEffects').checked ? '1' : '0',
+  };
+  try {
+    await api('POST', '/api/security/fx', body);
+    toast('✅ 特效设置已保存,前台刷新即可生效');
+    loadFxSettings();
+  } catch (e) { toast('保存失败:' + e.message); }
+}
+
+function previewFx() {
+  const box = document.getElementById('fxPreview');
+  const mode = document.getElementById('fxMode').value;
+  const on = document.getElementById('fxHolidayOn').checked;
+  const key = document.getElementById('fxKey').value;
+
+  if (!on || mode === 'off') {
+    box.innerHTML = '<p class="hint">当前:全部关闭,前台不会出现任何节日特效。</p>';
+    return;
+  }
+  if (mode === 'manual') {
+    if (!key) {
+      box.innerHTML = '<p class="hint">手动模式但没选节日 → 前台不会显示特效。</p>';
+      return;
+    }
+    box.innerHTML = `<p class="hint">当前:<b>手动指定</b> → ${FX_KEY_LABEL[key] || key}</p>`;
+    return;
+  }
+  // auto:算一下今天是什么节日
+  const now = new Date(), m = now.getMonth() + 1, d = now.getDate();
+  let today = '';
+  if (m === 12 && d === 13) today = 'memorial';
+  else if (m === 10 && d >= 1 && d <= 7) today = 'national-day';
+  else if (m === 2 && d === 14) today = 'valentine';
+  else if (m === 1 && d <= 2) today = 'new-year';
+  else if (m === 12 && (d === 24 || d === 25)) today = 'christmas';
+  else if (m === 5 && d >= 1 && d <= 5) today = 'labor';
+  else if (m === 6 && d === 1) today = 'children';
+  else if (m === 9 && d === 10) today = 'teacher';
+
+  box.innerHTML = today
+    ? `<p class="hint">当前:<b>按日期自动</b> → 今天正好是 ${FX_KEY_LABEL[today]}</p>`
+    : '<p class="hint">当前:<b>按日期自动</b> → 今天不是节日,前台不显示特效。</p>';
 }
 
 /* ---------- 安全面板 ---------- */
@@ -843,6 +941,14 @@ document.addEventListener('keydown', e => {
 /* ---------- 初始化 ---------- */
 renderAll();
 restoreGroups();
+
+// 前台特效:模式/开关变化时联动「指定节日」是否可点
+(function initFxEvents() {
+  const modeEl = document.getElementById('fxMode');
+  const onEl = document.getElementById('fxHolidayOn');
+  if (modeEl) modeEl.addEventListener('change', updateFxKeyDisabled);
+  if (onEl) onEl.addEventListener('change', updateFxKeyDisabled);
+})();
 
 // 恢复上次看的面板;没有就用 URL hash;再没有就技能树
 (function initPanel() {

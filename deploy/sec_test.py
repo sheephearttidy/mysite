@@ -317,7 +317,9 @@ ck("profile=7", len(d["profile"]) == 7)
 ck("导出 200", sa.get(f"{B}/api/export").status_code == 200)
 ck("看板 200", sa.get(f"{B}/api/stats/visits").status_code == 200)
 h = sa.get(f"{B}/admin/").text
-for cid in ["panel-security", "setCaptcha", "secAuditList", "secSessionList",
+for cid in ["panel-sec-pass", "panel-sec-login", "panel-sec-blocked",
+            "panel-sec-sessions", "panel-sec-audit", "panel-sec-status",
+            "setCaptcha", "secAuditList", "secSessionList",
             "secBlockedList", "secCardCaptcha"]:
     ck(f"页面含 {cid}", cid in h)
 

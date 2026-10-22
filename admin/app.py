@@ -497,6 +497,65 @@ def save_sec_settings():
     return jsonify(ok=True, changed=changed, settings=db.get_sec_all())
 
 
+# ---------------- 前台特效控制(节日等) ----------------
+
+@app.get("/api/fx")
+def api_fx():
+    """公开:前台读取当前特效配置(节日模式/指定节日/动效总开关)"""
+    return jsonify(
+        mode=db.get_fx("fx_holiday_mode"),
+        key=db.get_fx("fx_holiday_key"),
+        effects=db.get_fx("fx_effects"),
+    )
+
+
+@app.get("/api/security/fx")
+@login_required
+def get_fx_settings():
+    out = dict(db.get_fx_all())
+    out["keys"] = list(db.HOLIDAY_KEYS)
+    return jsonify(out)
+
+
+@app.post("/api/security/fx")
+@login_required
+def save_fx_settings():
+    """保存前台特效设置。mode 三选一,key 必须是已知节日。"""
+    body = request.get_json(force=True, silent=True) or {}
+    changed = []
+
+    mode = body.get("fx_holiday_mode")
+    if mode is not None:
+        if mode not in ("auto", "manual", "off"):
+            return jsonify(error="节日模式只能是 auto / manual / off"), 400
+        db.set_fx("fx_holiday_mode", mode)
+        changed.append("fx_holiday_mode")
+
+    if "fx_holiday_key" in body:
+        key = str(body["fx_holiday_key"] or "")
+        if key and key not in db.HOLIDAY_KEYS:
+            return jsonify(error="未知的节日标识"), 400
+        db.set_fx("fx_holiday_key", key)
+        changed.append("fx_holiday_key")
+
+    if "fx_effects" in body:
+        eff = str(body["fx_effects"])
+        if eff not in ("0", "1"):
+            return jsonify(error="动效开关只能是 0 或 1"), 400
+        db.set_fx("fx_effects", eff)
+        changed.append("fx_effects")
+
+    if not changed:
+        return jsonify(error="没有要保存的项"), 400
+
+    db.add_audit("fx_settings", client_ip(),
+                 "修改前台特效设置:" + ",".join(changed),
+                 request.headers.get("User-Agent", ""))
+    out = {"ok": True, "changed": changed}
+    out.update(db.get_fx_all())
+    return jsonify(out)
+
+
 @app.get("/api/security/overview")
 @login_required
 def sec_overview():

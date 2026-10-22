@@ -366,6 +366,16 @@ SEC_DEFAULTS = {
     "sec_audit_keep": "500",     # 审计日志保留条数
 }
 
+# 前台特效设置(与安全设置分开,后台独立面板)
+FX_DEFAULTS = {
+    "fx_holiday_mode": "auto",   # auto=按日期自动 / manual=手动指定 / off=全关
+    "fx_holiday_key": "",        # manual 模式下生效:节日 key
+    "fx_effects": "1",           # 前台动效总开关(1 开 / 0 关)
+}
+
+HOLIDAY_KEYS = ("national-day", "valentine", "memorial", "new-year",
+                "christmas", "labor", "children", "teacher")
+
 
 def get_sec(key: str):
     return get_setting(key, SEC_DEFAULTS.get(key, ""))
@@ -378,6 +388,21 @@ def set_sec(key: str, value: str):
 def get_sec_all() -> dict:
     out = {}
     for k, d in SEC_DEFAULTS.items():
+        out[k] = get_setting(k, d)
+    return out
+
+
+def get_fx(key: str):
+    return get_setting(key, FX_DEFAULTS.get(key, ""))
+
+
+def set_fx(key: str, value: str):
+    set_setting(key, str(value))
+
+
+def get_fx_all() -> dict:
+    out = {}
+    for k, d in FX_DEFAULTS.items():
         out[k] = get_setting(k, d)
     return out
 
