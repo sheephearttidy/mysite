@@ -296,6 +296,61 @@ def api_map():
     return jsonify(cities=db.get_visit_cities())
 
 
+# ---------------- 留言板(公开) ----------------
+
+@app.get("/api/messages")
+def api_messages_public():
+    """前台留言墙:只返回展示中的,新的在前"""
+    return jsonify(messages=db.list_messages_public(30))
+
+
+@app.post("/api/messages")
+def api_messages_post():
+    """写留言:公开,带轻防刷(同 IP 60 秒只能发一条)"""
+    body = request.get_json(silent=True) or {}
+    ip = request.headers.get("X-Forwarded-For", "").split(",")[0].strip() \
+        or request.remote_addr or ""
+    # 轻防刷:同 IP 60s 一条(内存表,重启清零,够用)
+    import time as _t
+    now = _t.time()
+    last = _MSG_LAST.get(ip, 0)
+    if now - last < 60:
+        wait = int(60 - (now - last))
+        return jsonify(ok=False, error=f"发太快啦,休息 {wait} 秒再发~"), 429
+    _MSG_LAST[ip] = now
+
+    r = db.add_message(name=body.get("name") or "",
+                       body=body.get("body") or "",
+                       color=body.get("color") or "",
+                       ip=ip)
+    if not r.get("ok"):
+        return jsonify(r), 400
+    db.add_audit("message_new", ip,
+                 f"留言 id={r['id']}",
+                 request.headers.get("User-Agent", "")[:200])
+    return jsonify(r)
+
+
+# 进程内防刷表(ip -> 上次发留言时间)
+_MSG_LAST = {}
+
+
+@app.get("/api/likes")
+def api_likes_get():
+    """全部页面点赞数(公开)"""
+    return jsonify(likes=db.like_counts(), total=db.like_total())
+
+
+@app.post("/api/likes")
+def api_likes_post():
+    """点赞 +1(公开;同一浏览器会话对同一页只加一次,由前端 localStorage 控制)"""
+    body = request.get_json(silent=True) or {}
+    r = db.add_like(body.get("page") or "")
+    if not r.get("ok"):
+        return jsonify(r), 400
+    return jsonify(r)
+
+
 @app.get("/api/stats/visits")
 @login_required
 def visit_stats():
@@ -554,6 +609,55 @@ def save_fx_settings():
     out = {"ok": True, "changed": changed}
     out.update(db.get_fx_all())
     return jsonify(out)
+
+
+# ---------------- 留言板(后台管理) ----------------
+
+@app.get("/api/messages/admin")
+@login_required
+def api_messages_admin():
+    """后台:全部留言 + 计数"""
+    return jsonify(messages=db.list_messages_admin(), counts=db.message_counts())
+
+
+@app.post("/api/messages/<int:mid>/mod")
+@login_required
+def api_message_mod(mid):
+    """审核/回复/删除,action = show | hide | pending | reply | delete"""
+    body = request.get_json(silent=True) or {}
+    act = body.get("action")
+    ok, detail = False, ""
+
+    if act == "show":
+        ok = db.set_message_shown(mid, 1)
+        detail = "展示留言"
+    elif act == "hide":
+        ok = db.set_message_shown(mid, 2)
+        detail = "隐藏留言"
+    elif act == "pending":
+        ok = db.set_message_shown(mid, 0)
+        detail = "转待审核"
+    elif act == "reply":
+        ok = db.reply_message(mid, body.get("reply") or "")
+        detail = f"回复留言({len((body.get('reply') or '').strip())}字)"
+    elif act == "delete":
+        ok = db.del_message(mid)
+        detail = "删除留言"
+    else:
+        return jsonify(error="未知操作"), 400
+
+    if not ok:
+        return jsonify(error="留言不存在"), 404
+    db.add_audit("message_mod", client_ip(), f"{detail} id={mid}",
+                 request.headers.get("User-Agent", ""))
+    return jsonify(ok=True, counts=db.message_counts())
+
+
+@app.get("/api/likes/admin")
+@login_required
+def api_likes_admin():
+    """后台:各页点赞 + 总数"""
+    return jsonify(likes=db.like_counts(), total=db.like_total())
 
 
 @app.get("/api/security/overview")

@@ -110,3 +110,99 @@ footer .sprout { display: inline-block; animation: grow 2.4s ease-in-out infinit
 .theme-toggle .ti-moon { display: none; }
 [data-theme="dark"] .theme-toggle .ti-sun { display: none; }
 [data-theme="dark"] .theme-toggle .ti-moon { display: inline; }
+
+/* ============================================================
+   v1.9.0 互动包:留言墙 + 点赞 + 点击粒子
+   ============================================================ */
+
+/* ---- 留言表单 ---- */
+#msgwall .section-sub { margin-top: 10px; }
+.msg-form { max-width: 640px; margin: 0 auto 26px; padding: 18px 20px; }
+.msg-form-row { display: flex; gap: 10px; margin-bottom: 10px; }
+.msg-form-row .sf-input { flex: 1; }
+.msg-color-pick { flex: 0 0 130px !important; }
+textarea.sf-input { width: 100%; resize: vertical; min-height: 74px; }
+.msg-form-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
+#msgTip { margin-top: 8px; }
+#msgTip.warn { color: #e05656; }
+
+/* ---- 便签墙 ---- */
+.msgwall-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px; max-width: 980px; margin: 0 auto;
+}
+.msg-note {
+  --rot: 0deg;
+  background: #fff; border-radius: 14px; padding: 14px 16px 12px;
+  border: 2px solid var(--shadow); box-shadow: 4px 4px 0 var(--shadow);
+  transform: rotate(var(--rot));
+  transition: transform .18s ease, box-shadow .18s ease;
+  position: relative;
+}
+.msg-note:hover { transform: rotate(0deg) translateY(-3px); box-shadow: 6px 7px 0 var(--shadow); }
+.msg-note::before {           /* 顶部胶带 */
+  content: ''; position: absolute; top: -9px; left: 50%;
+  width: 58px; height: 16px; transform: translateX(-50%) rotate(-2deg);
+  background: rgba(255, 255, 255, .55); border: 1px dashed rgba(0,0,0,.12);
+  border-radius: 3px;
+}
+[data-theme="dark"] .msg-note::before { background: rgba(255,255,255,.12); }
+.msg-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.msg-name { font-size: 14px; }
+.msg-time { font-size: 11px; opacity: .55; white-space: nowrap; }
+.msg-body-text { font-size: 14px; line-height: 1.65; margin-top: 6px; word-break: break-word; }
+.msg-reply {
+  margin-top: 8px; padding: 7px 9px; font-size: 13px; line-height: 1.55;
+  background: rgba(126, 200, 184, .14); border-radius: 8px;
+}
+[data-theme="dark"] .msg-reply { background: rgba(126, 200, 184, .18); }
+.msg-empty { text-align: center; margin-top: 18px; }
+
+/* 六色便签(莫兰迪) */
+.msg-pink   { background: #ffe9f0; }
+.msg-orange { background: #ffefd9; }
+.msg-teal   { background: #e2f4f0; }
+.msg-purple { background: #eceaff; }
+.msg-yellow { background: #fff7d6; }
+.msg-blue   { background: #e3eeff; }
+[data-theme="dark"] .msg-pink   { background: #4a3340; }
+[data-theme="dark"] .msg-orange { background: #4a3d2e; }
+[data-theme="dark"] .msg-teal   { background: #2e423e; }
+[data-theme="dark"] .msg-purple { background: #383452; }
+[data-theme="dark"] .msg-yellow { background: #46422c; }
+[data-theme="dark"] .msg-blue   { background: #2f3c52; }
+[data-theme="dark"] .msg-note { border-color: var(--shadow); color: var(--text); }
+
+/* ---- 点赞按钮 ---- */
+.like-btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 8px 18px; border-radius: 999px; border: 2px solid var(--shadow);
+  background: #fff; box-shadow: 3px 3px 0 var(--shadow);
+  font-size: 15px; cursor: pointer; transition: all .15s ease;
+  user-select: none;
+}
+.like-btn:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--shadow); }
+.like-btn.pop { animation: like-pop .45s ease; }
+.like-btn.liked { background: #ffe3ec; border-color: #ff6b9d; }
+.like-btn.liked .like-ico { animation: like-beat .5s ease; }
+.like-btn:disabled { cursor: default; opacity: .92; }
+.like-n { font-weight: 700; }
+@keyframes like-pop { 30% { transform: scale(1.12) rotate(-3deg); } }
+@keyframes like-beat { 30% { transform: scale(1.35); } }
+
+/* ---- 点击粒子 ---- */
+.click-fx {
+  position: fixed; z-index: 9999; pointer-events: none;
+  font-size: 14px; line-height: 1;
+  animation: click-fly .7s ease-out forwards;
+}
+@keyframes click-fly {
+  from { transform: translate(-50%, -50%) scale(.7); opacity: 1; }
+  to   { transform: translate(calc(-50% + var(--dx, 20px)), calc(-50% + var(--dy, -24px))) scale(1.15); opacity: 0; }
+}
+
+/* 减动效偏好:粒子与弹跳全关 */
+@media (prefers-reduced-motion: reduce) {
+  .click-fx { display: none; }
+  .like-btn.pop, .like-btn.liked .like-ico { animation: none; }
+}

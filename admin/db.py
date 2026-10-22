@@ -107,6 +107,25 @@ CREATE TABLE IF NOT EXISTS sessions (
     last_seen INTEGER NOT NULL,
     revoked INTEGER NOT NULL DEFAULT 0
 );
+
+-- 留言板(前台公开写,后台审核后展示)
+CREATE TABLE IF NOT EXISTS messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL DEFAULT '匿名',     -- 昵称(不超 20 字)
+    body TEXT NOT NULL,                    -- 留言内容(不超 140 字)
+    color TEXT DEFAULT 'pink',             -- 贴纸颜色键(后台不用管,前端给随机)
+    ts INTEGER NOT NULL,                   -- 发布时间戳
+    ip TEXT DEFAULT '',                    -- 仅后台可见(风控用)
+    shown INTEGER NOT NULL DEFAULT 0,      -- 0=待审核 1=展示中 2=已隐藏
+    reply TEXT DEFAULT ''                  -- 站长回复(可空)
+);
+CREATE INDEX IF NOT EXISTS idx_messages_ts ON messages(ts);
+
+-- 点赞(按页面计数,无 cookie 无 IP,纯计数)
+CREATE TABLE IF NOT EXISTS likes (
+    page TEXT PRIMARY KEY,
+    n INTEGER NOT NULL DEFAULT 0
+);
 """
 
 # 首次建库时灌入的初始数据(与 v1.0.0 静态页一致)
@@ -853,3 +872,113 @@ def get_visit_stats(days: int = 30) -> dict:
         "cities": get_visit_cities(30),
         "days": days,
     }
+
+
+# ============================================================
+# 留言板
+# ============================================================
+
+MESSAGE_MAX_BODY = 140      # 留言上限,和微博早期一样长,够说一句话
+MESSAGE_MAX_NAME = 20
+MSG_COLORS = ("pink", "orange", "teal", "purple", "yellow", "blue")
+
+
+def add_message(name: str, body: str, color: str = "", ip: str = "") -> dict:
+    """公开写留言:默认进待审核池,返回脱敏后的记录"""
+    import time as _t
+    name = (name or "匿名").strip()[:MESSAGE_MAX_NAME] or "匿名"
+    body = (body or "").strip()[:MESSAGE_MAX_BODY]
+    if not body:
+        return {"ok": False, "error": "内容不能为空"}
+    if color not in MSG_COLORS:
+        import random
+        color = random.choice(MSG_COLORS)
+    with get_db() as c:
+        c.execute(
+            "INSERT INTO messages(name,body,color,ts,ip,shown) VALUES(?,?,?,?,?,0)",
+            (name, body, color, int(_t.time()), (ip or "")[:64]))
+        mid = c.execute("SELECT last_insert_rowid() id").fetchone()["id"]
+    return {"ok": True, "id": mid, "name": name, "body": body, "color": color}
+
+
+def list_messages_public(limit: int = 30) -> list:
+    """前台:只给展示中的,新的在前"""
+    with get_db() as c:
+        rows = c.execute(
+            """SELECT id,name,body,color,ts,reply FROM messages
+               WHERE shown=1 ORDER BY ts DESC LIMIT ?""", (limit,)).fetchall()
+    return [dict(r) for r in rows]
+
+
+def list_messages_admin() -> list:
+    """后台:全部状态,旧的待审核排前面方便处理"""
+    with get_db() as c:
+        rows = c.execute(
+            """SELECT id,name,body,color,ts,ip,shown,reply FROM messages
+               ORDER BY shown ASC, ts DESC LIMIT 500""").fetchall()
+    return [dict(r) for r in rows]
+
+
+def message_counts() -> dict:
+    """后台卡片:待审 / 展示中 / 总数"""
+    with get_db() as c:
+        pending = c.execute(
+            "SELECT COUNT(*) n FROM messages WHERE shown=0").fetchone()["n"]
+        shown = c.execute(
+            "SELECT COUNT(*) n FROM messages WHERE shown=1").fetchone()["n"]
+        total = c.execute("SELECT COUNT(*) n FROM messages").fetchone()["n"]
+    return {"pending": pending, "shown": shown, "total": total}
+
+
+def set_message_shown(mid: int, shown: int) -> bool:
+    """审核:0 待审 / 1 展示 / 2 隐藏"""
+    if shown not in (0, 1, 2):
+        return False
+    with get_db() as c:
+        cur = c.execute("UPDATE messages SET shown=? WHERE id=?", (shown, mid))
+        return cur.rowcount > 0
+
+
+def reply_message(mid: int, reply: str) -> bool:
+    reply = (reply or "").strip()[:140]
+    with get_db() as c:
+        cur = c.execute("UPDATE messages SET reply=? WHERE id=?", (reply, mid))
+        return cur.rowcount > 0
+
+
+def del_message(mid: int) -> bool:
+    with get_db() as c:
+        cur = c.execute("DELETE FROM messages WHERE id=?", (mid,))
+        return cur.rowcount > 0
+
+
+# ============================================================
+# 点赞(按页计数)
+# ============================================================
+
+LIKE_PAGES = ("home", "about", "skills", "works", "campus", "map", "contact")
+
+
+def like_counts() -> dict:
+    """全部页面的点赞数(没点过的页面给 0)"""
+    with get_db() as c:
+        rows = c.execute("SELECT page,n FROM likes").fetchall()
+    m = {r["page"]: r["n"] for r in rows}
+    return {p: m.get(p, 0) for p in LIKE_PAGES}
+
+
+def like_total() -> int:
+    with get_db() as c:
+        return c.execute("SELECT COALESCE(SUM(n),0) n FROM likes").fetchone()["n"]
+
+
+def add_like(page: str) -> dict:
+    """点赞 +1(公开接口,轻防刷:单页计数,不做个人维度)"""
+    if page not in LIKE_PAGES:
+        return {"ok": False, "error": "unknown page"}
+    with get_db() as c:
+        c.execute(
+            "INSERT INTO likes(page,n) VALUES(?,1) "
+            "ON CONFLICT(page) DO UPDATE SET n=n+1", (page,))
+        n = c.execute("SELECT n FROM likes WHERE page=?", (page,)).fetchone()["n"]
+    return {"ok": True, "page": page, "n": n}

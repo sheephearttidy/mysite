@@ -614,3 +614,43 @@ select.sf-input:disabled { opacity: .45; cursor: not-allowed; }
 /* 品牌区在深色下用低饱和金,不刺眼 */
 [data-theme="dark"] .sb-brand { background: var(--yellow-bg); }
 
+
+/* ============================================================
+   v1.9.0:留言板管理 + 点赞统计
+   ============================================================ */
+.msg-cards { display: flex; gap: 10px; }
+.msg-cards .dash-card { padding: 8px 14px; text-align: center; }
+.msg-cards .dc-num { display: block; font-size: 20px; font-weight: 800; }
+.msg-cards .dc-lbl { font-size: 11px; opacity: .6; }
+
+.msg-admin-item {
+  border: 2px solid var(--shadow); border-radius: 12px;
+  padding: 12px 14px; margin-bottom: 10px; background: var(--card);
+}
+.mai-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.mai-body { margin-top: 6px; line-height: 1.6; word-break: break-word; }
+.mai-reply {
+  margin-top: 8px; padding: 7px 10px; font-size: 13px;
+  background: rgba(126, 200, 184, .14); border-radius: 8px;
+}
+.badge { font-size: 11px; padding: 2px 8px; border-radius: 999px; font-weight: 700; }
+.badge.ok { background: #d9f2e5; color: #1d7a4c; }
+.badge.warn { background: #ffedcc; color: #a05e03; }
+.badge.muted { background: #e8e8ec; color: #666; }
+[data-theme="dark"] .badge.ok { background: #1d4a35; color: #8fe0b0; }
+[data-theme="dark"] .badge.warn { background: #4a3512; color: #ffcf7a; }
+[data-theme="dark"] .badge.muted { background: #33343c; color: #aaa; }
+
+.like-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.like-page { flex: 0 0 110px; font-size: 14px; }
+.like-bar-track {
+  flex: 1; height: 16px; background: rgba(0,0,0,.06);
+  border-radius: 999px; overflow: hidden;
+}
+[data-theme="dark"] .like-bar-track { background: rgba(255,255,255,.08); }
+.like-bar-fill {
+  height: 100%; min-width: 2px; border-radius: 999px;
+  background: linear-gradient(90deg, #ff6b9d, #ffb84d);
+  transition: width .4s ease;
+}
+.like-n-num { flex: 0 0 40px; text-align: right; }

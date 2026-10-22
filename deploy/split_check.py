@@ -53,7 +53,8 @@ if inject:
     ck("内联段无函数定义", "function " not in js)
     ck("内联段无事件绑定", "addEventListener" not in js)
     ck("内联段无 DOM 查询", "getElementById" not in js)
-ck("模板体积已降", len(h) < 30000, f"实得 {len(h)} 字符")
+# v1.9.0 新增留言板+点赞两个面板后约 31KB;设 33K 上限防再次膨胀
+ck("模板体积已降", len(h) < 33000, f"实得 {len(h)} 字符")
 
 print()
 print("=" * 52)

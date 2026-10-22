@@ -42,12 +42,14 @@ const PANELS = {
   'timeline':      { title:'🗺️ 校园日常管理',  crumb:'内容管理 / 校园日常' },
   'stats':         { title:'🧮 趣味统计管理',  crumb:'内容管理 / 趣味统计' },
   'works':         { title:'🛠️ 项目墙管理',    crumb:'内容管理 / 项目墙' },
+  'messages':      { title:'✉️ 留言板',        crumb:'内容管理 / 留言板' },
   'profile-about': { title:'✍️ 自我介绍段落',  crumb:'个人信息 / 自我介绍' },
   'profile-info':  { title:'🪪 信息卡片',      crumb:'个人信息 / 信息卡片' },
   'uploads':       { title:'🖼️ 图片库',        crumb:'媒体资源 / 图片库' },
   'dashboard':     { title:'📊 数据看板',      crumb:'站点维护 / 数据看板' },
   'fx':            { title:'🎉 前台特效',      crumb:'站点维护 / 前台特效' },
   'backup':        { title:'💾 数据备份',      crumb:'站点维护 / 数据备份' },
+  'likes':         { title:'❤️ 点赞统计',      crumb:'站点维护 / 点赞统计' },
   'sec-pass':      { title:'🔑 后台密码',      crumb:'安全中心 / 后台密码' },
   'sec-login':     { title:'🛡️ 登录防护',      crumb:'安全中心 / 登录防护' },
   'sec-blocked':   { title:'⛔ 封锁名单',      crumb:'安全中心 / 封锁名单' },
@@ -75,6 +77,10 @@ function showPanel(name) {
 
   // 前台特效面板:读取当前设置
   if (name === 'fx') loadFxSettings();
+
+  // 留言板 / 点赞:按需刷新
+  if (name === 'messages') loadMessages();
+  if (name === 'likes') loadLikes();
 
   // 安全中心各子面板:按需刷新对应数据
   if (SEC_PANELS.includes(name)) {
@@ -941,6 +947,124 @@ document.addEventListener('keydown', e => {
 /* ---------- 初始化 ---------- */
 renderAll();
 restoreGroups();
+
+/* ==================== v1.9.0:留言板管理 ==================== */
+
+const MSG_STATE = { 0: '待审核', 1: '展示中', 2: '已隐藏' };
+const MSG_STATE_CLS = { 0: 'warn', 1: 'ok', 2: 'muted' };
+
+function fmtMsgTime(ts) {
+  const d = new Date(ts * 1000);
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getMonth() + 1}-${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+async function loadMessages() {
+  try {
+    const r = await fetch('/api/messages/admin');
+    if (r.status === 401) { location.href = '/admin/login'; return; }
+    const d = await r.json();
+    const c = d.counts || {};
+    document.getElementById('msgPending').textContent = c.pending ?? 0;
+    document.getElementById('msgShownN').textContent = c.shown ?? 0;
+    document.getElementById('msgTotalN').textContent = c.total ?? 0;
+    const cnt = document.getElementById('cnt-messages');
+    if (cnt) cnt.textContent = c.pending ? `待审${c.pending}` : c.total;
+
+    const list = document.getElementById('msgAdminList');
+    if (!d.messages.length) {
+      list.innerHTML = '<p class="hint">还没有留言,去前台发一条试试~</p>';
+      return;
+    }
+    list.innerHTML = d.messages.map(m => `
+      <div class="msg-admin-item" data-id="${m.id}">
+        <div class="mai-head">
+          <b>${esc(m.name)}</b>
+          <span class="badge ${MSG_STATE_CLS[m.shown]}">${MSG_STATE[m.shown]}</span>
+          <span class="hint">${fmtMsgTime(m.ts)} · ${esc(m.ip || '未知IP')} · ${m.color}</span>
+        </div>
+        <div class="mai-body">${esc(m.body)}</div>
+        ${m.reply ? `<div class="mai-reply">站主回复:${esc(m.reply)}</div>` : ''}
+        <div class="ops" style="margin-top:8px">
+          ${m.shown !== 1 ? `<button class="op save" onclick="msgMod(${m.id},'show')">✅ 展示</button>` : ''}
+          ${m.shown === 1 ? `<button class="op" onclick="msgMod(${m.id},'hide')">🙈 隐藏</button>` : ''}
+          ${m.shown === 2 ? `<button class="op" onclick="msgMod(${m.id},'pending')">↩️ 转待审</button>` : ''}
+          <button class="op edit" onclick="msgReply(${m.id},'${esc(m.reply || '').replace(/'/g, "\\'")}')">💬 回复</button>
+          <button class="op del" onclick="msgDel(${m.id})">🗑️ 删除</button>
+        </div>
+      </div>`).join('');
+  } catch (e) {
+    console.error('loadMessages', e);
+  }
+}
+
+async function msgMod(id, action) {
+  const r = await fetch(`/api/messages/${id}/mod`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action })
+  });
+  const d = await r.json();
+  if (!d.ok) return alert(d.error || '操作失败');
+  loadMessages();
+}
+
+function msgReply(id, current) {
+  const reply = prompt('输入站主回复(留空清除回复,最多 140 字):', current || '');
+  if (reply === null) return;
+  fetch(`/api/messages/${id}/mod`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'reply', reply })
+  }).then(r => r.json()).then(d => {
+    if (!d.ok) return alert(d.error || '回复失败');
+    loadMessages();
+  });
+}
+
+async function msgDel(id) {
+  if (!confirm('确定删除这条留言?删了就找不回来了')) return;
+  const r = await fetch(`/api/messages/${id}/mod`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'delete' })
+  });
+  const d = await r.json();
+  if (!d.ok) return alert(d.error || '删除失败');
+  loadMessages();
+}
+
+/* ==================== v1.9.0:点赞统计 ==================== */
+
+const PAGE_NAMES = {
+  home: '🏠 首页', about: '🧍 关于我', skills: '🎯 技能树',
+  works: '🛠️ 项目墙', campus: '🗺️ 校园日常', map: '📍 来访地图', contact: '📬 来找我玩',
+};
+
+async function loadLikes() {
+  try {
+    const r = await fetch('/api/likes/admin');
+    if (r.status === 401) { location.href = '/admin/login'; return; }
+    const d = await r.json();
+    document.getElementById('likeTotal').textContent = d.total || 0;
+
+    const entries = Object.entries(d.likes || {}).sort((a, b) => b[1] - a[1]);
+    document.getElementById('likeBest').textContent =
+      entries.length && entries[0][1] > 0
+        ? (PAGE_NAMES[entries[0][0]] || entries[0][0]).split(' ').pop()
+        : '–';
+
+    const max = Math.max(1, ...entries.map(e => e[1]));
+    document.getElementById('likeBars').innerHTML = entries.map(([page, n]) => `
+      <div class="like-row">
+        <span class="like-page">${PAGE_NAMES[page] || page}</span>
+        <div class="like-bar-track"><div class="like-bar-fill" style="width:${Math.round(n / max * 100)}%"></div></div>
+        <b class="like-n-num">${n}</b>
+      </div>`).join('');
+  } catch (e) {
+    console.error('loadLikes', e);
+  }
+}
 
 // 前台特效:模式/开关变化时联动「指定节日」是否可点
 (function initFxEvents() {
