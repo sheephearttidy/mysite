@@ -87,13 +87,18 @@ function renderProfile() {
       </div>
     </div>`;
 
-  const abouts = DATA.profile.filter(p => p.kind === 'about');
-  const infos = DATA.profile.filter(p => p.kind === 'info');
+  const list = Array.isArray(DATA.profile) ? DATA.profile : [];
+  const abouts = list.filter(p => p.kind === 'about');
+  const infos = list.filter(p => p.kind === 'info');
 
-  document.getElementById('list-profile-about').innerHTML =
-    abouts.map(make).join('') || '<p class="hint">还没有自我介绍段落~</p>';
-  document.getElementById('list-profile-info').innerHTML =
-    infos.map(make).join('') || '<p class="hint">还没有信息卡片~</p>';
+  const aboutBox = document.getElementById('list-profile-about');
+  if (aboutBox) {
+    aboutBox.innerHTML = abouts.map(make).join('') || '<p class="hint">还没有自我介绍段落~</p>';
+  }
+  const infoBox = document.getElementById('list-profile-info');
+  if (infoBox) {
+    infoBox.innerHTML = infos.map(make).join('') || '<p class="hint">还没有信息卡片~</p>';
+  }
 }
 
 /* ---------- v2.2 三个新内容类型的渲染 ---------- */
@@ -152,6 +157,27 @@ function renderFriendlinks() {
         <button class="op del" onclick="delItem('friendlinks', ${f.id})">🗑️ 删除</button>
       </div>
     </div>`).join('') || '<p class="hint">还没有友链,加一个吧~</p>';
+}
+
+// v2.4 音乐
+function renderSongs() {
+  const box = document.getElementById('list-songs');
+  if (!box) return;
+  const list = Array.isArray(DATA.songs) ? DATA.songs : [];
+  box.innerHTML = list.map(s => `
+    <div class="item">
+      <div class="item-top">
+        <span class="badge serious">${esc(s.emoji)} ${esc(s.title)}</span>
+        <span class="meta">#${s.sort}</span>
+      </div>
+      <h3 style="font-size:15px">${esc(s.artist || '未知歌手')}</h3>
+      <div class="note">🎧 songid: ${esc(s.song_id)}</div>
+      ${s.note ? `<div class="note">${esc(s.note)}</div>` : ''}
+      <div class="ops">
+        <button class="op edit" onclick="editItem('songs', ${s.id})">✏️ 编辑</button>
+        <button class="op del" onclick="delItem('songs', ${s.id})">🗑️ 删除</button>
+      </div>
+    </div>`).join('') || '<p class="hint">歌单还是空的,加首最近在听的吧~</p>';
 }
 
 /* ---------- 编辑 / 新增 ---------- */
@@ -222,11 +248,25 @@ const FIELDS = {
     { k:'desc', label:'一句话介绍(可空)',  type:'text' },
     { k:'sort', label:'排序(小的在前)',     type:'number' },
   ],
+  // v2.4 音乐(贴分享链接自动解析 song mid)
+  songs: [
+    { k:'title', label:'歌名',               type:'text' },
+    { k:'artist',label:'歌手(可空)',         type:'text' },
+    { k:'link',  label:'QQ 音乐分享链接(或数字 songid)', type:'text' },
+    { k:'emoji', label:'图标 emoji',         type:'text' },
+    { k:'note',  label:'一句话安利(可空)',  type:'text' },
+    { k:'sort',  label:'排序(小的在前)',     type:'number' },
+  ],
 };
 
 function editItem(kind, id, preset) {
   const list = DATA[kind];
   const item = id ? list.find(x => x.id === id) : null;
+  // 音乐:库里存数字 song_id,表单用 link 字段编辑 → 用单独的取值对象回填,
+  // 不要改动 item 本身(保存成功后要 Object.assign 回原对象)
+  const formVals = (kind === 'songs' && item)
+    ? Object.assign({}, item, { link: item.song_id })
+    : item;
   const fields = FIELDS[kind];
 
   // profile 拆成两个面板,按 kind 找到对应的列表容器
@@ -243,7 +283,7 @@ function editItem(kind, id, preset) {
   form.className = 'item';
   form.style.borderColor = 'var(--teal)';
   form.innerHTML = fields.map(f => {
-    const v = item ? (item[f.k] ?? '') : (preset && preset[f.k] !== undefined ? preset[f.k] : '');
+    const v = formVals ? (formVals[f.k] ?? '') : (preset && preset[f.k] !== undefined ? preset[f.k] : '');
     if (f.type === 'select') {
       return `<div class="ef"><label>${f.label}</label><select data-k="${f.k}">${
         Object.entries(f.opts).map(([val, txt]) =>
@@ -274,8 +314,10 @@ function editItem(kind, id, preset) {
     });
     try {
       if (item) {
-        await api('PUT', `/api/${kind}/${id}`, body);
-        Object.assign(item, body);
+        const row = await api('PUT', `/api/${kind}/${id}`, body);
+        // 用后端返回的整行覆盖本地,避免前端残留 song_id 之类的旧字段
+        if (row && typeof row === 'object') Object.assign(item, row);
+        else Object.assign(item, body);
         toast('保存成功 ✅');
       } else {
         const row = await api('POST', `/api/${kind}`, body);

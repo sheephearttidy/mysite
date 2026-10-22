@@ -176,6 +176,19 @@ CREATE TABLE IF NOT EXISTS friendlinks (
     desc TEXT DEFAULT '',              -- 一句话介绍(可空)
     sort INTEGER NOT NULL DEFAULT 0
 );
+
+-- v2.4 音乐(关于我页「最近在听」,官方外链 iframe 播放器)
+-- 官方播放器只认数字 songid:https://i.y.qq.com/n2/m/outchain/player/index.html?songid=<id>
+-- 后台允许贴分享链接(mid),app.py 会自动换成数字 id 再存这里。
+CREATE TABLE IF NOT EXISTS songs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,               -- 歌名(自己填,展示用)
+    artist TEXT DEFAULT '',            -- 歌手(可空)
+    emoji TEXT DEFAULT '🎵',
+    song_id TEXT NOT NULL,             -- QQ 音乐数字 songid(如 97773)
+    note TEXT DEFAULT '',              -- 一句话安利(可空)
+    sort INTEGER NOT NULL DEFAULT 0
+);
 """
 
 # 首次建库时灌入的初始数据(与 v1.0.0 静态页一致)
@@ -251,6 +264,10 @@ SEED = {
     "friendlinks": [
         ("GitHub", "https://github.com/sheephearttidy", "🐙", "我的全部公开代码都在这里", 1),
         ("DeepSeek", "https://chat.deepseek.com", "🐋", "写代码与改 bug 的最佳搭子", 2),
+    ],
+    # v2.4 音乐(示例:周杰伦《晴天》mid,后台可改)
+    "songs": [
+        ("晴天", "周杰伦", "🌧️", "97773", "写代码循环曲第一名", 1),
     ],
 }
 
@@ -559,6 +576,23 @@ def init_db(path):
             c.executemany(
                 "INSERT INTO friendlinks(name,url,emoji,desc,sort) VALUES(?,?,?,?,?)",
                 SEED["friendlinks"])
+        # v2.4 音乐:旧库/中间版本的 songs 表可能用的是 song_mid,统一迁到 song_id
+        # (官方外链播放器只认数字 songid,mid 喂进去是白屏)
+        song_cols = [r["name"] for r in c.execute("PRAGMA table_info(songs)")]
+        if "song_mid" in song_cols and "song_id" not in song_cols:
+            c.execute("ALTER TABLE songs RENAME TO songs_old")
+            c.execute("""CREATE TABLE songs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL, artist TEXT DEFAULT '', emoji TEXT DEFAULT '🎵',
+                song_id TEXT NOT NULL, note TEXT DEFAULT '', sort INTEGER NOT NULL DEFAULT 0
+            )""")
+            c.execute("""INSERT INTO songs(id,title,artist,emoji,song_id,note,sort)
+                         SELECT id,title,artist,emoji,song_mid,note,sort FROM songs_old""")
+            c.execute("DROP TABLE songs_old")
+        if c.execute("SELECT COUNT(*) FROM songs").fetchone()[0] == 0:
+            c.executemany(
+                "INSERT INTO songs(title,artist,emoji,song_id,note,sort) VALUES(?,?,?,?,?,?)",
+                SEED["songs"])
         # 初始密码 admin,标记必须修改
         if c.execute("SELECT COUNT(*) FROM settings WHERE key='pass_hash'").fetchone()[0] == 0:
             c.execute("INSERT INTO settings(key,value) VALUES('pass_hash',?)",
@@ -907,6 +941,48 @@ def delete_friendlink(fid):
         return cur.rowcount > 0
 
 
+# ---------------- v2.4 音乐(QQ 音乐外链播放器) ----------------
+
+
+def get_songs():
+    with get_db() as c:
+        rows = c.execute("SELECT * FROM songs ORDER BY sort, id").fetchall()
+        return [dict(r) for r in rows]
+
+
+def insert_song(item):
+    with get_db() as c:
+        cur = c.execute(
+            "INSERT INTO songs(title,artist,emoji,song_id,note,sort) VALUES(?,?,?,?,?,?)",
+            (item.get("title", ""), item.get("artist", ""), item.get("emoji", "🎵"),
+             item.get("song_id", ""), item.get("note", ""),
+             int(item.get("sort", 99))))
+        row = c.execute("SELECT * FROM songs WHERE id=?", (cur.lastrowid,)).fetchone()
+        return dict(row)
+
+
+def update_song(sid, item):
+    with get_db() as c:
+        row = c.execute("SELECT * FROM songs WHERE id=?", (sid,)).fetchone()
+        if not row:
+            return None
+        merged = dict(row)
+        merged.update({k: item[k] for k in ("title", "artist", "emoji", "song_id", "note")
+                       if k in item})
+        if "sort" in item:
+            merged["sort"] = int(item["sort"])
+        c.execute("UPDATE songs SET title=?,artist=?,emoji=?,song_id=?,note=?,sort=? WHERE id=?",
+                  (merged["title"], merged["artist"], merged["emoji"],
+                   merged["song_id"], merged["note"], merged["sort"], sid))
+        return merged
+
+
+def delete_song(sid):
+    with get_db() as c:
+        cur = c.execute("DELETE FROM songs WHERE id=?", (sid,))
+        return cur.rowcount > 0
+
+
 # ---------------- 备份导入 ----------------
 
 IMPORT_FIELDS = {
@@ -918,6 +994,7 @@ IMPORT_FIELDS = {
     "honors": ("emoji", "year", "title", "desc", "level", "sort"),
     "notes": ("emoji", "text", "mood", "ts", "sort"),
     "friendlinks": ("name", "url", "emoji", "desc", "sort"),
+    "songs": ("title", "artist", "emoji", "song_id", "note", "sort"),
 }
 
 

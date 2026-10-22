@@ -55,6 +55,8 @@
             📝 随手记 <span class="sb-count" id="cnt-notes">0</span></a></li>
           <li><a class="sb-link" data-panel="friendlinks" href="#friendlinks">
             🔗 友情链接 <span class="sb-count" id="cnt-friendlinks">0</span></a></li>
+          <li><a class="sb-link" data-panel="songs" href="#songs">
+            🎵 音乐 <span class="sb-count" id="cnt-songs">0</span></a></li>
           <li><a class="sb-link" data-panel="messages" href="#messages">
             ✉️ 留言板 <span class="sb-count" id="cnt-messages">0</span></a></li>
         </ul>
@@ -232,6 +234,16 @@
           <span class="hint">「来找我玩」页的友链卡片,填站名和网址即可</span>
         </div>
         <div class="grid" id="list-friendlinks"></div>
+      </section>
+
+      <!-- v2.4 音乐 -->
+      <section class="panel" id="panel-songs">
+        <div class="sec-head">
+          <h2>🎵 音乐</h2>
+          <button class="add" onclick="editItem('songs')">＋ 新增歌曲</button>
+          <span class="hint">「关于我」页的「最近在听」;贴 QQ 音乐分享链接自动认歌曲 ID;VIP 歌访客只能试听 60 秒(版权限制)</span>
+        </div>
+        <div class="grid" id="list-songs"></div>
       </section>
 
       <!-- 图片库 -->

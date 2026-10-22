@@ -181,6 +181,28 @@ async function loadDynamicContent() {
       observeReveals();
     }
   }
+
+  // ---- v2.4 最近在听(about 页) ----
+  if (Array.isArray(data.songs) && data.songs.length) {
+    const box = document.getElementById('musicList');
+    if (box) {
+      box.innerHTML = data.songs.map((s, i) => `
+        <div class="music-card reveal d${i % 3}">
+          <div class="music-head">
+            <span class="music-emoji">${esc(s.emoji || '🎵')}</span>
+            <span class="music-meta">
+              <b class="music-title">${esc(s.title)}</b>
+              <span class="music-artist">${esc(s.artist || '未知歌手')}</span>
+            </span>
+          </div>
+          ${s.note ? `<p class="music-note">${esc(s.note)}</p>` : ''}
+          <iframe class="music-frame" loading="lazy"
+                  src="https://i.y.qq.com/n2/m/outchain/player/index.html?songid=${encodeURIComponent(s.song_id)}"
+                  frameborder="0" allow="autoplay" title="QQ音乐播放器:${escAttr(s.title)}"></iframe>
+        </div>`).join('');
+      observeReveals();
+    }
+  }
 }
 
 // 随手记时间:同天显示「今天 HH:MM」,当年显示「M月D日」,否则「YYYY.M.D」

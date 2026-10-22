@@ -61,7 +61,7 @@ nonce = m.group(1) if m else ""
 ck("所有 script 标签都带同一 nonce",
    not re.search(r'<script(?![^>]*nonce)[^>]*>', html))
 ck("外链模块脚本带 nonce",
-   bool(re.search(rf'<script nonce="{nonce}" src="[^"]*admin-core\.js', html)))
+   bool(re.search(rf'<script[^>]*nonce="{nonce}"[^>]*admin-core\.js', html)))
 
 # 本地复现:改写资源为绝对地址,存临时文件
 local = html.replace('href="/admin/static/', f'href="{BASE}/admin/static/')

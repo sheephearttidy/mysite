@@ -431,3 +431,39 @@ section { padding: 84px 0; position: relative; }
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .friend-go { font-weight: 800; color: var(--pink); flex: 0 0 auto; }
+
+/* ================= v2.4 最近在听(about 页) ================= */
+.music-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px; max-width: 980px; margin: 0 auto;
+}
+.music-card {
+  background: var(--paper); border: 3px solid var(--line); border-radius: 16px;
+  box-shadow: 4px 4px 0 var(--shadow); overflow: hidden;
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.music-card:hover { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 var(--shadow); }
+.music-head { display: flex; align-items: center; gap: 10px; padding: 12px 16px 10px; }
+.music-emoji { font-size: 26px; flex: 0 0 auto; }
+.music-meta { flex: 1; min-width: 0; }
+.music-title {
+  font-size: 15px; font-weight: 800; display: block;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.music-artist {
+  font-size: 12px; color: var(--text-2); display: block; margin-top: 1px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.music-note {
+  font-size: 12px; color: var(--text-2); padding: 0 16px 10px;
+  border-top: 2px dashed var(--line); margin: 0 16px; padding-top: 8px;
+}
+.music-frame {
+  width: 100%; height: 96px; border: 0; display: block;
+  border-top: 2px solid var(--line); background: #fff;
+}
+.music-tip {
+  font-size: 12px; color: var(--text-3); text-align: center;
+  margin-top: 14px; line-height: 1.7;
+}
+

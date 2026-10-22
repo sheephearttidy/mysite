@@ -35,9 +35,28 @@ function esc(s) { const d = document.createElement('div'); d.textContent = s ?? 
 function escAttr(s) { return esc(s).replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
 
 /* ---------- 列表渲染 ---------- */
+// v2.4 加固:以前 renderAll 是一串顺序调用,任意一个渲染函数抛错
+// (比如某条数据字段缺失)就会中断后面所有渲染 + 最后的 updateCounts(),
+// 表现成「侧边栏计数全是 0、面板全空」但留言板(单独拉取)还正常。
+// 现在逐个隔离:一个出错只影响它自己,并打日志方便定位。
+function safeRender(name, fn) {
+  try {
+    fn();
+  } catch (e) {
+    console.error('[render] ' + name + ' 失败:', e);
+    if (window.__RENDER_ERRORS__) window.__RENDER_ERRORS__.push(name + ': ' + e.message);
+  }
+}
+
 function renderAll() {
-  renderSkills(); renderTimeline(); renderStats();
-  renderWorks(); renderProfile();
-  renderHonors(); renderNotes(); renderFriendlinks();
-  updateCounts();
+  safeRender('skills', renderSkills);
+  safeRender('timeline', renderTimeline);
+  safeRender('stats', renderStats);
+  safeRender('works', renderWorks);
+  safeRender('profile', renderProfile);
+  safeRender('honors', renderHonors);
+  safeRender('notes', renderNotes);
+  safeRender('friendlinks', renderFriendlinks);
+  safeRender('songs', renderSongs);
+  safeRender('counts', updateCounts);
 }

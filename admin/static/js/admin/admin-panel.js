@@ -125,6 +125,8 @@ function updateCounts() {
   set('cnt-honors', (DATA.honors || []).length);
   set('cnt-notes', (DATA.notes || []).length);
   set('cnt-friendlinks', (DATA.friendlinks || []).length);
+  // v2.4 音乐
+  set('cnt-songs', (DATA.songs || []).length);
 }
 
 /* ---------- 前台特效面板 ---------- */

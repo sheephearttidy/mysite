@@ -11,6 +11,8 @@ import time
 import uuid
 import shutil
 import base64
+import urllib.parse
+import urllib.request
 from datetime import datetime, timezone, timedelta
 from functools import wraps
 
@@ -301,13 +303,14 @@ def api_content():
         honors=db.get_honors(),
         notes=db.get_notes(),
         friendlinks=db.get_friendlinks(),
+        songs=db.get_songs(),
     )
 
 
 # 每个页面需要的数据:拆分多页后,各页只拉自己那部分
 PAGE_FIELDS = {
     "index": ("stats",),
-    "about": ("profile", "honors"),
+    "about": ("profile", "honors", "songs"),
     "skills": ("skills",),
     "works": ("works",),
     "campus": ("timeline", "notes"),
@@ -627,6 +630,7 @@ def admin():
         "honors": db.get_honors(),
         "notes": db.get_notes(),
         "friendlinks": db.get_friendlinks(),
+        "songs": db.get_songs(),
     }
     # 初始密码还没改过 → 前端弹窗提示修改
     return render_template("admin.html", data=data,
@@ -1320,6 +1324,122 @@ def delete_friendlink(fid):
     return ("", 204) if ok else (jsonify(error="not found"), 404)
 
 
+# ---------------- v2.4 音乐 CRUD(QQ 音乐官方外链播放器) ----------------
+# 官方外链播放器 https://i.y.qq.com/n2/m/outchain/player/index.html?songid=<数字id>
+# 只认数字 songid;songmid(如 0039MnYb0qxYhV)不是它能用的参数。
+# 所以后台允许用户直接贴 QQ 音乐分享链接(里面是 mid),后端自动换成数字 id。
+
+_SONG_MID_RE = re.compile(
+    r"(?:songid|song_mid|songmid)/([0-9A-Za-z]{10,16})"
+    r"|[?&](?:songmid|song_mid)=([0-9A-Za-z]{10,16})")
+_SONG_ID_RE = re.compile(r"[?&]songid=(\d{3,12})|songid/(\d{3,12})")
+
+
+def parse_song_mid(url: str) -> str:
+    """从 QQ 音乐分享链接/纯 mid 里解析歌曲 mid,解析不出返回空"""
+    u = (url or "").strip()
+    if not u:
+        return ""
+    if re.fullmatch(r"[0-9A-Za-z]{10,16}", u):
+        return u
+    m = _SONG_MID_RE.search(u)
+    if m:
+        return m.group(1) or m.group(2)
+    # y.qq.com/n/ryqq/songDetail/XXXX 形式取末段
+    tail = u.rstrip("/").split("/")[-1]
+    return tail if re.fullmatch(r"[0-9A-Za-z]{10,16}", tail) else ""
+
+
+def parse_song_id(url: str) -> str:
+    """从链接里直接解析数字 songid(分享链接里 songid 是数字)"""
+    u = (url or "").strip()
+    if re.fullmatch(r"\d{3,12}", u):
+        return u
+    m = _SONG_ID_RE.search(u)
+    if m:
+        return m.group(1) or m.group(2)
+    return ""
+
+
+def mid_to_songid(mid: str) -> str:
+    """songmid → 数字 songid(走 QQ 音乐公开详情接口)
+
+    失败返回空:外链播放器只认数字 id,拿不到就别存脏数据。
+    """
+    mid = (mid or "").strip()
+    if not mid:
+        return ""
+    if re.fullmatch(r"\d{3,12}", mid):
+        return mid
+    try:
+        payload = {
+            "comm": {"ct": 24, "cv": 0},
+            "req_1": {"module": "music.pf_song_detail_svr",
+                      "method": "get_song_detail",
+                      "param": {"song_mid": mid}},
+        }
+        url = ("https://u.y.qq.com/cgi-bin/musicu.fcg?data="
+               + urllib.parse.quote(json.dumps(payload)))
+        req = urllib.request.Request(
+            url, headers={"User-Agent": "Mozilla/5.0", "Referer": "https://y.qq.com/"})
+        with urllib.request.urlopen(req, timeout=8) as r:
+            data = json.loads(r.read().decode("utf-8", "replace"))
+        track = (data.get("req_1") or {}).get("data", {}).get("track_info") or {}
+        sid = track.get("id")
+        return str(sid) if sid else ""
+    except Exception:
+        app.logger.warning("mid_to_songid 失败 mid=%s", mid)
+        return ""
+
+
+def resolve_song_id(item: dict) -> str:
+    """从提交内容里拿到数字 songid:链接/纯 id 直取,只有 mid 就查接口"""
+    raw = item.get("link") or item.get("song_id") or item.get("song_mid") or ""
+    sid = parse_song_id(raw)
+    if sid:
+        return sid
+    mid = parse_song_mid(raw)
+    return mid_to_songid(mid) if mid else ""
+
+
+@app.post("/api/songs")
+@login_required
+def add_song():
+    item = request.get_json(force=True, silent=True) or {}
+    if not item.get("title"):
+        return jsonify(error="歌名要填哦"), 400
+    sid = resolve_song_id(item)
+    if not sid:
+        return jsonify(error="没认出歌曲:贴 QQ 音乐分享链接(带 songid 或 songmid 都行)"), 400
+    item["song_id"] = sid
+    item.pop("link", None)
+    item.pop("song_mid", None)
+    return jsonify(db.insert_song(item)), 201
+
+
+@app.put("/api/songs/<int:sid>")
+@login_required
+def update_song(sid):
+    item = request.get_json(force=True, silent=True) or {}
+    if item.get("link") or item.get("song_id") or item.get("song_mid"):
+        new_id = resolve_song_id(item)
+        if new_id:
+            item["song_id"] = new_id
+        item.pop("link", None)
+        item.pop("song_mid", None)
+    row = db.update_song(sid, item)
+    if not row:
+        return jsonify(error="not found"), 404
+    return jsonify(row)
+
+
+@app.delete("/api/songs/<int:sid>")
+@login_required
+def delete_song(sid):
+    ok = db.delete_song(sid)
+    return ("", 204) if ok else (jsonify(error="not found"), 404)
+
+
 # ---------------- 图片上传 ----------------
 
 def sniff_image(head: bytes) -> str | None:
@@ -1423,6 +1543,7 @@ def export_data():
         "honors": db.get_honors(),
         "notes": db.get_notes(),
         "friendlinks": db.get_friendlinks(),
+        "songs": db.get_songs(),
     }
     body = json.dumps(payload, ensure_ascii=False, indent=2)
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
