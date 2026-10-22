@@ -36,3 +36,15 @@
   .doodle { font-size: 22px !important; }
   .contact-card { padding: 52px 22px; }
 }
+
+/* ================= 挂件小屏适配(v2.1 从 widgets.css 归位) ================= */
+@media (max-width: 640px) {
+  /* 主题色快捷面板 */
+  .accent-panel { right: 64px; padding: 8px 10px; gap: 6px; }
+  .accent-opt { width: 22px; height: 22px; }
+  /* 公告弹窗 */
+  .notice-pop { padding: 10px 12px; }
+  .notice-pop .np-text { font-size: 13px; }
+  /* 倒计时挂件 */
+  .cd-widget { right: 12px; bottom: 120px; padding: 7px 10px; max-width: 104px; }
+}

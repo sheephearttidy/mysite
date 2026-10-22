@@ -1,5 +1,6 @@
 """测试环境:多页拆分回归(6 页 + api/page + 导航高亮 + 动态选择器)"""
 import sys
+import re
 import urllib.request
 
 BASE = "http://127.0.0.1:5102"
@@ -114,6 +115,19 @@ st, js = get("/js/main.js")
 check("main.js 含 PAGE_API", "PAGE_API" in js)
 check("main.js 用 /api/page/", "/api/page/" in js)
 check("main.js 不再用 /api/content", "/api/content" not in js)
+
+# 4.1 v2.1 拆分:core.js 公共核心存在且被页面引用
+st, core = get("/js/core.js")
+check("core.js 200 且含 observeReveals", st == 200 and "observeReveals" in core, str(st))
+check("core.js 含 esc 工具", "const esc" in core)
+st, ih = get("/")
+check("index 引用 core.js 且先于 main.js",
+      ih.index("js/core.js") < ih.index("js/main.js"))
+check("index 引用 core.js 带版本", re.search(r"js/core\.js\?v=[0-9a-f]{8}", ih) is not None)
+
+# 4.2 v2.1:项目封面底色键与 API 一致(颜色名,不再用数字)
+check("main.js 项目封面用 wc- 键", "wc-${escAttr(w.cover)}" in js)
+check("main.js 不再用 cover- 前缀", "cover-${escAttr(w.cover)}" not in js)
 
 print()
 print(f"通过 {PASS} 项,失败 {FAIL} 项")

@@ -20,9 +20,12 @@ CSS_FILES = ["css/base.css", "css/home.css", "css/widgets.css",
              "css/dark.css", "css/holidays.css", "css/responsive.css"]
 ADMIN_CSS = ["admin/static/css/admin.css", "admin/static/css/login.css",
              "admin/static/css/holidays.css"]
-JS_FILES = ["js/main.js", "js/interact.js", "js/ambience.js",
+JS_FILES = ["js/core.js", "js/main.js", "js/interact.js", "js/ambience.js",
             "js/site-extra.js", "js/theme.js", "js/holiday.js", "js/holiday-fx.js"]
-ADMIN_JS = ["admin/static/js/admin.js", "admin/static/js/login.js"]
+ADMIN_JS = ["admin/static/js/admin/admin-core.js", "admin/static/js/admin/admin-panel.js",
+            "admin/static/js/admin/admin-content.js", "admin/static/js/admin/admin-media.js",
+            "admin/static/js/admin/admin-ops.js", "admin/static/js/admin/admin-site.js",
+            "admin/static/js/admin/admin-app.js", "admin/static/js/login.js"]
 
 P = F = 0
 
@@ -121,7 +124,9 @@ for j in JS_FILES + ADMIN_JS:
 ck("JS 引用的元素 id 全部存在", not missing_ids, str(missing_ids[:8]))
 
 # ---------- 后台按钮 onclick 函数存在 ----------
-admin_js_text = read(os.path.join(ROOT, "admin/static/js/admin.js"))
+admin_js_text = ""
+for j in ADMIN_JS:
+    admin_js_text += read(os.path.join(ROOT, j))
 admin_funcs = set(re.findall(r"(?:async\s+)?function\s+(\w+)\s*\(", admin_js_text))
 admin_funcs |= set(re.findall(r"(?:const|let)\s+(\w+)\s*=\s*(?:async\s*)?(?:\([^)]*\)|\w+)\s*=>", admin_js_text))
 onclick_issues = []

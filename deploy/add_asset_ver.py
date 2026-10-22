@@ -6,6 +6,9 @@ import hashlib
 import io
 import os
 import re
+import sys
+
+sys.stdout.reconfigure(encoding="utf-8")
 
 ROOT = r"D:\Agent_Work_Base\my-portfolio"
 PAGES = ["index.html", "about.html", "skills.html", "works.html",
@@ -25,6 +28,17 @@ for sub in ("css", "js"):
 print(f"算出 {len(hashes)} 个资源哈希")
 for k in sorted(hashes):
     print(f"  {k:22s} {hashes[k]}")
+
+# v2.1:后台静态主题副本同步(单一真源=前台),再算一次副本哈希保证一致
+sync = os.path.join(ROOT, "deploy", "sync_admin_theme.py")
+if os.path.exists(sync):
+    import subprocess
+    env = dict(os.environ, PYTHONIOENCODING="utf-8")
+    r = subprocess.run([sys.executable, sync, "--fix"],
+                       capture_output=True, text=True, encoding="utf-8", env=env)
+    print((r.stdout or "").strip())
+    if r.returncode != 0:
+        print(r.stderr)
 
 print()
 changed = 0

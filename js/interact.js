@@ -111,11 +111,7 @@
   }
 
   /* ===================== 留言墙 ===================== */
-  function esc(s) {
-    return String(s == null ? '' : s)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-  }
+  // esc 用 core.js 的全局版本(v2.1 去掉本地副本)
 
   function fmtTime(ts) {
     try {

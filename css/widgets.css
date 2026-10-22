@@ -108,8 +108,7 @@ footer .sprout { display: inline-block; animation: grow 2.4s ease-in-out infinit
 }
 .theme-toggle:hover { transform: translate(-1px, -1px) rotate(-4deg); box-shadow: 4px 4px 0 var(--shadow); }
 .theme-toggle .ti-moon { display: none; }
-[data-theme="dark"] .theme-toggle .ti-sun { display: none; }
-[data-theme="dark"] .theme-toggle .ti-moon { display: inline; }
+/* 深色态图标切换在 dark.css(v2.1 归位,消除重复定义) */
 
 /* ============================================================
    v1.9.0 互动包:留言墙 + 点赞 + 点击粒子
@@ -161,7 +160,7 @@ select.sf-input { cursor: pointer; }
   background: rgba(255, 255, 255, .55); border: 1px dashed rgba(0,0,0,.12);
   border-radius: 3px;
 }
-[data-theme="dark"] .msg-note::before { background: rgba(255,255,255,.12); }
+/* 便签深色态规则归位到 dark.css(v2.1) */
 .msg-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 .msg-name { font-size: 14px; }
 .msg-time { font-size: 11px; opacity: .55; white-space: nowrap; }
@@ -173,20 +172,13 @@ select.sf-input { cursor: pointer; }
 [data-theme="dark"] .msg-reply { background: rgba(126, 200, 184, .18); }
 .msg-empty { text-align: center; margin-top: 18px; }
 
-/* 六色便签(莫兰迪) */
+/* 六色便签(莫兰迪);深色态映射在 dark.css(v2.1 归位) */
 .msg-pink   { background: #ffe9f0; }
 .msg-orange { background: #ffefd9; }
 .msg-teal   { background: #e2f4f0; }
 .msg-purple { background: #eceaff; }
 .msg-yellow { background: #fff7d6; }
 .msg-blue   { background: #e3eeff; }
-[data-theme="dark"] .msg-pink   { background: #4a3340; }
-[data-theme="dark"] .msg-orange { background: #4a3d2e; }
-[data-theme="dark"] .msg-teal   { background: #2e423e; }
-[data-theme="dark"] .msg-purple { background: #383452; }
-[data-theme="dark"] .msg-yellow { background: #46422c; }
-[data-theme="dark"] .msg-blue   { background: #2f3c52; }
-[data-theme="dark"] .msg-note { border-color: var(--shadow); color: var(--text); }
 
 /* ---- 点赞按钮 ---- */
 .like-btn {
@@ -251,14 +243,7 @@ select.sf-input { cursor: pointer; }
 .greet-line, .greet-emoji { font-weight: 700; }
 .greet-emoji { margin-right: 2px; }
 
-[data-theme="dark"] .accent-btn { background: #2a2b33; }
-[data-theme="dark"] .accent-panel { background: #2a2b33; }
-[data-theme="dark"] .accent-opt.on { border-color: #fff; }
-
-@media (max-width: 640px) {
-  .accent-panel { right: 64px; padding: 8px 10px; gap: 6px; }
-  .accent-opt { width: 22px; height: 22px; }
-}
+/* 小屏与深色态规则归位:responsive.css / dark.css(v2.1) */
 @media (prefers-reduced-motion: reduce) {
   .accent-btn:hover { transform: none; }
 }
@@ -297,13 +282,7 @@ select.sf-input { cursor: pointer; }
   transition: background .15s ease;
 }
 .notice-pop .np-close:hover { background: var(--pink-bg); }
-[data-theme="dark"] .notice-pop { background: #2a2b33; }
-[data-theme="dark"] .notice-pop .np-close { background: #2a2b33; color: var(--text); }
-
-@media (max-width: 640px) {
-  .notice-pop { padding: 10px 12px; }
-  .notice-pop .np-text { font-size: 13px; }
-}
+/* 弹窗深色态/小屏规则归位到 dark.css / responsive.css(v2.1) */
 
 .cd-widget {
   position: fixed; right: 18px; bottom: 138px; z-index: 1150;
@@ -321,11 +300,8 @@ select.sf-input { cursor: pointer; }
 .cd-widget.today { border-color: #ff6b6b; background: #fff0f0; }
 .cd-widget.today .cd-days { color: #e04848; }
 .cd-widget.past { opacity: .75; }
-[data-theme="dark"] .cd-widget { background: #2a2b33; }
+/* 挂件深色态/小屏规则归位到 dark.css / responsive.css(v2.1) */
 
-@media (max-width: 640px) {
-  .cd-widget { right: 12px; bottom: 120px; padding: 7px 10px; max-width: 104px; }
-}
 @media (prefers-reduced-motion: reduce) {
   .notice-pop { transition: none; }
   .cd-widget { transition: none; }

@@ -1,88 +1,12 @@
 /* ============================================================
-   我的小窝 · 交互脚本
-   负责所有动效:菜单、滚动显现、技能条、数字滚动、返回顶部
-   另外负责从后台 API 拉取技能树/时间线/统计(拉不到就用页面内置内容)
+   我的小窝 · 页面数据脚本(v2.1 拆分后只剩"拉数据渲染"这一件事)
+   依赖:js/core.js 先加载(用到 esc/escAttr 与观察器)
+   从后台拉当前页面用到的数据(技能树/时间线/统计等),
+   拉取失败(本地打开/后台挂了)就用页面内置内容兜底
    ============================================================ */
+'use strict';
 
 console.log('%c 嗨!你打开了控制台,是想看看这个网页的秘密吗 👀', 'font-size:14px;color:#ff6b9d;font-weight:bold;');
-
-// ===== 工具:HTML 转义 =====
-const esc = s => { const d = document.createElement('div'); d.textContent = s ?? ''; return d.innerHTML; };
-// 放进 HTML 属性(双引号包裹)时用这个:额外转义引号,防属性逃逸
-const escAttr = s => esc(s).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-
-// ===== 移动端汉堡菜单 =====
-const navToggle = document.getElementById('navToggle');
-const navLinks = document.getElementById('navLinks');
-navToggle.addEventListener('click', () => navLinks.classList.toggle('open'));
-navLinks.querySelectorAll('a').forEach(a =>
-  a.addEventListener('click', () => navLinks.classList.remove('open'))
-);
-
-// ===== 滚动渐入显现 =====
-const io = new IntersectionObserver(entries => {
-  entries.forEach(e => {
-    if (e.isIntersecting) { e.target.classList.add('visible'); io.unobserve(e.target); }
-  });
-}, { threshold: 0.12 });
-const observeReveals = root => document.querySelectorAll('.reveal').forEach(el => io.observe(el));
-observeReveals();
-
-// ===== 技能条动画(滚到可视区域时填充) =====
-const barIO = new IntersectionObserver(entries => {
-  entries.forEach(e => {
-    if (e.isIntersecting) { e.target.classList.add('visible'); barIO.unobserve(e.target); }
-  });
-}, { threshold: 0.4 });
-const observeSkillbars = () => document.querySelectorAll('.skillbar').forEach(el => barIO.observe(el));
-observeSkillbars();
-
-// ===== 数字滚动动画 =====
-const counterIO = new IntersectionObserver(entries => {
-  entries.forEach(e => {
-    if (!e.isIntersecting) return;
-    const el = e.target;
-    const target = parseInt(el.dataset.count, 10);
-    const dur = 1100, t0 = performance.now();
-    const tick = now => {
-      const p = Math.min((now - t0) / dur, 1);
-      el.textContent = Math.round(target * (1 - Math.pow(1 - p, 3)));
-      if (p < 1) requestAnimationFrame(tick);
-    };
-    requestAnimationFrame(tick);
-    counterIO.unobserve(el);
-  });
-}, { threshold: 0.5 });
-const observeCounters = () => document.querySelectorAll('[data-count]').forEach(el => counterIO.observe(el));
-observeCounters();
-
-// ===== 返回顶部按钮 =====
-const backTop = document.getElementById('backTop');
-window.addEventListener('scroll', () => {
-  backTop.classList.toggle('show', window.scrollY > 480);
-}, { passive: true });
-backTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
-
-// ===== 深色模式 =====
-// 主题切换逻辑在 js/theme.js 里(前后台共用同一个文件),这里不用重复实现
-
-// ===== 微信二维码弹窗 =====
-const qrOverlay = document.getElementById('qrOverlay');
-const wechatBtn = document.getElementById('wechatBtn');
-const qrClose = document.getElementById('qrClose');
-const closeQr = () => qrOverlay.classList.remove('open');
-wechatBtn.addEventListener('click', e => {
-  e.preventDefault();
-  qrOverlay.classList.add('open');
-});
-qrClose.addEventListener('click', closeQr);
-qrOverlay.addEventListener('click', e => { if (e.target === qrOverlay) closeQr(); });
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeQr(); });
-
-// ============================================================
-// 动态内容:从后台拉当前页面用到的数据(技能树 / 时间线 / 统计等)
-// 拉取失败(本地打开 / 后台挂了)就什么都不做,页面内置内容兜底
-// ============================================================
 
 // 每个页面拉哪个接口:contact 没有动态数据,直接跳过
 const PAGE_API = {
@@ -91,6 +15,7 @@ const PAGE_API = {
   skills: '/api/page/skills',
   works: '/api/page/works',
   campus: '/api/page/campus',
+  map: '/api/page/map',
 };
 
 async function loadDynamicContent() {
@@ -107,7 +32,6 @@ async function loadDynamicContent() {
 
   // ---- 技能树 ----
   if (Array.isArray(data.skills) && data.skills.length) {
-    const cols = { serious: document.querySelector('.skills-cols .col-a .skillbar')?.parentElement, passive: null };
     const colA = document.querySelector('.skills-cols .col-a');
     const colB = document.querySelector('.skills-cols .col-b');
     if (colA && colB) {
@@ -156,13 +80,13 @@ async function loadDynamicContent() {
     }
   }
 
-  // ---- 项目墙 ----
+  // ---- 项目墙(封面底色键与 API/后台一致: pink/yellow/teal/purple/orange/blue) ----
   if (Array.isArray(data.works) && data.works.length) {
     const grid = document.getElementById('worksGrid');
     if (grid) {
       grid.innerHTML = data.works.map((w, i) => `
         <article class="card work-card reveal d${i % 3}">
-          <div class="work-cover cover-${escAttr(w.cover)}">${esc(w.emoji)}</div>
+          <div class="work-cover wc-${escAttr(w.cover)}">${esc(w.emoji)}</div>
           <div class="work-body">
             <h3>${esc(w.title)}</h3>
             <p>${esc(w.desc)}</p>

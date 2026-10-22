@@ -36,7 +36,10 @@ login(s)
 h = s.get(f"{B}/admin/").text
 ck("无 <style> 块", "<style>" not in h, f"找到 {h.count('<style>')} 处")
 ck("引用了 admin.css", "css/admin.css" in h)
-ck("引用了 admin.js", "js/admin.js" in h)
+# v2.1 拆分:admin.js 拆成 7 个模块,模板按序引用
+for mod in ["admin-core", "admin-panel", "admin-content",
+            "admin-media", "admin-ops", "admin-site", "admin-app"]:
+    ck(f"引用了 {mod}.js", f"js/admin/{mod}.js" in h)
 ck("有数据注入点", "window.__ADMIN_DATA__" in h)
 ck("有改密标记注入", "window.__ADMIN_MUST_CHANGE__" in h)
 ck("无 Jinja 残留", "{{" not in h and "{%" not in h)
@@ -82,11 +85,15 @@ for path, must, desc in [
     ("/admin/static/css/login.css", ".cap-row", "验证码行样式"),
     ("/admin/static/css/login.css", ".cap-img", "验证码图样式"),
     ("/admin/static/css/login.css", ".blocked", "封锁提示样式"),
-    ("/admin/static/js/admin.js", "function loadSecOverview", "安全总览函数"),
-    ("/admin/static/js/admin.js", "function saveSecSettings", "保存设置函数"),
-    ("/admin/static/js/admin.js", "function loadAudit", "审计函数"),
-    ("/admin/static/js/admin.js", "function revokeAllSessions", "踢会话函数"),
-    ("/admin/static/js/admin.js", "window.__ADMIN_DATA__", "读注入数据"),
+    # v2.1 拆分后函数分布在模块里
+    ("/admin/static/js/admin/admin-panel.js", "function loadSecOverview", "安全总览函数"),
+    ("/admin/static/js/admin/admin-panel.js", "function saveSecSettings", "保存设置函数"),
+    ("/admin/static/js/admin/admin-panel.js", "function loadAudit", "审计函数"),
+    ("/admin/static/js/admin/admin-panel.js", "function revokeAllSessions", "踢会话函数"),
+    ("/admin/static/js/admin/admin-core.js", "window.__ADMIN_DATA__", "读注入数据"),
+    ("/admin/static/js/admin/admin-core.js", "function toast", "toast 函数"),
+    ("/admin/static/js/admin/admin-core.js", "async function api", "api 封装"),
+    ("/admin/static/js/admin/admin-app.js", "twofaStart", "2FA 启动函数"),
     ("/admin/static/js/login.js", "capBox", "验证码点击"),
     ("/admin/static/js/login.js", "if (!box) return", "元素缺失自动跳过"),
 ]:
@@ -98,7 +105,7 @@ for path, must, desc in [
 r = requests.get(B + "/admin/static/css/admin.css")
 ck("CSS Content-Type", "css" in r.headers.get("Content-Type", ""),
    r.headers.get("Content-Type"))
-r = requests.get(B + "/admin/static/js/admin.js")
+r = requests.get(B + "/admin/static/js/admin/admin-core.js")
 ck("JS Content-Type", "javascript" in r.headers.get("Content-Type", ""),
    r.headers.get("Content-Type"))
 
@@ -121,8 +128,8 @@ ck("admin.css 带版本号", m is not None)
 if m:
     ck("版本号是数字时间戳", m.group(1).isdigit() and len(m.group(1)) >= 10,
        m.group(1))
-m2 = re.search(r"js/admin\.js\?v=(\d+)", h)
-ck("admin.js 带版本号", m2 is not None)
+m2 = re.search(r"js/admin/admin-core\.js\?v=(\d+)", h)
+ck("admin-core.js 带版本号", m2 is not None)
 m3 = re.search(r"css/login\.css\?v=(\d+)", lh)
 ck("login.css 带版本号", m3 is not None)
 if m and m2:
