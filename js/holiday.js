@@ -41,11 +41,13 @@
   }
 
   // ---- 2. 同步读后台配置(失败就返回 null,走自动) ----
+  // 注意:同步 XHR 不能设 timeout —— 浏览器会抛 InvalidAccessError
+  // (规范:Timeouts cannot be set for synchronous requests)。
+  // 所以这里不设 timeout,靠「同步请求本身很快 + 失败即回退」保证不卡页面。
   function readConfig() {
     try {
       var xhr = new XMLHttpRequest();
       xhr.open('GET', '/api/fx', false);   // false = 同步
-      xhr.timeout = 1200;
       xhr.send(null);
       if (xhr.status !== 200) return null;
       var d = JSON.parse(xhr.responseText);

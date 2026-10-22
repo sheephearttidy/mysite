@@ -25,17 +25,23 @@ def get(path):
 st, body = get("/")
 check("前台 200", st == 200, str(st))
 check("前台含 themeToggle", 'id="themeToggle"' in body)
-check("前台含 theme.js", 'src="js/theme.js"' in body)
-check("前台含 main.js", 'src="js/main.js"' in body)
+# 资源带内容哈希版本参数(?v=xxx),断言兼容有无版本
+check("前台含 theme.js", 'js/theme.js' in body)
+check("前台含 main.js", 'js/main.js' in body)
 check("前台含防闪脚本", "尽早应用主题" in body or "data-theme-source" in body)
 check("前台含双 meta", body.count('name="theme-color"') >= 2)
 check("前台含 dark.css", "dark.css" in body)
 
 # CSS 加载顺序:base -> home -> widgets -> dark -> holidays -> responsive
 import re
-order = re.findall(r'<link[^>]+href="css/([a-z]+\.css)"', body)
+order = re.findall(r'<link[^>]+href="css/([a-z]+\.css)(?:\?v=[^"]*)?"', body)
 check("CSS 顺序正确", order == ["base.css", "home.css", "widgets.css", "dark.css", "holidays.css", "responsive.css"],
       str(order))
+
+# 所有前台资源都应带版本参数(否则 nginx 7 天缓存会让更新不生效)
+refs = re.findall(r'(?:src|href)="((?:js|css)/[^"]+)"', body)
+no_ver = [r for r in refs if "?v=" not in r]
+check("全部资源带版本参数", not no_ver, f"缺版本: {no_ver}")
 
 # dark.css 内容
 st, css = get("/css/dark.css")
