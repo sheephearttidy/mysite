@@ -145,6 +145,37 @@ CREATE TABLE IF NOT EXISTS countdowns (
     emoji TEXT DEFAULT '⏳',
     active INTEGER NOT NULL DEFAULT 1
 );
+
+-- v2.2 荣誉墙(获奖/证书/成就,about 页展示)
+CREATE TABLE IF NOT EXISTS honors (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    emoji TEXT NOT NULL DEFAULT '🏆',  -- 奖项图标
+    year TEXT NOT NULL,                -- 年份/日期,如 "2025" / "2024.11"
+    title TEXT NOT NULL,               -- 奖项名
+    desc TEXT DEFAULT '',              -- 一句话说明(可空)
+    level TEXT NOT NULL DEFAULT 'school', -- national/provincial/school/other
+    sort INTEGER NOT NULL DEFAULT 0
+);
+
+-- v2.2 随手记(短想法/日志,campus 页展示)
+CREATE TABLE IF NOT EXISTS notes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    emoji TEXT NOT NULL DEFAULT '✏️',
+    text TEXT NOT NULL,                -- 一句话(不超 80 字)
+    mood TEXT DEFAULT 'teal',          -- 便签底色键 teal/pink/yellow/purple/blue/orange
+    ts INTEGER NOT NULL,               -- 记录时间
+    sort INTEGER NOT NULL DEFAULT 0
+);
+
+-- v2.2 友情链接(朋友们的站点,contact 页展示)
+CREATE TABLE IF NOT EXISTS friendlinks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,                -- 站点名
+    url TEXT NOT NULL,                 -- 链接
+    emoji TEXT DEFAULT '🔗',
+    desc TEXT DEFAULT '',              -- 一句话介绍(可空)
+    sort INTEGER NOT NULL DEFAULT 0
+);
 """
 
 # 首次建库时灌入的初始数据(与 v1.0.0 静态页一致)
@@ -206,6 +237,20 @@ SEED = {
         ("info", "🏫", "学校", "燕京理工学院", 2),
         ("info", "🔥", "正在沉迷", "智能车 AI", 3),
         ("info", "⚡", "当前状态", "learning & building", 4),
+    ],
+    "honors": [
+        ("🏎️", "2025", "全国大学生智能汽车竞赛", "第一次参赛,目标:跑完全程不撞墙", "provincial", 1),
+        ("🏅", "2024", "校程序设计新生赛", "写代码的手感,是从这里开始的", "school", 2),
+        ("🎖️", "2024", "院级优秀学生", "被认可的感觉,是继续卷的燃料", "school", 3),
+    ],
+    "notes": [
+        ("🛠️", "今天给小车换了新的循迹算法,弯道终于不画龙了!", "teal", 0, 1),
+        ("🌙", "凌晨的实验室和泡面更配,代码跑通那一刻什么都值了。", "purple", 0, 2),
+        ("📚", "期末周生存指南:把「临时抱佛脚」拆成每天抱一点点。", "yellow", 0, 3),
+    ],
+    "friendlinks": [
+        ("GitHub", "https://github.com/sheephearttidy", "🐙", "我的全部公开代码都在这里", 1),
+        ("DeepSeek", "https://chat.deepseek.com", "🐋", "写代码与改 bug 的最佳搭子", 2),
     ],
 }
 
@@ -496,6 +541,19 @@ def init_db(path):
             c.executemany(
                 "INSERT INTO profile(kind,emoji,label,value,sort) VALUES(?,?,?,?,?)",
                 SEED["profile"])
+        # v2.2 新表:建表即灌种子(旧库升级时这三张表是新建的,必然为空)
+        if c.execute("SELECT COUNT(*) FROM honors").fetchone()[0] == 0:
+            c.executemany(
+                "INSERT INTO honors(emoji,year,title,desc,level,sort) VALUES(?,?,?,?,?,?)",
+                SEED["honors"])
+        if c.execute("SELECT COUNT(*) FROM notes").fetchone()[0] == 0:
+            c.executemany(
+                "INSERT INTO notes(emoji,text,mood,ts,sort) VALUES(?,?,?,?,?)",
+                SEED["notes"])
+        if c.execute("SELECT COUNT(*) FROM friendlinks").fetchone()[0] == 0:
+            c.executemany(
+                "INSERT INTO friendlinks(name,url,emoji,desc,sort) VALUES(?,?,?,?,?)",
+                SEED["friendlinks"])
         # 初始密码 admin,标记必须修改
         if c.execute("SELECT COUNT(*) FROM settings WHERE key='pass_hash'").fetchone()[0] == 0:
             c.execute("INSERT INTO settings(key,value) VALUES('pass_hash',?)",
@@ -710,6 +768,140 @@ def delete_profile(pid):
         return cur.rowcount > 0
 
 
+# ---------------- v2.2 荣誉墙 ----------------
+
+HONOR_LEVELS = {"national": "国家级", "provincial": "省级", "school": "校级", "other": "其他"}
+
+
+def get_honors():
+    with get_db() as c:
+        rows = c.execute("SELECT * FROM honors ORDER BY sort, id").fetchall()
+        return [dict(r) for r in rows]
+
+
+def insert_honor(item):
+    with get_db() as c:
+        level = item.get("level", "school")
+        cur = c.execute(
+            "INSERT INTO honors(emoji,year,title,desc,level,sort) VALUES(?,?,?,?,?,?)",
+            (item.get("emoji", "🏆"), item.get("year", ""), item.get("title", ""),
+             item.get("desc", ""), level if level in HONOR_LEVELS else "school",
+             int(item.get("sort", 99))))
+        row = c.execute("SELECT * FROM honors WHERE id=?", (cur.lastrowid,)).fetchone()
+        return dict(row)
+
+
+def update_honor(hid, item):
+    with get_db() as c:
+        row = c.execute("SELECT * FROM honors WHERE id=?", (hid,)).fetchone()
+        if not row:
+            return None
+        merged = dict(row)
+        merged.update({k: item[k] for k in ("emoji", "year", "title", "desc") if k in item})
+        if "level" in item and item["level"] in HONOR_LEVELS:
+            merged["level"] = item["level"]
+        if "sort" in item:
+            merged["sort"] = int(item["sort"])
+        c.execute("UPDATE honors SET emoji=?,year=?,title=?,desc=?,level=?,sort=? WHERE id=?",
+                  (merged["emoji"], merged["year"], merged["title"], merged["desc"],
+                   merged["level"], merged["sort"], hid))
+        return merged
+
+
+def delete_honor(hid):
+    with get_db() as c:
+        cur = c.execute("DELETE FROM honors WHERE id=?", (hid,))
+        return cur.rowcount > 0
+
+
+# ---------------- v2.2 随手记 ----------------
+
+NOTE_MOODS = ("teal", "pink", "yellow", "purple", "blue", "orange")
+
+
+def get_notes():
+    with get_db() as c:
+        rows = c.execute("SELECT * FROM notes ORDER BY ts DESC, id DESC").fetchall()
+        return [dict(r) for r in rows]
+
+
+def insert_note(item):
+    with get_db() as c:
+        mood = item.get("mood", "teal")
+        cur = c.execute(
+            "INSERT INTO notes(emoji,text,mood,ts,sort) VALUES(?,?,?,?,?)",
+            (item.get("emoji", "✏️"), item.get("text", ""),
+             mood if mood in NOTE_MOODS else "teal",
+             int(item.get("ts") or time.time()), int(item.get("sort", 0))))
+        row = c.execute("SELECT * FROM notes WHERE id=?", (cur.lastrowid,)).fetchone()
+        return dict(row)
+
+
+def update_note(nid, item):
+    with get_db() as c:
+        row = c.execute("SELECT * FROM notes WHERE id=?", (nid,)).fetchone()
+        if not row:
+            return None
+        merged = dict(row)
+        merged.update({k: item[k] for k in ("emoji", "text") if k in item})
+        if "mood" in item and item["mood"] in NOTE_MOODS:
+            merged["mood"] = item["mood"]
+        if "ts" in item:
+            merged["ts"] = int(item["ts"])
+        if "sort" in item:
+            merged["sort"] = int(item["sort"])
+        c.execute("UPDATE notes SET emoji=?,text=?,mood=?,ts=?,sort=? WHERE id=?",
+                  (merged["emoji"], merged["text"], merged["mood"], merged["ts"],
+                   merged["sort"], nid))
+        return merged
+
+
+def delete_note(nid):
+    with get_db() as c:
+        cur = c.execute("DELETE FROM notes WHERE id=?", (nid,))
+        return cur.rowcount > 0
+
+
+# ---------------- v2.2 友情链接 ----------------
+
+
+def get_friendlinks():
+    with get_db() as c:
+        rows = c.execute("SELECT * FROM friendlinks ORDER BY sort, id").fetchall()
+        return [dict(r) for r in rows]
+
+
+def insert_friendlink(item):
+    with get_db() as c:
+        cur = c.execute(
+            "INSERT INTO friendlinks(name,url,emoji,desc,sort) VALUES(?,?,?,?,?)",
+            (item.get("name", ""), item.get("url", ""), item.get("emoji", "🔗"),
+             item.get("desc", ""), int(item.get("sort", 99))))
+        row = c.execute("SELECT * FROM friendlinks WHERE id=?", (cur.lastrowid,)).fetchone()
+        return dict(row)
+
+
+def update_friendlink(fid, item):
+    with get_db() as c:
+        row = c.execute("SELECT * FROM friendlinks WHERE id=?", (fid,)).fetchone()
+        if not row:
+            return None
+        merged = dict(row)
+        merged.update({k: item[k] for k in ("name", "url", "emoji", "desc") if k in item})
+        if "sort" in item:
+            merged["sort"] = int(item["sort"])
+        c.execute("UPDATE friendlinks SET name=?,url=?,emoji=?,desc=?,sort=? WHERE id=?",
+                  (merged["name"], merged["url"], merged["emoji"], merged["desc"],
+                   merged["sort"], fid))
+        return merged
+
+
+def delete_friendlink(fid):
+    with get_db() as c:
+        cur = c.execute("DELETE FROM friendlinks WHERE id=?", (fid,))
+        return cur.rowcount > 0
+
+
 # ---------------- 备份导入 ----------------
 
 IMPORT_FIELDS = {
@@ -718,6 +910,9 @@ IMPORT_FIELDS = {
     "stats": ("emoji", "number", "unit", "label", "sort"),
     "works": ("emoji", "cover", "title", "desc", "pill", "link", "sort"),
     "profile": ("kind", "emoji", "label", "value", "sort"),
+    "honors": ("emoji", "year", "title", "desc", "level", "sort"),
+    "notes": ("emoji", "text", "mood", "ts", "sort"),
+    "friendlinks": ("name", "url", "emoji", "desc", "sort"),
 }
 
 

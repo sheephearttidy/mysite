@@ -359,3 +359,75 @@ section { padding: 84px 0; position: relative; }
 .city-unknown .city-name { font-size: 13px; }
 
 /* 地图页导航高亮(active 样式在 base.css 通用) */
+
+/* ================= v2.2 荣誉墙(about 页) ================= */
+.honor-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px; max-width: 980px; margin: 0 auto;
+}
+.honor-card {
+  background: var(--paper); border: 3px solid var(--line); border-radius: 16px;
+  padding: 16px 18px; box-shadow: 4px 4px 0 var(--shadow);
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.honor-card:hover { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 var(--shadow); }
+.honor-top { display: flex; justify-content: space-between; align-items: center; }
+.honor-emoji { font-size: 30px; }
+.honor-level {
+  font-size: 11px; font-weight: 800; padding: 2px 10px;
+  border-radius: 999px; border: 2px solid var(--line);
+}
+/* 等级色:国家级金 / 省级粉 / 校级蓝灰 / 其他灰 */
+.hl-national  .honor-level { background: var(--yellow); }
+.hl-provincial .honor-level { background: var(--pink); color: var(--on-accent); }
+.hl-school    .honor-level { background: var(--blue-bg); }
+.hl-other     .honor-level { background: var(--cream); }
+.honor-year { font-size: 12px; color: var(--text-3); font-weight: 700; margin-top: 8px; }
+.honor-title { font-size: 16px; font-weight: 400; margin-top: 2px; }
+.honor-desc { font-size: 13px; color: var(--text-2); margin-top: 4px; }
+
+/* ================= v2.2 随手记(campus 页) ================= */
+.note-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 16px; max-width: 980px; margin: 0 auto;
+}
+.note-card {
+  --rot: 0deg;
+  background: #fff; border: 2px solid var(--shadow); border-radius: 14px;
+  box-shadow: 4px 4px 0 var(--shadow); padding: 14px 16px;
+  transform: rotate(var(--rot)); position: relative;
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+.note-card:hover { transform: rotate(0deg) translateY(-3px); box-shadow: 6px 7px 0 var(--shadow); }
+/* 六色便签底(与留言墙同族) */
+.note-teal   { background: #e2f4f0; }
+.note-pink   { background: #ffe9f0; }
+.note-yellow { background: #fff7d6; }
+.note-purple { background: #eceaff; }
+.note-blue   { background: #e3eeff; }
+.note-orange { background: #ffefd9; }
+.note-emoji { font-size: 22px; }
+.note-text { font-size: 14px; line-height: 1.65; margin-top: 6px; word-break: break-word; }
+.note-date { font-size: 11px; opacity: .55; display: block; margin-top: 8px; text-align: right; }
+
+/* ================= v2.2 友情链接(contact 页) ================= */
+.friend-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px; max-width: 780px; margin: 0 auto;
+}
+.friend-card {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--paper); border: 3px solid var(--line); border-radius: 16px;
+  padding: 14px 16px; text-decoration: none; color: var(--ink);
+  box-shadow: 4px 4px 0 var(--shadow);
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.friend-card:hover { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 var(--shadow); }
+.friend-emoji { font-size: 26px; flex: 0 0 auto; }
+.friend-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.friend-name { font-size: 15px; }
+.friend-desc {
+  font-size: 12px; color: var(--text-2); margin-top: 2px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.friend-go { font-weight: 800; color: var(--pink); flex: 0 0 auto; }

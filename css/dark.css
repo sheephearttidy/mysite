@@ -153,3 +153,16 @@
 
 /* 倒计时挂件 */
 [data-theme="dark"] .cd-widget { background: #2a2b33; }
+
+/* ================= v2.2 新组件深色态 ================= */
+/* 随手记便签:压暗的莫兰迪 */
+[data-theme="dark"] .note-teal   { background: #2e423e; }
+[data-theme="dark"] .note-pink   { background: #4a3340; }
+[data-theme="dark"] .note-yellow { background: #46422c; }
+[data-theme="dark"] .note-purple { background: #383452; }
+[data-theme="dark"] .note-blue   { background: #2f3c52; }
+[data-theme="dark"] .note-orange { background: #4a3d2e; }
+[data-theme="dark"] .note-card { color: var(--text); }
+/* 荣誉等级徽章微调 */
+[data-theme="dark"] .hl-school .honor-level { color: var(--ink); }
+[data-theme="dark"] .hl-other .honor-level { background: #2a2b33; }

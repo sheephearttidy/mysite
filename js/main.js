@@ -8,14 +8,23 @@
 
 console.log('%c 嗨!你打开了控制台,是想看看这个网页的秘密吗 👀', 'font-size:14px;color:#ff6b9d;font-weight:bold;');
 
-// 每个页面拉哪个接口:contact 没有动态数据,直接跳过
+// 每个页面拉哪个接口:map 没有动态内容数据,直接跳过
 const PAGE_API = {
   index: '/api/page/index',
   about: '/api/page/about',
   skills: '/api/page/skills',
   works: '/api/page/works',
   campus: '/api/page/campus',
-  map: '/api/page/map',
+  contact: '/api/page/contact',
+};
+
+// v2.2 荣誉等级 → 展示标签
+const HONOR_LEVEL_LABEL = {
+  national: '国家级', provincial: '省级', school: '校级', other: '其他',
+};
+const HONOR_LEVEL_CLS = {
+  national: 'hl-national', provincial: 'hl-provincial',
+  school: 'hl-school', other: 'hl-other',
 };
 
 async function loadDynamicContent() {
@@ -122,6 +131,67 @@ async function loadDynamicContent() {
       observeReveals();
     }
   }
+
+  // ---- v2.2 荣誉墙(about 页) ----
+  if (Array.isArray(data.honors) && data.honors.length) {
+    const box = document.getElementById('honorWall');
+    if (box) {
+      box.innerHTML = data.honors.map((h, i) => `
+        <div class="honor-card reveal d${i % 3} ${HONOR_LEVEL_CLS[h.level] || 'hl-school'}">
+          <div class="honor-top">
+            <span class="honor-emoji">${esc(h.emoji)}</span>
+            <span class="honor-level">${esc(HONOR_LEVEL_LABEL[h.level] || h.level)}</span>
+          </div>
+          <div class="honor-year">${esc(h.year)}</div>
+          <h3 class="honor-title">${esc(h.title)}</h3>
+          ${h.desc ? `<p class="honor-desc">${esc(h.desc)}</p>` : ''}
+        </div>`).join('');
+      observeReveals();
+    }
+  }
+
+  // ---- v2.2 随手记(campus 页) ----
+  if (Array.isArray(data.notes) && data.notes.length) {
+    const box = document.getElementById('noteWall');
+    if (box) {
+      box.innerHTML = data.notes.map((n, i) => `
+        <div class="note-card note-${esc(n.mood || 'teal')} reveal d${i % 3}">
+          <span class="note-emoji">${esc(n.emoji)}</span>
+          <p class="note-text">${esc(n.text)}</p>
+          <span class="note-date">${fmtNoteDate(n.ts)}</span>
+        </div>`).join('');
+      observeReveals();
+    }
+  }
+
+  // ---- v2.2 友情链接(contact 页) ----
+  if (Array.isArray(data.friendlinks) && data.friendlinks.length) {
+    const box = document.getElementById('friendLinks');
+    if (box) {
+      box.innerHTML = data.friendlinks.map((f, i) => `
+        <a class="friend-card reveal d${i % 3}" href="${escAttr(f.url)}"
+           target="_blank" rel="noopener noreferrer">
+          <span class="friend-emoji">${esc(f.emoji)}</span>
+          <span class="friend-info">
+            <b class="friend-name">${esc(f.name)}</b>
+            ${f.desc ? `<span class="friend-desc">${esc(f.desc)}</span>` : ''}
+          </span>
+          <span class="friend-go">→</span>
+        </a>`).join('');
+      observeReveals();
+    }
+  }
+}
+
+// 随手记时间:同天显示「今天 HH:MM」,当年显示「M月D日」,否则「YYYY.M.D」
+function fmtNoteDate(ts) {
+  try {
+    const d = new Date(ts * 1000), now = new Date();
+    const hm = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+    if (d.toDateString() === now.toDateString()) return '今天 ' + hm;
+    const md = (d.getMonth() + 1) + '月' + d.getDate() + '日';
+    return d.getFullYear() === now.getFullYear() ? md : d.getFullYear() + '.' + (d.getMonth() + 1) + '.' + d.getDate();
+  } catch (e) { return ''; }
 }
 loadDynamicContent();
 

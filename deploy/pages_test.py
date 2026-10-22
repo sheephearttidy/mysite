@@ -104,8 +104,9 @@ check("campus 返回 timeline", "timeline" in d and len(d["timeline"]) > 0)
 
 st, data = get("/api/page/contact")
 d = json.loads(data) if data.strip() else {}
-# contact 页无需数据:接口返回 null/空对象均可
-check("contact 返回空", st == 200 and d in ({}, None), str(d))
+# v2.2:contact 页新增友情链接,接口返回 friendlinks 列表
+check("contact 返回友链", st == 200 and isinstance(d.get("friendlinks"), list)
+      and len(d["friendlinks"]) > 0, str(d)[:120])
 
 st = get_status("/api/page/unknown")
 check("api/page/unknown 404", st == 404, str(st))

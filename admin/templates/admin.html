@@ -49,6 +49,12 @@
             🧮 趣味统计 <span class="sb-count" id="cnt-stats">0</span></a></li>
           <li><a class="sb-link" data-panel="works" href="#works">
             🛠️ 项目墙 <span class="sb-count" id="cnt-works">0</span></a></li>
+          <li><a class="sb-link" data-panel="honors" href="#honors">
+            🏆 荣誉墙 <span class="sb-count" id="cnt-honors">0</span></a></li>
+          <li><a class="sb-link" data-panel="notes" href="#notes">
+            📝 随手记 <span class="sb-count" id="cnt-notes">0</span></a></li>
+          <li><a class="sb-link" data-panel="friendlinks" href="#friendlinks">
+            🔗 友情链接 <span class="sb-count" id="cnt-friendlinks">0</span></a></li>
           <li><a class="sb-link" data-panel="messages" href="#messages">
             ✉️ 留言板 <span class="sb-count" id="cnt-messages">0</span></a></li>
         </ul>
@@ -196,6 +202,36 @@
           <span class="hint">「关于我」右侧的四个小卡片</span>
         </div>
         <div class="grid" id="list-profile-info"></div>
+      </section>
+
+      <!-- v2.2 荣誉墙 -->
+      <section class="panel" id="panel-honors">
+        <div class="sec-head">
+          <h2>🏆 荣誉墙</h2>
+          <button class="add" onclick="editItem('honors')">＋ 新增荣誉</button>
+          <span class="hint">「关于我」页的荣誉小墙,支持 国家/省/校级 标签</span>
+        </div>
+        <div class="grid" id="list-honors"></div>
+      </section>
+
+      <!-- v2.2 随手记 -->
+      <section class="panel" id="panel-notes">
+        <div class="sec-head">
+          <h2>📝 随手记</h2>
+          <button class="add" onclick="editItem('notes')">＋ 记一笔</button>
+          <span class="hint">「校园日常」页的便签墙,一句话 + 便签颜色,新记的排前面</span>
+        </div>
+        <div class="grid" id="list-notes"></div>
+      </section>
+
+      <!-- v2.2 友情链接 -->
+      <section class="panel" id="panel-friendlinks">
+        <div class="sec-head">
+          <h2>🔗 友情链接</h2>
+          <button class="add" onclick="editItem('friendlinks')">＋ 新增链接</button>
+          <span class="hint">「来找我玩」页的友链卡片,填站名和网址即可</span>
+        </div>
+        <div class="grid" id="list-friendlinks"></div>
       </section>
 
       <!-- 图片库 -->

@@ -56,8 +56,9 @@ if inject:
     ck("内联段无函数定义", "function " not in js)
     ck("内联段无事件绑定", "addEventListener" not in js)
     ck("内联段无 DOM 查询", "getElementById" not in js)
-# v1.10.0 新增公告+倒计时面板后约 33.6KB;上限放宽到 36K 防再次膨胀
-ck("模板体积已降", len(h) < 36000, f"实得 {len(h)} 字符")
+# v1.10.0 新增公告+倒计时面板后约 33.6KB;v2.2 再加荣誉墙/随手记/友链三面板约 38.7KB
+# 上限放宽到 40K 防再次膨胀
+ck("模板体积已降", len(h) < 40000, f"实得 {len(h)} 字符")
 
 print()
 print("=" * 52)

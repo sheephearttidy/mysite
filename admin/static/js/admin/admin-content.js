@@ -1,4 +1,4 @@
-﻿/* ============================================================
+/* ============================================================
    后台 · admin-content:内容管理(技能树/时间线/统计/项目墙/
    个人信息)的列表渲染 + 编辑/删除表单(v2.1 拆分)
    ============================================================ */function renderSkills() {
@@ -96,6 +96,64 @@ function renderProfile() {
     infos.map(make).join('') || '<p class="hint">还没有信息卡片~</p>';
 }
 
+/* ---------- v2.2 三个新内容类型的渲染 ---------- */
+const HONOR_LEVEL = { national:'国家级', provincial:'省级', school:'校级', other:'其他' };
+const NOTE_MOOD_TXT = { teal:'薄荷绿', pink:'粉', yellow:'黄', purple:'紫', blue:'蓝', orange:'橙' };
+
+function renderHonors() {
+  const box = document.getElementById('list-honors');
+  if (!box) return;
+  box.innerHTML = DATA.honors.map(h => `
+    <div class="item">
+      <div class="item-top">
+        <span class="badge serious">${esc(h.emoji)} ${HONOR_LEVEL[h.level] || h.level}</span>
+        <span class="meta">#${h.sort}</span>
+      </div>
+      <h3>${esc(h.title)}</h3>
+      <div class="meta">${esc(h.year)}</div>
+      ${h.desc ? `<div class="note">${esc(h.desc)}</div>` : ''}
+      <div class="ops">
+        <button class="op edit" onclick="editItem('honors', ${h.id})">✏️ 编辑</button>
+        <button class="op del" onclick="delItem('honors', ${h.id})">🗑️ 删除</button>
+      </div>
+    </div>`).join('') || '<p class="hint">荣誉墙还是空的,拿奖了记得来晒晒~</p>';
+}
+
+function renderNotes() {
+  const box = document.getElementById('list-notes');
+  if (!box) return;
+  box.innerHTML = DATA.notes.map(n => `
+    <div class="item">
+      <div class="item-top">
+        <span class="badge passive">${esc(n.emoji)} ${NOTE_MOOD_TXT[n.mood] || n.mood}</span>
+        <span class="meta">${new Date(n.ts * 1000).toLocaleDateString('zh-CN')}</span>
+      </div>
+      <h3 style="font-size:15px">${esc(n.text)}</h3>
+      <div class="ops">
+        <button class="op edit" onclick="editItem('notes', ${n.id})">✏️ 编辑</button>
+        <button class="op del" onclick="delItem('notes', ${n.id})">🗑️ 删除</button>
+      </div>
+    </div>`).join('') || '<p class="hint">还没记过随手记,记一笔吧~</p>';
+}
+
+function renderFriendlinks() {
+  const box = document.getElementById('list-friendlinks');
+  if (!box) return;
+  box.innerHTML = DATA.friendlinks.map(f => `
+    <div class="item">
+      <div class="item-top">
+        <span class="badge serious">${esc(f.emoji)} ${esc(f.name)}</span>
+        <span class="meta">#${f.sort}</span>
+      </div>
+      <div class="note">🔗 ${esc(f.url)}</div>
+      ${f.desc ? `<div class="note">${esc(f.desc)}</div>` : ''}
+      <div class="ops">
+        <button class="op edit" onclick="editItem('friendlinks', ${f.id})">✏️ 编辑</button>
+        <button class="op del" onclick="delItem('friendlinks', ${f.id})">🗑️ 删除</button>
+      </div>
+    </div>`).join('') || '<p class="hint">还没有友链,加一个吧~</p>';
+}
+
 /* ---------- 编辑 / 新增 ---------- */
 const FIELDS = {
   skills: [
@@ -138,6 +196,31 @@ const FIELDS = {
     { k:'label', label:'小标题 / 卡片标题',   type:'text' },
     { k:'value', label:'正文 / 卡片内容',     type:'textarea' },
     { k:'sort',  label:'排序(小的在前)',     type:'number' },
+  ],
+  // v2.2 荣誉墙
+  honors: [
+    { k:'emoji',  label:'图标 emoji',        type:'text' },
+    { k:'year',   label:'年份(如 2025 / 2024.11)', type:'text' },
+    { k:'title',  label:'奖项名称',           type:'text' },
+    { k:'desc',   label:'一句话说明(可空)',  type:'text' },
+    { k:'level',  label:'级别',              type:'select',
+      opts:{national:'国家级', provincial:'省级', school:'校级', other:'其他'} },
+    { k:'sort',   label:'排序(小的在前)',    type:'number' },
+  ],
+  // v2.2 随手记
+  notes: [
+    { k:'emoji', label:'图标 emoji',         type:'text' },
+    { k:'text',  label:'想说什么',           type:'textarea' },
+    { k:'mood',  label:'便签颜色',           type:'select',
+      opts:{teal:'薄荷绿', pink:'粉', yellow:'黄', purple:'紫', blue:'蓝', orange:'橙'} },
+  ],
+  // v2.2 友情链接
+  friendlinks: [
+    { k:'name', label:'站名',               type:'text' },
+    { k:'url',  label:'网址(https://…)',    type:'text' },
+    { k:'emoji',label:'图标 emoji',         type:'text' },
+    { k:'desc', label:'一句话介绍(可空)',  type:'text' },
+    { k:'sort', label:'排序(小的在前)',     type:'number' },
   ],
 };
 

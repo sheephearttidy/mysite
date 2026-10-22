@@ -1,4 +1,4 @@
-﻿/* ============================================================
+/* ============================================================
    后台 · admin-core:全局工具与渲染入口(v2.1 拆分)
    toast / api / esc / escAttr / renderAll
    说明:顶层 const/function 跨 <script> 共享,后续模块直接使用
@@ -38,5 +38,6 @@ function escAttr(s) { return esc(s).replace(/"/g, '&quot;').replace(/'/g, '&#39;
 function renderAll() {
   renderSkills(); renderTimeline(); renderStats();
   renderWorks(); renderProfile();
+  renderHonors(); renderNotes(); renderFriendlinks();
   updateCounts();
 }

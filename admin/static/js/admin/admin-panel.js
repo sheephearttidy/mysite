@@ -1,4 +1,4 @@
-﻿/* ============================================================
+/* ============================================================
    后台 · admin-panel:侧边栏导航 + 面板切换 + 前台特效 +
    安全面板(总览/设置/封锁/会话/审计)+ 数据看板(v2.1 拆分)
    ============================================================ *//* ---------- 侧边栏导航 ---------- */
@@ -121,6 +121,10 @@ function updateCounts() {
   set('cnt-works', DATA.works.length);
   set('cnt-about', DATA.profile.filter(p => p.kind === 'about').length);
   set('cnt-info', DATA.profile.filter(p => p.kind === 'info').length);
+  // v2.2 新内容类型
+  set('cnt-honors', (DATA.honors || []).length);
+  set('cnt-notes', (DATA.notes || []).length);
+  set('cnt-friendlinks', (DATA.friendlinks || []).length);
 }
 
 /* ---------- 前台特效面板 ---------- */

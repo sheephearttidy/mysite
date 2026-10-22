@@ -204,17 +204,20 @@ def api_content():
         stats=db.get_stats(),
         works=db.get_works(),
         profile=db.get_profile(),
+        honors=db.get_honors(),
+        notes=db.get_notes(),
+        friendlinks=db.get_friendlinks(),
     )
 
 
 # 每个页面需要的数据:拆分多页后,各页只拉自己那部分
 PAGE_FIELDS = {
     "index": ("stats",),
-    "about": ("profile",),
+    "about": ("profile", "honors"),
     "skills": ("skills",),
     "works": ("works",),
-    "campus": ("timeline",),
-    "contact": (),
+    "campus": ("timeline", "notes"),
+    "contact": ("friendlinks",),
 }
 
 
@@ -516,6 +519,9 @@ def admin():
         "stats": db.get_stats(),
         "works": db.get_works(),
         "profile": db.get_profile(),
+        "honors": db.get_honors(),
+        "notes": db.get_notes(),
+        "friendlinks": db.get_friendlinks(),
     }
     # 初始密码还没改过 → 前端弹窗提示修改
     return render_template("admin.html", data=data,
@@ -1089,6 +1095,86 @@ def delete_profile(pid):
     return ("", 204) if ok else (jsonify(error="not found"), 404)
 
 
+# ---------------- v2.2 荣誉墙 CRUD ----------------
+
+@app.post("/api/honors")
+@login_required
+def add_honor():
+    item = request.get_json(force=True, silent=True) or {}
+    return jsonify(db.insert_honor(item)), 201
+
+
+@app.put("/api/honors/<int:hid>")
+@login_required
+def update_honor(hid):
+    item = request.get_json(force=True, silent=True) or {}
+    row = db.update_honor(hid, item)
+    if not row:
+        return jsonify(error="not found"), 404
+    return jsonify(row)
+
+
+@app.delete("/api/honors/<int:hid>")
+@login_required
+def delete_honor(hid):
+    ok = db.delete_honor(hid)
+    return ("", 204) if ok else (jsonify(error="not found"), 404)
+
+
+# ---------------- v2.2 随手记 CRUD ----------------
+
+@app.post("/api/notes")
+@login_required
+def add_note():
+    item = request.get_json(force=True, silent=True) or {}
+    return jsonify(db.insert_note(item)), 201
+
+
+@app.put("/api/notes/<int:nid>")
+@login_required
+def update_note(nid):
+    item = request.get_json(force=True, silent=True) or {}
+    row = db.update_note(nid, item)
+    if not row:
+        return jsonify(error="not found"), 404
+    return jsonify(row)
+
+
+@app.delete("/api/notes/<int:nid>")
+@login_required
+def delete_note(nid):
+    ok = db.delete_note(nid)
+    return ("", 204) if ok else (jsonify(error="not found"), 404)
+
+
+# ---------------- v2.2 友情链接 CRUD ----------------
+
+@app.post("/api/friendlinks")
+@login_required
+def add_friendlink():
+    item = request.get_json(force=True, silent=True) or {}
+    if not item.get("name") or not item.get("url"):
+        return jsonify(error="名称和链接都要填"), 400
+    return jsonify(db.insert_friendlink(item)), 201
+
+
+@app.put("/api/friendlinks/<int:fid>")
+@login_required
+def update_friendlink(fid):
+    item = request.get_json(force=True, silent=True) or {}
+    row = db.update_friendlink(fid, item)
+    if not row:
+        return jsonify(error="not found"), 404
+    return jsonify(row)
+
+
+@app.delete("/api/friendlinks/<int:fid>")
+@login_required
+def delete_friendlink(fid):
+    ok = db.delete_friendlink(fid)
+    return ("", 204) if ok else (jsonify(error="not found"), 404)
+
+
 # ---------------- 图片上传 ----------------
 
 def sniff_image(head: bytes) -> str | None:
@@ -1182,13 +1268,16 @@ def delete_upload(name):
 def export_data():
     """导出全部内容为 JSON(不含密码哈希)"""
     payload = {
-        "version": 1,
+        "version": 2,
         "exported_at": datetime.now(timezone.utc).isoformat(),
         "skills": db.get_skills(),
         "timeline": db.get_timeline(),
         "stats": db.get_stats(),
         "works": db.get_works(),
         "profile": db.get_profile(),
+        "honors": db.get_honors(),
+        "notes": db.get_notes(),
+        "friendlinks": db.get_friendlinks(),
     }
     body = json.dumps(payload, ensure_ascii=False, indent=2)
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
