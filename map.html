@@ -45,6 +45,8 @@
   })();
 </script>
   <script src="js/holiday.js?v=15712256"></script>
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#ff6b9d" />
 </head>
 <body data-page="map">
 
@@ -160,5 +162,12 @@
 <script src="js/main.js?v=a07c965a"></script>
 <script src="js/interact.js?v=6fcd9333"></script>
 <script src="js/holiday-fx.js?v=8d1010f5"></script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('/sw.js').catch(function () {});
+    });
+  }
+</script>
 </body>
 </html>

@@ -516,6 +516,37 @@
             <button class="op del" onclick="revokeAllSessions()">🚪 踢掉其他所有会话</button>
           </div>
         </div>
+        <div class="item" style="margin-top:16px">
+          <h3>🔐 两步验证(2FA)</h3>
+          <p class="hint" style="margin-top:6px">
+            启用后登录需要密码 + 手机验证器的 6 位动态码(TOTP,兼容 Google Authenticator / 微软验证器 / 1Password 等)。
+          </p>
+          <div class="sec-grid" style="margin-top:10px">
+            <div class="sec-card" id="secCard2fa">
+              <div class="sc-ic">📱</div>
+              <div class="sc-body">
+                <div class="sc-t">两步验证状态</div>
+                <div class="sc-v" id="sc2faVal">–</div>
+              </div>
+            </div>
+          </div>
+          <div class="ops" style="margin-top:12px">
+            <button class="op edit" onclick="twofaStart()">📱 绑定验证器</button>
+            <button class="op del" onclick="twofaOff()">🔓 关闭两步验证</button>
+          </div>
+          <div id="twofaBox" style="display:none;margin-top:14px">
+            <img id="qrImg" alt="验证器二维码" style="width:180px;height:180px;
+                 border:2px solid var(--shadow);border-radius:12px;background:#fff" />
+            <p class="hint" id="twofaHint" style="margin-top:8px">
+              用手机验证器扫上面的码,然后输入显示的 6 位动态码确认
+            </p>
+            <div class="sf-row" style="margin-top:8px;max-width:300px">
+              <input type="text" id="twofaCode" class="sf-input" maxlength="6"
+                     inputmode="numeric" placeholder="6 位动态码" />
+              <button class="btn btn-pink" onclick="twofaConfirm()">✅ 确认启用</button>
+            </div>
+          </div>
+        </div>
       </section>
 
       <!-- 安全中心 · 登录防护 -->
@@ -666,6 +697,7 @@ window.__ADMIN_DATA__ = {{ data | tojson }};
 window.__ADMIN_MUST_CHANGE__ = {{ 'true' if must_change else 'false' }};
 </script>
 <script src="{{ url_for('static', filename='js/theme.js') }}?v={{ asset_ver }}"></script>
+<script src="{{ url_for('static', filename='js/qrcode.min.js') }}?v={{ asset_ver }}"></script>
 <script src="{{ url_for('static', filename='js/admin.js') }}?v={{ asset_ver }}"></script>
 <script src="{{ url_for('static', filename='js/holiday-fx.js') }}?v={{ asset_ver }}"></script>
 </body>

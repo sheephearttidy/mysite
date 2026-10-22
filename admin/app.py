@@ -20,6 +20,7 @@ from flask import (Flask, request, jsonify, render_template,
 import db
 import captcha
 import geo
+import totp as totp_mod
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -464,6 +465,15 @@ def login_post():
         flash("密码不对哦,再想想?🤔", "error")
         return redirect(url_for("login"))
 
+    # 3.5 两步验证(v2.0):密钥存在 → 需要 6 位动态码
+    totp_secret = db.get_setting("totp_secret") or ""
+    if totp_secret:
+        code = request.form.get("totp", "")
+        if not totp_mod.verify(totp_secret, code):
+            record_fail(ip, "2FA 动态码错误")
+            flash("动态码不对,看看手机验证器再输一次", "error")
+            return redirect(url_for("login"))
+
     # 4. 成功
     clear_fail(ip)
     sid = base64.urlsafe_b64encode(os.urandom(24)).decode().rstrip("=")
@@ -479,7 +489,8 @@ def login_post():
         hours = 168
     app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(hours=hours)
     db.add_session(sid, ip, ua)
-    db.add_audit("login_ok", ip, "登录成功", ua)
+    db.add_audit("login_ok", ip, "登录成功" +
+                 ("(2FA)" if totp_secret else ""), ua)
     db.purge_old_sessions(30)
     return redirect(url_for("admin"))
 
@@ -544,6 +555,61 @@ def change_password():
 @login_required
 def get_sec_settings():
     return jsonify(db.get_sec_all())
+
+
+# ---------------- 两步验证(2FA / TOTP) ----------------
+
+@app.get("/api/security/2fa/setup")
+@login_required
+def totp_setup():
+    """生成新密钥(暂存 pending,不启用);返回 otpauth URI 给前端画二维码"""
+    secret = totp_mod.generate_secret()
+    db.set_setting("totp_pending", secret)
+    uri = totp_mod.otpauth_uri(secret, "zhishengjie@imyxj.xyz")
+    db.add_audit("2fa_setup", client_ip(), "生成 2FA 密钥待确认",
+                 request.headers.get("User-Agent", ""))
+    return jsonify(ok=True, uri=uri)
+
+
+@app.post("/api/security/2fa/enable")
+@login_required
+def totp_enable():
+    """输入手机上的 6 位码确认绑定;成功即启用"""
+    body = request.get_json(silent=True) or {}
+    pending = db.get_setting("totp_pending") or ""
+    if not pending:
+        return jsonify(error="请先生成密钥"), 400
+    if not totp_mod.verify(pending, body.get("code") or ""):
+        return jsonify(error="动态码不对,再试试"), 400
+    db.set_setting("totp_secret", pending)
+    db.set_setting("totp_pending", "")
+    db.add_audit("2fa_enable", client_ip(), "两步验证已启用",
+                 request.headers.get("User-Agent", ""))
+    return jsonify(ok=True)
+
+
+@app.post("/api/security/2fa/disable")
+@login_required
+def totp_disable():
+    """关闭 2FA(需要当前有效动态码,防偷会话的人顺手关掉)"""
+    body = request.get_json(silent=True) or {}
+    secret = db.get_setting("totp_secret") or ""
+    if not secret:
+        return jsonify(error="尚未启用两步验证"), 400
+    if not totp_mod.verify(secret, body.get("code") or ""):
+        return jsonify(error="动态码不对,无法关闭"), 400
+    db.set_setting("totp_secret", "")
+    db.add_audit("2fa_disable", client_ip(), "两步验证已关闭",
+                 request.headers.get("User-Agent", ""))
+    return jsonify(ok=True)
+
+
+@app.get("/api/security/2fa/status")
+@login_required
+def totp_status():
+    """当前 2FA 状态(只回开关,不回密钥)"""
+    return jsonify(enabled=bool(db.get_setting("totp_secret")),
+                   pending=bool(db.get_setting("totp_pending")))
 
 
 @app.post("/api/security/settings")
