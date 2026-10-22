@@ -1251,11 +1251,16 @@ async function twofaStart() {
     const d = await api('GET', '/api/security/2fa/setup');
     const box = document.getElementById('twofaBox');
     box.style.display = 'block';
-    const img = document.getElementById('qrImg');
-    // 用本地 qrcode.min.js 画 otpauth:// 二维码
-    img.innerHTML = '';
-    new QRCode(img, { text: d.uri, width: 176, height: 176,
-                      correctLevel: QRCode.CorrectLevel.M });
+    // v2.0.1 修复:qrcode.min.js 需要容器 div(往里塞 canvas),
+    // 此前误传 <img> 导致二维码画不出来
+    const holder = document.getElementById('qrBox');
+    if (typeof QRCode === 'undefined') {
+      holder.innerHTML = '<p class="hint" style="padding:10px">二维码组件没加载出来,刷新页面再试</p>';
+      return;
+    }
+    holder.innerHTML = '';
+    new QRCode(holder, { text: d.uri, width: 172, height: 172,
+                         correctLevel: QRCode.CorrectLevel.M });
   } catch (e) { toast('生成失败:' + e.message); }
 }
 

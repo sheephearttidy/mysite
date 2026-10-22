@@ -535,8 +535,11 @@
             <button class="op del" onclick="twofaOff()">🔓 关闭两步验证</button>
           </div>
           <div id="twofaBox" style="display:none;margin-top:14px">
-            <img id="qrImg" alt="验证器二维码" style="width:180px;height:180px;
-                 border:2px solid var(--shadow);border-radius:12px;background:#fff" />
+            <div id="qrBox" style="width:180px;height:180px;
+                 border:2px solid var(--shadow);border-radius:12px;background:#fff;
+                 display:flex;align-items:center;justify-content:center;overflow:hidden">
+              <!-- qrcode.min.js 往这个容器里画 canvas,不能是 <img> -->
+            </div>
             <p class="hint" id="twofaHint" style="margin-top:8px">
               用手机验证器扫上面的码,然后输入显示的 6 位动态码确认
             </p>

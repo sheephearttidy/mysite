@@ -121,7 +121,22 @@ footer .sprout { display: inline-block; animation: grow 2.4s ease-in-out infinit
 .msg-form-row { display: flex; gap: 10px; margin-bottom: 10px; }
 .msg-form-row .sf-input { flex: 1; }
 .msg-color-pick { flex: 0 0 130px !important; }
-textarea.sf-input { width: 100%; resize: vertical; min-height: 74px; }
+
+/* v2.0.1 修复:前台一直没有输入框基础样式(此前误用后台 admin.css 的 .sf-input) */
+.sf-input {
+  padding: 9px 12px; font-size: 14.5px; font-family: inherit;
+  border: 2px solid var(--line); border-radius: 10px;
+  background: var(--paper); color: var(--ink); outline: none;
+  transition: box-shadow .15s ease;
+}
+.sf-input:focus { box-shadow: 3px 3px 0 var(--shadow); }
+.sf-input::placeholder { color: var(--text-4); }
+textarea.sf-input { width: 100%; resize: vertical; min-height: 74px; line-height: 1.6; }
+select.sf-input { cursor: pointer; }
+
+/* v2.0.1 修复:提示文字(此前只存在于后台 admin.css) */
+.hint { font-size: 13px; color: var(--text-3); font-weight: 700; }
+
 .msg-form-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
 #msgTip { margin-top: 8px; }
 #msgTip.warn { color: #e05656; }
@@ -250,16 +265,21 @@ textarea.sf-input { width: 100%; resize: vertical; min-height: 74px; }
 
 /* ============================================================
    v1.10 数据包:公告横幅 + 倒计时挂件
+   v2.0.1 布局修复:横幅插在 sticky 导航正上方,内容用 .container
+   对齐页面栅格;吸顶时 sticky 生效与导航无缝衔接
    ============================================================ */
 .notice-bar {
   position: sticky; top: 0; z-index: 1500;
-  display: flex; align-items: center; gap: 10px;
-  padding: 9px 16px;
   background: var(--pink-bg); border-bottom: 2px solid var(--pink-shadow);
+}
+.notice-bar .nb-inner {
+  display: flex; align-items: center; gap: 10px;
+  max-width: 1080px; margin: 0 auto;
+  padding: 9px 16px;
   font-size: 14px; line-height: 1.5;
 }
 .notice-bar .nb-ico { flex: 0 0 auto; }
-.notice-bar .nb-body { flex: 1; word-break: break-word; }
+.notice-bar .nb-body { flex: 1; word-break: break-word; min-width: 0; }
 .notice-bar .nb-close {
   flex: 0 0 auto; width: 24px; height: 24px; border-radius: 50%;
   border: none; background: rgba(0,0,0,.08); cursor: pointer;
@@ -289,7 +309,7 @@ textarea.sf-input { width: 100%; resize: vertical; min-height: 74px; }
 
 @media (max-width: 640px) {
   .cd-widget { right: 12px; bottom: 120px; padding: 7px 10px; max-width: 104px; }
-  .notice-bar { font-size: 13px; padding: 8px 12px; }
+  .notice-bar .nb-inner { font-size: 13px; padding: 8px 12px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .notice-bar, .cd-widget { transition: none; }

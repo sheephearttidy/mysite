@@ -26,14 +26,23 @@
       const bar = document.createElement('div');
       bar.className = 'notice-bar';
       bar.innerHTML =
+        '<div class="nb-inner">' +
         '<span class="nb-ico">📢</span>' +
         '<span class="nb-body">' + esc(n.body) + '</span>' +
-        '<button class="nb-close" aria-label="关闭公告">✕</button>';
+        '<button class="nb-close" aria-label="关闭公告">✕</button>' +
+        '</div>';
       bar.querySelector('.nb-close').addEventListener('click', function () {
         bar.remove();
         try { sessionStorage.setItem('notice_closed', String(n.id)); } catch (e) { }
       });
-      document.body.insertBefore(bar, document.body.firstChild);
+      // v2.0.1:插到 sticky 导航前面,公告吸顶时与导航天然衔接;
+      // 内部用 .container 对齐页面栅格,长文不再顶死屏幕两边
+      var nav = document.querySelector('nav.nav');
+      if (nav && nav.parentNode) {
+        nav.parentNode.insertBefore(bar, nav);
+      } else {
+        document.body.insertBefore(bar, document.body.firstChild);
+      }
     }).catch(() => { });
   }
 
