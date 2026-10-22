@@ -1,6 +1,6 @@
 /* ============================================================
    v1.10 数据包:公告横幅 + 倒计时角标
-   公告:顶部横幅,可手动关闭(本次会话不再弹)
+   公告:v2.0.2 起改为顶部居中弹窗(自动消失+可手动关),不再常驻顶部
    倒计时:右下角小挂件,显示「XX 还有 N 天」
    ============================================================ */
 
@@ -13,7 +13,7 @@
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
 
-  /* ===================== 公告横幅 ===================== */
+  /* ===================== 公告弹窗 ===================== */
   function initNotice() {
     fetch('/api/notices/active').then(r => r.json()).then(d => {
       const n = d.notice;
@@ -23,26 +23,38 @@
       try { closed = Number(sessionStorage.getItem('notice_closed') || 0); } catch (e) { }
       if (closed === n.id) return;
 
-      const bar = document.createElement('div');
-      bar.className = 'notice-bar';
-      bar.innerHTML =
-        '<div class="nb-inner">' +
-        '<span class="nb-ico">📢</span>' +
-        '<span class="nb-body">' + esc(n.body) + '</span>' +
-        '<button class="nb-close" aria-label="关闭公告">✕</button>' +
-        '</div>';
-      bar.querySelector('.nb-close').addEventListener('click', function () {
-        bar.remove();
+      const pop = document.createElement('div');
+      pop.className = 'notice-pop';
+      pop.setAttribute('role', 'alert');
+      pop.innerHTML =
+        '<span class="np-ico">📢</span>' +
+        '<div class="np-text"><b class="np-tag">公告</b>' +
+        '<span class="np-body">' + esc(n.body) + '</span></div>' +
+        '<button class="np-close" aria-label="关闭公告">✕</button>';
+
+      const kill = () => {
+        pop.classList.remove('show');          // 触发退出动画
         try { sessionStorage.setItem('notice_closed', String(n.id)); } catch (e) { }
-      });
-      // v2.0.1:插到 sticky 导航前面,公告吸顶时与导航天然衔接;
-      // 内部用 .container 对齐页面栅格,长文不再顶死屏幕两边
-      var nav = document.querySelector('nav.nav');
-      if (nav && nav.parentNode) {
-        nav.parentNode.insertBefore(bar, nav);
-      } else {
-        document.body.insertBefore(bar, document.body.firstChild);
-      }
+        setTimeout(() => pop.remove(), 260);
+      };
+      pop.querySelector('.np-close').addEventListener('click', kill);
+
+      // 进场:下一帧加 .show 走过渡
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        pop.classList.add('show');
+        // 已在页首(滚动了)则贴顶,否则给导航留出空间
+        if (window.scrollY > 40) pop.classList.add('docked');
+      }));
+
+      // 自动消失:12 秒(手动关过也写会话标记)
+      const timer = setTimeout(kill, 12000);
+      pop.addEventListener('mouseenter', () => clearTimeout(timer)); // 悬停不消失
+
+      // 滚动后贴顶
+      const dock = () => pop.classList.toggle('docked', window.scrollY > 40);
+      window.addEventListener('scroll', dock, { passive: true });
+
+      document.body.appendChild(pop);
     }).catch(() => { });
   }
 

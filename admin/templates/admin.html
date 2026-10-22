@@ -363,14 +363,16 @@
       <section class="panel" id="panel-notices">
         <div class="sec-head">
           <h2>📢 站点公告</h2>
-          <span class="hint">发一条,前台所有页面顶部会出现横幅;访客可关闭,本次会话不再弹</span>
+          <span class="hint">发布后前台会弹出公告卡片;访客可关闭,本次会话不再弹</span>
         </div>
         <div class="item" style="margin-top:16px">
-          <div class="secform">
-            <div class="sf-row">
-              <input type="text" id="noticeInput" class="sf-input" maxlength="100"
-                     placeholder="公告内容(100 字以内),回车或点发布" />
-              <button class="btn btn-pink" id="noticeSend">📢 发布</button>
+          <h3>✏️ 写公告</h3>
+          <div class="notice-editor">
+            <textarea id="noticeInput" class="ne-textarea" maxlength="100" rows="3"
+                      placeholder="公告内容(100 字以内)&#10;Ctrl/⌘ + Enter 快速发布"></textarea>
+            <div class="ne-foot">
+              <span class="hint" id="noticeCount">0 / 100</span>
+              <button class="op save" id="noticeSend">📢 发布</button>
             </div>
           </div>
           <div id="noticeAdminList" style="margin-top:14px"></div>
@@ -394,7 +396,7 @@
               <label class="hint" style="display:flex;align-items:center;gap:5px">
                 <input type="checkbox" id="cdActive" checked /> 启用
               </label>
-              <button class="btn btn-pink" id="cdSave">💾 保存</button>
+              <button class="op save" id="cdSave">💾 保存</button>
             </div>
           </div>
           <div id="cdAdminList" style="margin-top:14px"></div>
@@ -546,7 +548,7 @@
             <div class="sf-row" style="margin-top:8px;max-width:300px">
               <input type="text" id="twofaCode" class="sf-input" maxlength="6"
                      inputmode="numeric" placeholder="6 位动态码" />
-              <button class="btn btn-pink" onclick="twofaConfirm()">✅ 确认启用</button>
+              <button class="op save" onclick="twofaConfirm()">✅ 确认启用</button>
             </div>
           </div>
         </div>

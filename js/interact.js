@@ -151,11 +151,14 @@
     function render(list) {
       grid.innerHTML = '';
       emptyEl.hidden = list.length > 0;
+      if (!list.length) return;
       list.forEach(function (m, i) {
         var card = document.createElement('div');
-        card.className = 'msg-note msg-' + (m.color || 'pink') +
-          (i < 3 ? ' reveal' : '');
-        if (i < 3) card.classList.add(i === 1 ? 'd1' : i === 2 ? 'd2' : '');
+        // v2.0.2 修复:此前 i=0 时 classList.add('') 抛异常导致整墙渲染崩溃
+        card.className = 'msg-note msg-' + (m.color || 'pink');
+        if (i < 3) card.classList.add('reveal');
+        if (i === 1) card.classList.add('d1');
+        if (i === 2) card.classList.add('d2');
         var replyHtml = m.reply
           ? '<div class="msg-reply"><b>站主:</b>' + esc(m.reply) + '</div>' : '';
         card.innerHTML =
@@ -167,6 +170,24 @@
         card.style.setProperty('--rot', rot + 'deg');
         grid.appendChild(card);
       });
+      // v2.0.2 修复:卡片是 fetch 后动态插入的,main.js 的滚动观察器
+      // 只在页面加载时收集 .reveal,这些卡永远等不到 visible → 一直透明。
+      // 自己观察一轮,进视口就显形
+      if ('IntersectionObserver' in window) {
+        var wallIO = new IntersectionObserver(function (entries) {
+          entries.forEach(function (e) {
+            if (e.isIntersecting) {
+              e.target.classList.add('visible');
+              wallIO.unobserve(e.target);
+            }
+          });
+        }, { threshold: 0.12 });
+        grid.querySelectorAll('.reveal').forEach(function (el) { wallIO.observe(el); });
+      } else {
+        grid.querySelectorAll('.reveal').forEach(function (el) {
+          el.classList.add('visible');
+        });
+      }
     }
 
     if (bodyIn && countEl) {

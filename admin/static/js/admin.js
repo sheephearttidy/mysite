@@ -1124,18 +1124,30 @@ async function noticeDel(id) {
 (function initNoticeForm() {
   const input = document.getElementById('noticeInput');
   const btn = document.getElementById('noticeSend');
+  const count = document.getElementById('noticeCount');
   if (!input || !btn) return;
+  if (count) count.textContent = '0 / 100';
+  input.addEventListener('input', () => {
+    if (count) count.textContent = input.value.length + ' / 100';
+  });
   async function send() {
     const body = input.value.trim();
     if (!body) return toast('先写公告内容~');
+    btn.disabled = true;
     try {
       await api('POST', '/api/notices/admin', { body });
       input.value = '';
+      if (count) count.textContent = '0 / 100';
+      toast('公告已发布,前台马上能看到 📢');
       loadNotices();
     } catch (e) { toast('发布失败:' + e.message); }
+    finally { btn.disabled = false; }
   }
   btn.addEventListener('click', send);
-  input.addEventListener('keydown', e => { if (e.key === 'Enter') send(); });
+  // textarea:Enter 换行,Ctrl/⌘+Enter 发布
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); send(); }
+  });
 })();
 
 /* ==================== v1.10:倒计时管理 ==================== */
