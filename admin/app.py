@@ -14,7 +14,8 @@ from datetime import datetime, timezone, timedelta
 from functools import wraps
 
 from flask import (Flask, request, jsonify, render_template,
-                   redirect, url_for, session, flash, send_from_directory)
+                   redirect, url_for, session, flash, send_from_directory,
+                   make_response)
 
 import db
 import captcha
@@ -266,7 +267,8 @@ def _clean_referer(raw: str) -> str:
 
 @app.post("/api/track")
 def track_visit():
-    """前台每次打开页面调一次。公开接口,只记已知页面,防扫描器刷库。"""
+    """前台每次打开页面调一次。公开接口,只记已知页面,防扫描器刷库。
+    v1.10:返回 vid 供停留时长补报;接收 is_new(前端 localStorage 匿名标识)。"""
     body = request.get_json(silent=True) or {}
     path = (body.get("path") or "/")[:100]
     if path not in TRACK_PATHS:
@@ -282,11 +284,27 @@ def track_visit():
     city = geo.locate(ip) if ip else ""
     now = datetime.now(_BEIJING)
     try:
-        db.record_visit(path=path, referer=ref, ua=ua,
-                        day=now.strftime("%Y-%m-%d"), ts=int(time.time()),
-                        city=city)
+        vid = db.record_visit(path=path, referer=ref, ua=ua,
+                              day=now.strftime("%Y-%m-%d"), ts=int(time.time()),
+                              city=city,
+                              is_new=1 if body.get("is_new", 1) else 0,
+                              dur_s=0)
     except Exception:
         return jsonify(ok=False), 200   # 统计失败不影响用户
+    return jsonify(ok=True, vid=vid)
+
+
+@app.post("/api/track/dur")
+def track_duration():
+    """v1.10:离开/隐藏时补报停留时长。vid + dur_s,轻校验。"""
+    body = request.get_json(silent=True) or {}
+    try:
+        vid = int(body.get("vid") or 0)
+    except (TypeError, ValueError):
+        vid = 0
+    if vid <= 0:
+        return jsonify(ok=False), 400
+    db.update_visit_dur(vid, body.get("dur_s") or 0)
     return jsonify(ok=True)
 
 
@@ -349,6 +367,20 @@ def api_likes_post():
     if not r.get("ok"):
         return jsonify(r), 400
     return jsonify(r)
+
+
+# ---------------- 公告与倒计时(公开) ----------------
+
+@app.get("/api/notices/active")
+def api_notices_active():
+    """前台:获取当前生效的公告"""
+    return jsonify(notice=db.get_active_notice())
+
+
+@app.get("/api/countdowns/active")
+def api_countdowns_active():
+    """前台:获取当前生效的倒计时"""
+    return jsonify(countdown=db.get_active_countdown())
 
 
 @app.get("/api/stats/visits")
@@ -658,6 +690,120 @@ def api_message_mod(mid):
 def api_likes_admin():
     """后台:各页点赞 + 总数"""
     return jsonify(likes=db.like_counts(), total=db.like_total())
+
+
+# ---------------- 公告与倒计时(后台管理) ----------------
+
+@app.get("/api/notices/admin")
+@login_required
+def api_notices_admin():
+    """后台:公告列表"""
+    return jsonify(notices=db.list_notices())
+
+
+@app.post("/api/notices/admin")
+@login_required
+def api_notices_add():
+    body = request.get_json(silent=True) or {}
+    r = db.add_notice(body.get("body") or "")
+    if not r.get("ok"):
+        return jsonify(r), 400
+    db.add_audit("notice_add", client_ip(), f"新增公告 id={r['id']}",
+                 request.headers.get("User-Agent", ""))
+    return jsonify(ok=True, notices=db.list_notices())
+
+
+@app.post("/api/notices/<int:nid>/mod")
+@login_required
+def api_notice_mod(nid):
+    """action = on | off | delete"""
+    body = request.get_json(silent=True) or {}
+    act = body.get("action")
+    if act in ("on", "off"):
+        ok = db.set_notice_active(nid, 1 if act == "on" else 0)
+    elif act == "delete":
+        ok = db.del_notice(nid)
+    else:
+        return jsonify(error="未知操作"), 400
+    if not ok:
+        return jsonify(error="公告不存在"), 404
+    db.add_audit("notice_mod", client_ip(), f"{act} 公告 id={nid}",
+                 request.headers.get("User-Agent", ""))
+    return jsonify(ok=True, notices=db.list_notices())
+
+
+@app.get("/api/countdowns/admin")
+@login_required
+def api_countdowns_admin():
+    """后台:倒计时列表"""
+    return jsonify(countdowns=db.list_countdowns())
+
+
+@app.post("/api/countdowns/admin")
+@login_required
+def api_countdowns_save():
+    body = request.get_json(silent=True) or {}
+    r = db.upsert_countdown(
+        cid=body.get("id"), title=body.get("title") or "",
+        target=body.get("target") or "", emoji=body.get("emoji") or "⏳",
+        active=1 if body.get("active", 1) else 0)
+    if not r.get("ok"):
+        return jsonify(r), 400
+    db.add_audit("countdown_save", client_ip(),
+                 f"保存倒计时 {body.get('title','')} @ {body.get('target','')}",
+                 request.headers.get("User-Agent", ""))
+    return jsonify(ok=True, countdowns=db.list_countdowns())
+
+
+@app.post("/api/countdowns/<int:cid>/delete")
+@login_required
+def api_countdown_delete(cid):
+    if not db.del_countdown(cid):
+        return jsonify(error="倒计时不存在"), 404
+    db.add_audit("countdown_del", client_ip(), f"删除倒计时 id={cid}",
+                 request.headers.get("User-Agent", ""))
+    return jsonify(ok=True, countdowns=db.list_countdowns())
+
+
+# ---------------- 访客深度统计 ----------------
+
+@app.get("/api/stats/visitors")
+@login_required
+def api_visitors_breakdown():
+    """看板卡片:新老访客 + 平均停留时长"""
+    days = request.args.get("days", 30, type=int)
+    days = max(1, min(days, 365))
+    return jsonify(db.visitor_breakdown(days))
+
+
+@app.get("/api/stats/visits/csv")
+@login_required
+def api_visits_csv():
+    """访问明细导出 CSV(近 N 天,不含 IP)"""
+    import csv as _csv
+    import io as _io
+    days = request.args.get("days", 7, type=int)
+    days = max(1, min(days, 30))
+    since = int(time.time()) - days * 86400
+    with db.get_db() as c:
+        rows = c.execute(
+            "SELECT day,ts,path,referer,ua,city,is_new,dur_s FROM visits "
+            "WHERE ts>=? AND is_bot=0 ORDER BY ts DESC", (since,)).fetchall()
+    buf = _io.StringIO()
+    w = _csv.writer(buf)
+    w.writerow(["日期", "时间(北京)", "页面", "来源", "设备", "城市", "新访客", "停留秒"])
+    from datetime import datetime as _dt, timezone as _tz, timedelta as _td
+    _BJ = _tz(_td(hours=8))
+    for r in rows:
+        t = _dt.fromtimestamp(r["ts"], _BJ).strftime("%Y-%m-%d %H:%M:%S")
+        w.writerow([r["day"], t, r["path"], r["referer"], r["ua"], r["city"],
+                    "是" if r["is_new"] else "否", r["dur_s"]])
+    resp = make_response(buf.getvalue())
+    resp.headers["Content-Type"] = "text/csv; charset=utf-8"
+    resp.headers["Content-Disposition"] = "attachment; filename=visits.csv"
+    db.add_audit("csv_export", client_ip(), f"导出近{days}天访问明细",
+                 request.headers.get("User-Agent", ""))
+    return resp
 
 
 @app.get("/api/security/overview")

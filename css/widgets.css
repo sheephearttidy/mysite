@@ -247,3 +247,50 @@ textarea.sf-input { width: 100%; resize: vertical; min-height: 74px; }
 @media (prefers-reduced-motion: reduce) {
   .accent-btn:hover { transform: none; }
 }
+
+/* ============================================================
+   v1.10 数据包:公告横幅 + 倒计时挂件
+   ============================================================ */
+.notice-bar {
+  position: sticky; top: 0; z-index: 1500;
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 16px;
+  background: var(--pink-bg); border-bottom: 2px solid var(--pink-shadow);
+  font-size: 14px; line-height: 1.5;
+}
+.notice-bar .nb-ico { flex: 0 0 auto; }
+.notice-bar .nb-body { flex: 1; word-break: break-word; }
+.notice-bar .nb-close {
+  flex: 0 0 auto; width: 24px; height: 24px; border-radius: 50%;
+  border: none; background: rgba(0,0,0,.08); cursor: pointer;
+  font-size: 12px; line-height: 1; color: inherit;
+  transition: background .15s ease;
+}
+.notice-bar .nb-close:hover { background: rgba(0,0,0,.16); }
+[data-theme="dark"] .notice-bar { background: #4a2f3d; border-color: #5a3348; }
+
+.cd-widget {
+  position: fixed; right: 18px; bottom: 138px; z-index: 1150;
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
+  padding: 9px 13px; border-radius: 14px;
+  background: #fff; border: 2px solid var(--shadow);
+  box-shadow: 3px 3px 0 var(--shadow); font-size: 11px;
+  max-width: 130px; text-align: center;
+}
+.cd-widget .cd-emoji { font-size: 17px; }
+.cd-widget .cd-title { font-weight: 700; opacity: .75; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cd-widget .cd-days { font-size: 13px; }
+.cd-widget.soon { border-color: var(--pink); }
+.cd-widget.soon .cd-days { color: var(--pink); }
+.cd-widget.today { border-color: #ff6b6b; background: #fff0f0; }
+.cd-widget.today .cd-days { color: #e04848; }
+.cd-widget.past { opacity: .75; }
+[data-theme="dark"] .cd-widget { background: #2a2b33; }
+
+@media (max-width: 640px) {
+  .cd-widget { right: 12px; bottom: 120px; padding: 7px 10px; max-width: 104px; }
+  .notice-bar { font-size: 13px; padding: 8px 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .notice-bar, .cd-widget { transition: none; }
+}

@@ -74,7 +74,9 @@ CREATE TABLE IF NOT EXISTS visits (
     referer TEXT DEFAULT '',        -- 来源域名(已裁剪)
     ua TEXT DEFAULT '',             -- 简化的浏览器/系统标签
     is_bot INTEGER NOT NULL DEFAULT 0,
-    city TEXT DEFAULT ''            -- 访客城市(如 "江苏 南京"),隐私起见不存 IP
+    city TEXT DEFAULT '',           -- 访客城市(如 "江苏 南京"),隐私起见不存 IP
+    is_new INTEGER DEFAULT 1,       -- v1.10:1=新访客 0=回访(前端 localStorage 匿名标识)
+    dur_s INTEGER DEFAULT 0         -- v1.10:本页停留秒数(visibility 心跳,无 cookie)
 );
 CREATE INDEX IF NOT EXISTS idx_visits_day ON visits(day);
 CREATE INDEX IF NOT EXISTS idx_visits_ts  ON visits(ts);
@@ -125,6 +127,23 @@ CREATE INDEX IF NOT EXISTS idx_messages_ts ON messages(ts);
 CREATE TABLE IF NOT EXISTS likes (
     page TEXT PRIMARY KEY,
     n INTEGER NOT NULL DEFAULT 0
+);
+
+-- 站点公告(后台发,前台顶部横幅,可开关)
+CREATE TABLE IF NOT EXISTS notices (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    body TEXT NOT NULL,               -- 公告内容(不超 100 字)
+    ts INTEGER NOT NULL,              -- 发布时间
+    active INTEGER NOT NULL DEFAULT 1  -- 1=前台显示 0=下架
+);
+
+-- 倒计时(后台配置,前台挂角标;active=1 的最近一个展示)
+CREATE TABLE IF NOT EXISTS countdowns (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,              -- 事件名,如「蓝桥杯」
+    target TEXT NOT NULL,             -- 目标日期 YYYY-MM-DD
+    emoji TEXT DEFAULT '⏳',
+    active INTEGER NOT NULL DEFAULT 1
 );
 """
 
@@ -452,6 +471,11 @@ def init_db(path):
         cols = [r["name"] for r in c.execute("PRAGMA table_info(visits)")]
         if "city" not in cols:
             c.execute("ALTER TABLE visits ADD COLUMN city TEXT DEFAULT ''")
+        # v1.10.0:新老访客 + 停留时长
+        if "is_new" not in cols:
+            c.execute("ALTER TABLE visits ADD COLUMN is_new INTEGER DEFAULT 1")
+        if "dur_s" not in cols:
+            c.execute("ALTER TABLE visits ADD COLUMN dur_s INTEGER DEFAULT 0")
         if c.execute("SELECT COUNT(*) FROM skills").fetchone()[0] == 0:
             c.executemany(
                 "INSERT INTO skills(name,percent,note,category,color,sort) VALUES(?,?,?,?,?,?)",
@@ -782,13 +806,30 @@ def _classify_ua(ua: str):
     return f"{browser} / {os_name}", is_bot
 
 
-def record_visit(path: str, referer: str, ua: str, day: str, ts: int, city: str = ""):
-    """记录一次访问。调用方负责把 referer 裁成域名,city 可为空(查不到就留空)。"""
+def record_visit(path: str, referer: str, ua: str, day: str, ts: int,
+                 city: str = "", is_new: int = 1, dur_s: int = 0):
+    """记录一次访问。调用方负责把 referer 裁成域名,city 可为空(查不到就留空)。
+    返回新行 id,供前端离开时补报停留时长。"""
     label, is_bot = _classify_ua(ua)
     with get_db() as c:
         c.execute(
-            "INSERT INTO visits(day,ts,path,referer,ua,is_bot,city) VALUES(?,?,?,?,?,?,?)",
-            (day, ts, path[:200], referer[:200], label[:60], is_bot, city[:40]))
+            "INSERT INTO visits(day,ts,path,referer,ua,is_bot,city,is_new,dur_s) "
+            "VALUES(?,?,?,?,?,?,?,?,?)",
+            (day, ts, path[:200], referer[:200], label[:60], is_bot,
+             city[:40], 1 if is_new else 0, max(0, int(dur_s))))
+        return c.execute("SELECT last_insert_rowid() id").fetchone()["id"]
+
+
+def update_visit_dur(vid: int, dur_s: int) -> bool:
+    """补报停留时长(上限 2 小时,防异常值)。只增不减,取已报的最大值。"""
+    try:
+        dur_s = max(0, min(int(dur_s), 7200))
+    except (TypeError, ValueError):
+        return False
+    with get_db() as c:
+        cur = c.execute(
+            "UPDATE visits SET dur_s=MAX(dur_s,?) WHERE id=?", (dur_s, vid))
+        return cur.rowcount > 0
 
 
 def get_visit_cities(limit: int = 200) -> list:
@@ -982,3 +1023,134 @@ def add_like(page: str) -> dict:
             "ON CONFLICT(page) DO UPDATE SET n=n+1", (page,))
         n = c.execute("SELECT n FROM likes WHERE page=?", (page,)).fetchone()["n"]
     return {"ok": True, "page": page, "n": n}
+
+
+# ============================================================
+# 站点公告(后台发,前台横幅)
+# ============================================================
+
+def get_active_notice() -> dict | None:
+    """前台:当前生效的公告(active=1 的最新一条)"""
+    with get_db() as c:
+        r = c.execute(
+            "SELECT id,body,ts FROM notices WHERE active=1 "
+            "ORDER BY ts DESC LIMIT 1").fetchone()
+    return dict(r) if r else None
+
+
+def list_notices() -> list:
+    with get_db() as c:
+        rows = c.execute(
+            "SELECT id,body,ts,active FROM notices ORDER BY ts DESC LIMIT 50").fetchall()
+    return [dict(r) for r in rows]
+
+
+def add_notice(body: str) -> dict:
+    body = (body or "").strip()[:100]
+    if not body:
+        return {"ok": False, "error": "内容不能为空"}
+    with get_db() as c:
+        c.execute("INSERT INTO notices(body,ts,active) VALUES(?,?,1)",
+                  (body, int(time.time())))
+        mid = c.execute("SELECT last_insert_rowid() id").fetchone()["id"]
+    return {"ok": True, "id": mid}
+
+
+def set_notice_active(nid: int, active: int) -> bool:
+    if active not in (0, 1):
+        return False
+    with get_db() as c:
+        cur = c.execute("UPDATE notices SET active=? WHERE id=?", (active, nid))
+        return cur.rowcount > 0
+
+
+def del_notice(nid: int) -> bool:
+    with get_db() as c:
+        cur = c.execute("DELETE FROM notices WHERE id=?", (nid,))
+        return cur.rowcount > 0
+
+
+# ============================================================
+# 倒计时(后台配,前台角标)
+# ============================================================
+
+def get_active_countdown() -> dict | None:
+    """前台:active=1 的倒计时,取 target 最近的一个"""
+    with get_db() as c:
+        r = c.execute(
+            "SELECT id,title,target,emoji FROM countdowns WHERE active=1 "
+            "ORDER BY target ASC LIMIT 1").fetchone()
+    return dict(r) if r else None
+
+
+def list_countdowns() -> list:
+    with get_db() as c:
+        rows = c.execute(
+            "SELECT id,title,target,emoji,active FROM countdowns "
+            "ORDER BY target ASC").fetchall()
+    return [dict(r) for r in rows]
+
+
+def upsert_countdown(cid, title: str, target: str, emoji: str, active: int) -> dict:
+    """cid 为空则新增,否则更新"""
+    title = (title or "").strip()[:20]
+    emoji = (emoji or "⏳").strip()[:4]
+    import re as _re
+    if not _re.fullmatch(r"\d{4}-\d{2}-\d{2}", target or ""):
+        return {"ok": False, "error": "日期格式应为 YYYY-MM-DD"}
+    if not title:
+        return {"ok": False, "error": "标题不能为空"}
+    active = 1 if active else 0
+    with get_db() as c:
+        if cid:
+            cur = c.execute(
+                "UPDATE countdowns SET title=?,target=?,emoji=?,active=? WHERE id=?",
+                (title, target, emoji, active, cid))
+            if cur.rowcount == 0:
+                return {"ok": False, "error": "倒计时不存在"}
+        else:
+            c.execute(
+                "INSERT INTO countdowns(title,target,emoji,active) VALUES(?,?,?,?)",
+                (title, target, emoji, active))
+    return {"ok": True}
+
+
+def del_countdown(cid: int) -> bool:
+    with get_db() as c:
+        cur = c.execute("DELETE FROM countdowns WHERE id=?", (cid,))
+        return cur.rowcount > 0
+
+
+# ============================================================
+# 访客深度:新老访客 + 停留时长
+# ============================================================
+# 新老访客:visits 表加两列(幂等 ALTER,已存在的库自动补)
+def _ensure_visit_cols():
+    try:
+        with get_db() as c:
+            cols = [r["name"] for r in c.execute("PRAGMA table_info(visits)")]
+            if "is_new" not in cols:
+                c.execute("ALTER TABLE visits ADD COLUMN is_new INTEGER DEFAULT 1")
+            if "dur_s" not in cols:
+                c.execute("ALTER TABLE visits ADD COLUMN dur_s INTEGER DEFAULT 0")
+    except Exception:
+        pass
+
+
+def visitor_breakdown(days: int = 30) -> dict:
+    """看板卡片:新访客 / 回访 / 平均停留秒数"""
+    _ensure_visit_cols()
+    since = int(time.time()) - days * 86400
+    with get_db() as c:
+        total = c.execute(
+            "SELECT COUNT(*) n FROM visits WHERE is_bot=0 AND ts>=?",
+            (since,)).fetchone()["n"]
+        new = c.execute(
+            "SELECT COUNT(*) n FROM visits WHERE is_bot=0 AND ts>=? AND is_new=1",
+            (since,)).fetchone()["n"]
+        back = total - new
+        avg = c.execute(
+            "SELECT AVG(dur_s) v FROM visits WHERE is_bot=0 AND ts>=? AND dur_s>0",
+            (since,)).fetchone()["v"] or 0
+    return {"total": total, "new": new, "back": max(back, 0),
+            "avg_dur": int(avg)}

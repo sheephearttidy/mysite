@@ -209,19 +209,45 @@ loadDynamicContent();
     sessionStorage.setItem('tracked', '1');
   } catch (e) { /* 隐私模式下 sessionStorage 可能不可用,照常上报 */ }
 
-  // 用 sendBeacon 最不打扰;不支持就退回 fetch
-  const payload = JSON.stringify({ path: location.pathname });
+  // v1.10:新老访客标识(localStorage 匿名标志,不含任何个人信息)
+  let isNew = true;
   try {
-    if (navigator.sendBeacon) {
-      navigator.sendBeacon('/api/track',
-        new Blob([payload], { type: 'application/json' }));
-      return;
-    }
-  } catch (e) {}
+    isNew = !localStorage.getItem('mysite_seen');
+    localStorage.setItem('mysite_seen', '1');
+  } catch (e) { isNew = true; }
+
+  const payload = JSON.stringify({ path: location.pathname, is_new: isNew });
+  let vid = 0;
+  const t0 = Date.now();
+
+  // v1.10:停留时长补报(切走/关闭时发;重复发无害,后端取 MAX)
+  function reportDur() {
+    if (!vid) return;
+    const dur = Math.round((Date.now() - t0) / 1000);
+    if (dur < 1) return;
+    const body = JSON.stringify({ vid, dur_s: dur });
+    try {
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon('/api/track/dur',
+          new Blob([body], { type: 'application/json' }));
+        return;
+      }
+    } catch (e) {}
+    fetch('/api/track/dur', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body, keepalive: true,
+    }).catch(() => {});
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) reportDur();
+  });
+  window.addEventListener('pagehide', reportDur);
+
+  // 统一用 fetch(拿到 vid 才能补报停留时长)
   fetch('/api/track', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: payload,
     keepalive: true,
-  }).catch(() => {});
+  }).then(r => r.json()).then(d => { vid = d.vid || 0; }).catch(() => {});
 })();

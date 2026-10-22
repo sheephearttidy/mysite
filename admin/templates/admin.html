@@ -86,6 +86,8 @@
         <ul class="sb-sub">
           <li><a class="sb-link" data-panel="dashboard" href="#dashboard">📊 数据看板</a></li>
           <li><a class="sb-link" data-panel="fx" href="#fx">🎉 前台特效</a></li>
+          <li><a class="sb-link" data-panel="notices" href="#notices">📢 站点公告</a></li>
+          <li><a class="sb-link" data-panel="countdown" href="#countdown">⏳ 倒计时</a></li>
           <li><a class="sb-link" data-panel="backup" href="#backup">💾 数据备份</a></li>
           <li><a class="sb-link" data-panel="likes" href="#likes">❤️ 点赞统计</a></li>
         </ul>
@@ -240,6 +242,14 @@
             <div class="dc-num" id="dc-bots">–</div>
             <div class="dc-lbl">已过滤爬虫</div>
           </div>
+          <div class="dash-card c2">
+            <div class="dc-num" id="dc-newback">–</div>
+            <div class="dc-lbl">新访客/回访</div>
+          </div>
+          <div class="dash-card c3">
+            <div class="dc-num" id="dc-dur">–</div>
+            <div class="dc-lbl">平均停留</div>
+          </div>
         </div>
 
         <div class="item" style="margin-top:18px">
@@ -273,6 +283,11 @@
         <div class="item" style="margin-top:18px">
           <h3>🧾 最近访问</h3>
           <div id="dashRecent"></div>
+          <div class="ops" style="margin-top:12px">
+            <a class="op save" href="/api/stats/visits/csv?days=7" download>⬇️ 导出近 7 天 CSV</a>
+            <a class="op edit" href="/api/stats/visits/csv?days=30" download>⬇️ 导出近 30 天 CSV</a>
+          </div>
+          <p class="hint" style="margin-top:6px">CSV 只含页面/来源/设备/城市,不含 IP;导出动作会记入审计日志</p>
         </div>
       </section>
 
@@ -341,6 +356,48 @@
             </div>
           </div>
           <div id="likeBars"></div>
+        </div>
+      </section>
+
+      <!-- 站点公告 -->
+      <section class="panel" id="panel-notices">
+        <div class="sec-head">
+          <h2>📢 站点公告</h2>
+          <span class="hint">发一条,前台所有页面顶部会出现横幅;访客可关闭,本次会话不再弹</span>
+        </div>
+        <div class="item" style="margin-top:16px">
+          <div class="secform">
+            <div class="sf-row">
+              <input type="text" id="noticeInput" class="sf-input" maxlength="100"
+                     placeholder="公告内容(100 字以内),回车或点发布" />
+              <button class="btn btn-pink" id="noticeSend">📢 发布</button>
+            </div>
+          </div>
+          <div id="noticeAdminList" style="margin-top:14px"></div>
+        </div>
+      </section>
+
+      <!-- 倒计时 -->
+      <section class="panel" id="panel-countdown">
+        <div class="sec-head">
+          <h2>⏳ 倒计时</h2>
+          <span class="hint">前台右下角挂件;active 的里面取日期最近的一个展示</span>
+        </div>
+        <div class="item" style="margin-top:16px">
+          <div class="secform">
+            <div class="sf-row">
+              <input type="text" id="cdTitle" class="sf-input" maxlength="20"
+                     placeholder="事件名,如:蓝桥杯" style="flex:0 0 180px" />
+              <input type="date" id="cdTarget" class="sf-input" style="flex:0 0 170px" />
+              <input type="text" id="cdEmoji" class="sf-input" maxlength="4"
+                     placeholder="⏳" style="flex:0 0 70px" />
+              <label class="hint" style="display:flex;align-items:center;gap:5px">
+                <input type="checkbox" id="cdActive" checked /> 启用
+              </label>
+              <button class="btn btn-pink" id="cdSave">💾 保存</button>
+            </div>
+          </div>
+          <div id="cdAdminList" style="margin-top:14px"></div>
         </div>
       </section>
 

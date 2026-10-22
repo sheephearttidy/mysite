@@ -50,6 +50,8 @@ const PANELS = {
   'fx':            { title:'🎉 前台特效',      crumb:'站点维护 / 前台特效' },
   'backup':        { title:'💾 数据备份',      crumb:'站点维护 / 数据备份' },
   'likes':         { title:'❤️ 点赞统计',      crumb:'站点维护 / 点赞统计' },
+  'notices':       { title:'📢 站点公告',      crumb:'站点维护 / 站点公告' },
+  'countdown':     { title:'⏳ 倒计时',        crumb:'站点维护 / 倒计时' },
   'sec-pass':      { title:'🔑 后台密码',      crumb:'安全中心 / 后台密码' },
   'sec-login':     { title:'🛡️ 登录防护',      crumb:'安全中心 / 登录防护' },
   'sec-blocked':   { title:'⛔ 封锁名单',      crumb:'安全中心 / 封锁名单' },
@@ -81,6 +83,8 @@ function showPanel(name) {
   // 留言板 / 点赞:按需刷新
   if (name === 'messages') loadMessages();
   if (name === 'likes') loadLikes();
+  if (name === 'notices') loadNotices();
+  if (name === 'countdown') loadCountdowns();
 
   // 安全中心各子面板:按需刷新对应数据
   if (SEC_PANELS.includes(name)) {
@@ -441,6 +445,15 @@ async function loadDashboard(days) {
   } catch (e) {
     toast('看板加载失败:' + e.message);
   }
+  // v1.10:新老访客 + 平均停留(独立接口,失败不挡主看板)
+  try {
+    const v = await api('GET', `/api/stats/visitors?days=${DASH_DAYS}`);
+    const nb = document.getElementById('dc-newback');
+    const du = document.getElementById('dc-dur');
+    if (nb) nb.textContent = `${v.new ?? '–'} / ${v.back ?? '–'}`;
+    if (du) du.textContent = v.avg_dur >= 60
+      ? `${Math.floor(v.avg_dur / 60)}分${v.avg_dur % 60}秒` : `${v.avg_dur || 0}秒`;
+  } catch (e) { /* 旧数据无 is_new 列时静默 */ }
 }
 
 function renderDashboard(d) {
@@ -1065,6 +1078,141 @@ async function loadLikes() {
     console.error('loadLikes', e);
   }
 }
+
+/* ==================== v1.10:站点公告管理 ==================== */
+
+async function loadNotices() {
+  try {
+    const r = await api('GET', '/api/notices/admin');
+    const list = document.getElementById('noticeAdminList');
+    if (!r.notices || !r.notices.length) {
+      list.innerHTML = '<p class="hint">还没有公告,发一条试试~</p>';
+      return;
+    }
+    list.innerHTML = r.notices.map(n => `
+      <div class="msg-admin-item">
+        <div class="mai-head">
+          <span class="badge ${n.active ? 'ok' : 'muted'}">${n.active ? '展示中' : '已下架'}</span>
+          <span class="hint">${fmtMsgTime(n.ts)}</span>
+        </div>
+        <div class="mai-body">${esc(n.body)}</div>
+        <div class="ops" style="margin-top:8px">
+          ${n.active
+            ? `<button class="op" onclick="noticeMod(${n.id},'off')">⬇️ 下架</button>`
+            : `<button class="op save" onclick="noticeMod(${n.id},'on')">⬆️ 上架</button>`}
+          <button class="op del" onclick="noticeDel(${n.id})">🗑️ 删除</button>
+        </div>
+      </div>`).join('');
+  } catch (e) { console.error('loadNotices', e); }
+}
+
+async function noticeMod(id, action) {
+  try {
+    await api('POST', `/api/notices/${id}/mod`, { action });
+    loadNotices();
+  } catch (e) { toast('操作失败:' + e.message); }
+}
+
+async function noticeDel(id) {
+  if (!confirm('删除这条公告?')) return;
+  try {
+    await api('POST', `/api/notices/${id}/mod`, { action: 'delete' });
+    loadNotices();
+  } catch (e) { toast('删除失败:' + e.message); }
+}
+
+(function initNoticeForm() {
+  const input = document.getElementById('noticeInput');
+  const btn = document.getElementById('noticeSend');
+  if (!input || !btn) return;
+  async function send() {
+    const body = input.value.trim();
+    if (!body) return toast('先写公告内容~');
+    try {
+      await api('POST', '/api/notices/admin', { body });
+      input.value = '';
+      loadNotices();
+    } catch (e) { toast('发布失败:' + e.message); }
+  }
+  btn.addEventListener('click', send);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') send(); });
+})();
+
+/* ==================== v1.10:倒计时管理 ==================== */
+
+function fmtCdTarget(target) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(target || '');
+  if (!m) return target;
+  const diff = Math.ceil((new Date(+m[1], +m[2] - 1, +m[3]) - new Date()) / 86400000);
+  if (diff > 0) return `${target}(还有 ${diff} 天)`;
+  if (diff === 0) return `${target}(就是今天!)`;
+  return `${target}(过去 ${-diff + 1} 天)`;
+}
+
+async function loadCountdowns() {
+  try {
+    const r = await api('GET', '/api/countdowns/admin');
+    const list = document.getElementById('cdAdminList');
+    if (!r.countdowns || !r.countdowns.length) {
+      list.innerHTML = '<p class="hint">还没有倒计时,加一个吧(考试/比赛/纪念日)</p>';
+      return;
+    }
+    list.innerHTML = r.countdowns.map(c => `
+      <div class="msg-admin-item">
+        <div class="mai-head">
+          <b>${c.emoji || '⏳'} ${esc(c.title)}</b>
+          <span class="badge ${c.active ? 'ok' : 'muted'}">${c.active ? '启用' : '停用'}</span>
+          <span class="hint">${fmtCdTarget(c.target)}</span>
+        </div>
+        <div class="ops" style="margin-top:8px">
+          <button class="op edit" onclick='cdEdit(${JSON.stringify(
+    { id: c.id, title: c.title, target: c.target, emoji: c.emoji, active: !!c.active }
+  ).replace(/'/g, '&#39;')})'>✏️ 编辑</button>
+          <button class="op del" onclick="cdDel(${c.id})">🗑️ 删除</button>
+        </div>
+      </div>`).join('');
+  } catch (e) { console.error('loadCountdowns', e); }
+}
+
+function cdEdit(c) {
+  document.getElementById('cdTitle').value = c.title;
+  document.getElementById('cdTarget').value = c.target;
+  document.getElementById('cdEmoji').value = c.emoji || '';
+  document.getElementById('cdActive').checked = !!c.active;
+  document.getElementById('cdSave').dataset.id = c.id;
+  toast('已载入编辑区,改完点保存');
+}
+
+async function cdDel(id) {
+  if (!confirm('删除这个倒计时?')) return;
+  try {
+    await api('POST', `/api/countdowns/${id}/delete`);
+    loadCountdowns();
+  } catch (e) { toast('删除失败:' + e.message); }
+}
+
+(function initCdForm() {
+  const btn = document.getElementById('cdSave');
+  if (!btn) return;
+  btn.addEventListener('click', async () => {
+    const payload = {
+      id: btn.dataset.id ? Number(btn.dataset.id) : null,
+      title: document.getElementById('cdTitle').value,
+      target: document.getElementById('cdTarget').value,
+      emoji: document.getElementById('cdEmoji').value || '⏳',
+      active: document.getElementById('cdActive').checked,
+    };
+    try {
+      await api('POST', '/api/countdowns/admin', payload);
+      delete btn.dataset.id;
+      document.getElementById('cdTitle').value = '';
+      document.getElementById('cdTarget').value = '';
+      document.getElementById('cdEmoji').value = '';
+      document.getElementById('cdActive').checked = true;
+      loadCountdowns();
+    } catch (e) { toast('保存失败:' + e.message); }
+  });
+})();
 
 // 前台特效:模式/开关变化时联动「指定节日」是否可点
 (function initFxEvents() {
