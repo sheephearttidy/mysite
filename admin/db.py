@@ -785,9 +785,15 @@ def get_visit_cities(limit: int = 200) -> list:
 
 def get_visit_stats(days: int = 30) -> dict:
     """返回看板需要的聚合数据"""
+    import datetime as _dt
     import time as _t
     now = int(_t.time())
     since = now - days * 86400
+
+    # 统一用北京时间(与 track 写入时的 day 口径一致,不依赖服务器时区)
+    _BJ = _dt.timezone(_dt.timedelta(hours=8))
+    today_dt = _dt.datetime.now(_BJ)
+    today_str = today_dt.strftime("%Y-%m-%d")
 
     with get_db() as c:
         total = c.execute("SELECT COUNT(*) n FROM visits").fetchone()["n"]
@@ -796,14 +802,18 @@ def get_visit_stats(days: int = 30) -> dict:
 
         today = c.execute(
             "SELECT COUNT(*) n FROM visits WHERE day=? AND is_bot=0",
-            (_t.strftime("%Y-%m-%d"),)).fetchone()["n"]
+            (today_str,)).fetchone()["n"]
 
-        # 按天(只取真实访问)
+        # 按天(只取真实访问),缺的日期补 0,保证图表 X 轴连续
         rows = c.execute(
             """SELECT day, COUNT(*) n FROM visits
                WHERE is_bot=0 AND ts>=? GROUP BY day ORDER BY day""",
             (since,)).fetchall()
-        by_day = [{"day": r["day"], "n": r["n"]} for r in rows]
+        day_map = {r["day"]: r["n"] for r in rows}
+        by_day = []
+        for i in range(days - 1, -1, -1):        # 从最早到最近
+            dstr = (today_dt - _dt.timedelta(days=i)).strftime("%Y-%m-%d")
+            by_day.append({"day": dstr, "n": day_map.get(dstr, 0)})
 
         # 来源(空 = 直接访问)
         refs = c.execute(
@@ -825,8 +835,9 @@ def get_visit_stats(days: int = 30) -> dict:
         recent = [dict(r) for r in recent]
 
         # 按小时分布(帮助判断活跃时段)
+        # 用 ts 直接算,显式 +8 小时,不依赖 SQLite localtime(容器里常是 UTC)
         hours = c.execute(
-            """SELECT CAST(strftime('%H', ts, 'unixepoch', 'localtime') AS INTEGER) h,
+            """SELECT CAST((((ts + 28800) % 86400) / 3600) AS INTEGER) h,
                       COUNT(*) n FROM visits WHERE is_bot=0 GROUP BY h""").fetchall()
         by_hour = {r["h"]: r["n"] for r in hours}
 

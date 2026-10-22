@@ -1,8 +1,9 @@
 # ============================================================
-# IP 定位模块:淘宝 IP API(免费、国内快、无 key)
+# IP 定位模块:多源解析,失败短缓存,绝不阻塞访问统计
+# - 主源:淘宝 IP API(免费、国内快、无 key)
+# - 备源:ip-api.com(国外,支持 HTTPS 免费,境内也能通)
+# - 成功缓存 30 天;失败只缓存 5 分钟(避免限流期间永久记空)
 # - 纯标准库 urllib,零第三方依赖
-# - 内存缓存(同 IP 只查一次,上限 1000)
-# - 查询失败静默返回 ""(绝不阻塞访问统计)
 # - 隐私:只取 省/市,不落 IP 原文(仅用于查询)
 # ============================================================
 
@@ -12,13 +13,19 @@ import threading
 import time
 import urllib.request
 
-_API_URL = "https://ip.taobao.com/outGetIpInfo?ip={ip}&accessKey=alibaba-inc"
-_TIMEOUT = 2.0  # 单次查询超时,别让统计等太久
+# 主源:淘宝(国内准确度高)
+_TAOBAO = "https://ip.taobao.com/outGetIpInfo?ip={ip}&accessKey=alibaba-inc"
+# 备源:ip-api.com(字段干净,免费额度 45 次/分钟)
+_IPAPI = "http://ip-api.com/json/{ip}?lang=zh-CN&fields=status,country,regionName,city,message"
+
+_TIMEOUT = 3.0
 _MAX_CACHE = 1000
+_OK_TTL = 86400 * 30      # 解析成功:缓存 30 天
+_FAIL_TTL = 300           # 解析失败:只缓存 5 分钟,稍后自动重试
 
 _lock = threading.Lock()
-_cache = {}          # ip -> (city, ts)  简单 LRU 靠顺序
-_ordered = []        # 最近使用顺序(维护插入序)
+_cache = {}          # ip -> (city, ts)
+_ordered = []        # 最近使用顺序(近似 LRU)
 
 
 def _public_ipv4(ip: str) -> bool:
@@ -30,44 +37,126 @@ def _public_ipv4(ip: str) -> bool:
     return addr.version == 4 and addr.is_global
 
 
-def _fetch_city(ip: str) -> str:
-    """调淘宝 API 拿 '省 市'(如 '江苏 南京');失败/查不到返回 ''"""
-    try:
-        req = urllib.request.Request(_API_URL.format(ip=ip), headers={
-            "User-Agent": "Mozilla/5.0 (compatible; mysite-geo)"})
-        with urllib.request.urlopen(req, timeout=_TIMEOUT) as r:
-            data = json.loads(r.read().decode("utf-8", "replace"))
-        d = data.get("data") or {}
-        region, city = d.get("region", ""), d.get("city", "")
-        # 淘宝对查不到的 IP 返回 XX 占位,视为无效
-        if region in ("", "XX") and city in ("", "XX"):
-            return ""
-        # 城市可能带 "市" 后缀(南京/南京市),裁掉;直辖市(北京/上海/重庆)只留城市名
-        if city in ("北京市", "上海市", "天津市", "重庆市"):
-            return city[:2] if city == "北京市" else city[:2]
-        city = city.replace("市", "").replace("地区", "").replace("盟", "")
-        if city == "XX":
-            city = ""
-        if region and region != city:
-            # 省名有时带 "省"(江苏/江苏省)
-            region = region.replace("省", "")
-            if region == "XX":
-                region = ""
-            if city:
-                return f"{region} {city}"
-            return region
-        return city or region
-    except Exception:
+def _clean_region(region: str) -> str:
+    """省名清洗:去行政后缀,XX 视为空"""
+    region = (region or "").strip()
+    if region in ("", "XX"):
         return ""
+    # 长的先裁(自治区 > 特别行政区 > 省),避免「广西壮族自治区」只裁掉「区」
+    for suf in ("维吾尔自治区", "壮族自治区", "回族自治区", "自治区",
+                "特别行政区", "省"):
+        if region.endswith(suf) and len(region) > len(suf):
+            region = region[: -len(suf)]
+            break
+    return region
+
+
+def _clean_city(city: str) -> str:
+    """市名清洗:去 '市/地区/盟' 后缀,XX 视为空,直辖市保留原名"""
+    city = (city or "").strip()
+    if city in ("", "XX"):
+        return ""
+    if city in ("北京市", "上海市", "天津市", "重庆市"):
+        return city[:2]
+    # 注意:只裁明确的行政后缀,不能裁「州」——否则杭州变杭、广州变广
+    for suf in ("市", "地区", "盟"):
+        if city.endswith(suf) and len(city) > len(suf) + 1:
+            city = city[: -len(suf)]
+            break
+    return "" if city == "XX" else city
+
+
+def _join(region: str, city: str) -> str:
+    """拼成 '省 市';省市相同时只留一个"""
+    region, city = _clean_region(region), _clean_city(city)
+    if region and city and region != city:
+        return f"{region} {city}"
+    return city or region
+
+
+def _fetch_taobao(ip: str) -> str:
+    req = urllib.request.Request(_TAOBAO.format(ip=ip), headers={
+        "User-Agent": "Mozilla/5.0 (compatible; mysite-geo)"})
+    with urllib.request.urlopen(req, timeout=_TIMEOUT) as r:
+        data = json.loads(r.read().decode("utf-8", "replace"))
+    if data.get("code") != 0:
+        return ""
+    d = data.get("data") or {}
+    country = (d.get("country") or "").strip()
+    region, city = d.get("region", ""), d.get("city", "")
+
+    # 港澳台:直接返回地区名
+    if country in ("香港", "澳门", "台湾"):
+        return country
+
+    # 国外:淘宝常不给 country(如 region=佛罗里达 city=迈阿密),
+    # 这种情况交给备源(ip-api 有 country 字段),返回空让它接手
+    if country and country != "中国":
+        c = _clean_city(city)
+        if c and c != country:
+            return f"{country} {c}"
+        r2 = _clean_city(region)
+        return f"{country} {r2}" if r2 and r2 != country else country
+
+    if not country:
+        # 没国家名:大概率是国外(国内 IP 淘宝一般给 country=中国),
+        # 直接返回空,让备源用 country 字段补全
+        return ""
+
+    # 国内
+    return _join(region, city)
+
+
+def _fetch_ipapi(ip: str) -> str:
+    req = urllib.request.Request(_IPAPI.format(ip=ip), headers={
+        "User-Agent": "Mozilla/5.0 (compatible; mysite-geo)"})
+    with urllib.request.urlopen(req, timeout=_TIMEOUT) as r:
+        data = json.loads(r.read().decode("utf-8", "replace"))
+    if data.get("status") != "success":
+        return ""
+    country = (data.get("country") or "").strip()
+    region = data.get("regionName") or ""
+    city = data.get("city") or ""
+
+    if not country:
+        return _join(region, city)
+
+    # 港澳台:国家名本身够用,不再拼区名(避免「香港 Sheung Wan」)
+    if country in ("香港", "澳门", "台湾"):
+        return country
+
+    # 国外:国家 + 城市(城市名可能是片区,保留但用国家前缀)
+    if country != "中国":
+        c = _clean_city(city)
+        if c and c != country:
+            return f"{country} {c}"
+        r2 = _clean_city(region)
+        return f"{country} {r2}" if r2 and r2 != country else country
+
+    # 国内:省 市
+    return _join(region, city)
+
+
+def _fetch_city(ip: str) -> str:
+    """主源失败自动切备源;全失败返回 ''"""
+    for fn in (_fetch_taobao, _fetch_ipapi):
+        try:
+            city = fn(ip)
+            if city:
+                return city
+        except Exception:
+            continue
+    return ""
 
 
 def _cache_get(ip: str):
-    """命中返回城市串;未命中返回 None(注意:空城市也是有效命中)"""
+    """命中返回城市串;未命中返回 None(空城市也按 TTL 区分)"""
     now = time.time()
     hit = _cache.get(ip)
     if hit:
         city, ts = hit
-        if now - ts < 86400 * 30:   # 缓存 30 天
+        ttl = _OK_TTL if city else _FAIL_TTL   # 失败短缓存,5 分钟后重试
+        if now - ts < ttl:
             _touch(ip)
             return city
         _cache.pop(ip, None)
@@ -75,7 +164,6 @@ def _cache_get(ip: str):
 
 
 def _touch(ip: str):
-    """把 ip 挪到有序列表末尾(近似 LRU)"""
     try:
         _ordered.remove(ip)
     except ValueError:
@@ -100,8 +188,15 @@ def locate(ip: str) -> str:
         city = _cache_get(ip)
         if city is not None:
             return city
-    # 缓存未命中,网络查询(锁外,避免阻塞其他线程)
-    city = _fetch_city(ip)
+    city = _fetch_city(ip)   # 锁外查询,避免阻塞其他线程
     with _lock:
         _cache_put(ip, city)
     return city
+
+
+def stats() -> dict:
+    """给后台/诊断用:缓存里有几个成功、几个失败"""
+    with _lock:
+        ok = sum(1 for c, _ in _cache.values() if c)
+        fail = len(_cache) - ok
+    return {"cached_ok": ok, "cached_fail": fail, "total": len(_cache)}
