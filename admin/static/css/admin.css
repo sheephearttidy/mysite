@@ -1,4 +1,4 @@
-﻿/* ============================================================
+/* ============================================================
    我的小窝 · 后台管理样式
    配套 admin/templates/admin.html
 
@@ -368,6 +368,15 @@ select.sf-input {
   background-repeat: no-repeat;
 }
 select.sf-input:disabled { opacity: .45; cursor: not-allowed; }
+
+/* v2.5 站点信息面板:文本输入框要比 90px 的数字框宽得多,且左对齐便于编辑 */
+#siteForm .sf-row { align-items: flex-start; }
+#siteForm .sf-label { flex: 0 0 auto; min-width: 150px; padding-top: 8px; }
+#siteForm .sf-input {
+  width: min(420px, 100%); flex: 1 1 auto; text-align: left;
+  font-weight: 700; font-size: 14px;
+}
+#siteForm .sf-input::placeholder { color: var(--text-3); opacity: .55; }
 
 /* 开关 */
 .switch { position: relative; display: inline-block; width: 50px; height: 27px; flex: none; }

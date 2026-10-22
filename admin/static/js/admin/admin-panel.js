@@ -14,6 +14,7 @@ const PANELS = {
   'messages':      { title:'✉️ 留言板',        crumb:'内容管理 / 留言板' },
   'profile-about': { title:'✍️ 自我介绍段落',  crumb:'个人信息 / 自我介绍' },
   'profile-info':  { title:'🪪 信息卡片',      crumb:'个人信息 / 信息卡片' },
+  'site-info':     { title:'🏷️ 站点信息',      crumb:'个人信息 / 站点信息' },
   'uploads':       { title:'🖼️ 图片库',        crumb:'媒体资源 / 图片库' },
   'dashboard':     { title:'📊 数据看板',      crumb:'站点维护 / 数据看板' },
   'fx':            { title:'🎉 前台特效',      crumb:'站点维护 / 前台特效' },
@@ -30,6 +31,87 @@ const PANELS = {
 };
 
 const SEC_PANELS = ['sec-pass', 'sec-login', 'sec-blocked', 'sec-sessions', 'sec-audit', 'sec-status'];
+
+/* ---------- v2.5 站点信息 ----------
+   姓名/站名/学校/专业/年级/方向/标语/版权后缀/建站年份
+   全部存后台 settings 表,前台 7 个页面动态套用。
+   面板里用 input 逐项编辑,保存走 PUT /api/site。 */
+let SITE_VALUES = {};
+let SITE_FIELDS = [];
+
+function renderSiteForm() {
+  const data = (DATA && DATA.site) || {};
+  const fields = (DATA && DATA.site_fields) || [];
+  SITE_VALUES = { ...data };
+  SITE_FIELDS = fields;
+
+  const box = document.getElementById('siteForm');
+  if (!box) return;
+  if (!fields.length) {
+    box.innerHTML = '<p class="hint">没拿到字段定义,请刷新页面</p>';
+    return;
+  }
+  box.innerHTML = fields.map(f => `
+    <div class="sf-row">
+      <label class="sf-label">
+        ${esc(f.label)}
+        <span class="sf-note">默认:${esc(f.default)}</span>
+      </label>
+      <input class="sf-input" id="site-${f.key}" data-key="${f.key}"
+             value="${escAttr(SITE_VALUES[f.key] || f.default)}"
+             placeholder="${escAttr(f.default)}"
+             oninput="onSiteInput()" />
+    </div>`).join('');
+  updateSitePreview();
+}
+
+function onSiteInput() {
+  SITE_FIELDS.forEach(f => {
+    const el = document.getElementById('site-' + f.key);
+    if (el) SITE_VALUES[f.key] = el.value;
+  });
+  updateSitePreview();
+}
+
+function updateSitePreview() {
+  const pv = document.getElementById('sitePreview');
+  if (!pv) return;
+  const v = SITE_VALUES;
+  const year = new Date().getFullYear();
+  pv.innerHTML = `
+    <div>🌐 浏览器标签:<b>${esc(v.site_owner)} · 大学生活实录 🎓</b></div>
+    <div>🧭 导航栏 logo:<b>${esc(v.site_name)}</b></div>
+    <div>🎓 首屏徽章:<b>${esc(v.site_school)} · ${esc(v.site_major)} · ${esc(v.site_grade)}</b></div>
+    <div>👋 首屏标题:<b>嗨,我是 ${esc(v.site_owner)} 👋</b></div>
+    <div>🏷️ 身份标签:<b>${esc(v.site_focus)}</b></div>
+    <div>📝 页脚版权:<b>© ${esc(v.site_start_year || year)} ${esc(v.site_owner)} · ${esc(v.site_school)} · ${esc(v.site_credit)} · ${esc(v.site_slogan)}</b></div>`;
+}
+
+async function saveSiteInfo() {
+  onSiteInput();
+  const hint = document.getElementById('siteSavedHint');
+  try {
+    const r = await api('PUT', '/api/site', SITE_VALUES);
+    SITE_VALUES = { ...r.values };
+    if (DATA) DATA.site = r.values;
+    renderSiteForm();
+    if (hint) hint.textContent = '✅ 已保存,前台刷新后生效';
+    toast('站点信息已保存');
+  } catch (e) {
+    if (hint) hint.textContent = '❌ 保存失败:' + e.message;
+    toast('保存失败:' + e.message);
+  }
+  setTimeout(() => { if (hint) hint.textContent = ''; }, 4000);
+}
+
+function resetSiteInfo() {
+  if (!confirm('把所有站点信息恢复成默认值?')) return;
+  const def = {};
+  SITE_FIELDS.forEach(f => { def[f.key] = f.default; });
+  SITE_VALUES = def;
+  renderSiteForm();
+  toast('已填入默认值,点保存后生效');
+}
 
 function showPanel(name) {
   if (!PANELS[name]) name = 'skills';
@@ -63,6 +145,9 @@ function showPanel(name) {
 
   // 图片库:每次进来刷新列表
   if (name === 'uploads' && typeof loadUploads === 'function') loadUploads();
+
+  // v2.5 站点信息:进面板时用当前值填表
+  if (name === 'site-info') renderSiteForm();
 
   // 记住当前面板
   try { localStorage.setItem('admin_panel', name); } catch (e) {}

@@ -139,7 +139,7 @@ if m:
         print("  错误明细:", re.search(r"BAD=([^|]*)", info).group(1)
               if "BAD=" in info else "?")
     ck("所有面板切换正确", bad == 0, f"bad={bad}")
-    ck("侧边栏入口数=24", total == 24, f"total={total}")
+    ck("侧边栏入口数=25", total == 25, f"total={total}")
 
 # 明细
 mp = re.search(r'<pre id="__PANELS__">(.*?)</pre>', dom, re.S)

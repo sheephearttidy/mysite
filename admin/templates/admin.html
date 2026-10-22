@@ -68,6 +68,8 @@
           🧍 个人信息 <span class="caret">▾</span>
         </button>
         <ul class="sb-sub">
+          <li><a class="sb-link" data-panel="site-info" href="#site-info">
+            🏷️ 站点信息</a></li>
           <li><a class="sb-link" data-panel="profile-about" href="#profile-about">
             ✍️ 自我介绍 <span class="sb-count" id="cnt-about">0</span></a></li>
           <li><a class="sb-link" data-panel="profile-info" href="#profile-info">
@@ -184,6 +186,34 @@
           <span class="hint">主页「我的小破项目们」板块</span>
         </div>
         <div class="grid" id="list-works"></div>
+      </section>
+
+      <!-- v2.5 站点信息(前台可配置字段) -->
+      <section class="panel" id="panel-site-info">
+        <div class="sec-head">
+          <h2>🏷️ 站点信息</h2>
+          <button class="add" onclick="saveSiteInfo()">💾 保存</button>
+          <span class="hint">姓名、站名、学校等前台各处显示的文字,改完刷新前台即生效</span>
+        </div>
+
+        <div class="item">
+          <h3>👤 基本身份</h3>
+          <p class="hint" style="margin-top:4px">
+            这些值会自动套用到前台 7 个页面的导航栏、标题、页脚、SEO 标签和结构化数据里
+          </p>
+          <div class="secform" style="margin-top:12px" id="siteForm"></div>
+          <div style="margin-top:14px;display:flex;gap:10px;align-items:center">
+            <button class="add" onclick="saveSiteInfo()">💾 保存站点信息</button>
+            <button class="btn-sm" onclick="resetSiteInfo()">↺ 恢复默认值</button>
+            <span class="hint" id="siteSavedHint"></span>
+          </div>
+        </div>
+
+        <div class="item" style="margin-top:18px">
+          <h3>👀 前台效果预览</h3>
+          <p class="hint" style="margin-top:4px">改完点保存,下面会实时显示新值</p>
+          <div id="sitePreview" style="margin-top:10px;font-size:14px;line-height:2"></div>
+        </div>
       </section>
 
       <!-- 自我介绍 -->

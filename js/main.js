@@ -8,7 +8,7 @@
 
 console.log('%c 嗨!你打开了控制台,是想看看这个网页的秘密吗 👀', 'font-size:14px;color:#ff6b9d;font-weight:bold;');
 
-// 每个页面拉哪个接口:map 没有动态内容数据,直接跳过
+// 每个页面拉哪个接口:map 只有站点信息
 const PAGE_API = {
   index: '/api/page/index',
   about: '/api/page/about',
@@ -16,7 +16,146 @@ const PAGE_API = {
   works: '/api/page/works',
   campus: '/api/page/campus',
   contact: '/api/page/contact',
+  map: '/api/page/map',
 };
+
+/* ---------- v2.5 站点信息套用 ----------
+   后台「站点信息」里改的姓名/站名/学校/专业/年级/方向/标语/版权,
+   在这里替换到前台各页。静态 HTML 里保留原值作兜底,
+   接口拿不到(本地打开/后台挂)就什么都不动。 */
+function applySite(s) {
+  const owner = s.site_owner || '';
+  const ORIG_OWNER = '至尊杰';
+  const ORIG_NAME = '至尊杰的小窝';
+  // 站名还是默认值(含旧姓名)时,跟着姓名一起变,避免"张三的小窝"里还写着至尊杰
+  let name = s.site_name || '';
+  if (!name || name === ORIG_NAME) name = owner + '的小窝';
+  const school = s.site_school || '';
+  const major = s.site_major || '';
+  const grade = s.site_grade || '';
+  const focus = s.site_focus || '';
+  const slogan = s.site_slogan || '';
+  const credit = s.site_credit || '';
+  const year = s.site_start_year || '';
+
+  // 1) 打标记的元素
+  const set = (sel, txt) => document.querySelectorAll(sel).forEach(el => { el.textContent = txt; });
+  set('[data-site="site_name"]', name);
+  set('[data-site="owner"]', ' ' + owner + ' ');
+  set('[data-site="focus"]', focus);
+  if (owner) set('[data-site="badge"]', `🎓 ${school} · ${major} · ${grade}`);
+
+  // 2) 页脚版权整行
+  const foot = document.querySelector('[data-site="footer"]');
+  if (foot) {
+    const sprout = foot.querySelector('.sprout');
+    foot.textContent = `© ${year} ${owner} · ${school} · ${credit} · ${slogan} `;
+    if (sprout) foot.appendChild(sprout);
+  }
+
+  // 3) <title>:把「某某的小窝」和姓名换掉
+  const origName = '至尊杰';
+  if (document.title) {
+    let t = document.title.replace(/[^·]+的小窝/g, name);
+    t = t.replace(new RegExp(origName, 'g'), owner);
+    document.title = t;
+  }
+
+  // 4) SEO / 社交 meta(description 里也含姓名和站名,一并换)
+  const metaSet = (sel, val) => {
+    const el = document.querySelector(sel);
+    if (el && val) el.setAttribute('content', val);
+  };
+  metaSet('meta[name="author"]', owner);
+  metaSet('meta[property="og:site_name"]', name);
+  metaSet('meta[property="og:image:alt"]', name + ' —— ' + slogan);
+  metaSet('meta[property="og:title"]', document.title);
+  metaSet('meta[name="twitter:title"]', document.title);
+
+  // description 类:做全局文本替换(姓名 + 站名 + 学校/专业)
+  ['meta[name="description"]', 'meta[property="og:description"]',
+   'meta[name="twitter:description"]'].forEach(sel => {
+    const el = document.querySelector(sel);
+    if (!el) return;
+    let v = el.getAttribute('content') || '';
+    v = v.replace(new RegExp(origName + '的小窝', 'g'), name)
+         .replace(new RegExp(origName, 'g'), owner)
+         .replace(/燕京理工学院/g, school);
+    el.setAttribute('content', v);
+  });
+
+  // 5) 页面上所有纯文本节点:用 TreeWalker 逐个替换,
+  //    这样 <p><strong>是谁:</strong>至尊杰,...</p> 这种混合结构也能改到
+  if (owner && owner !== ORIG_OWNER) {
+    const re = new RegExp(ORIG_OWNER, 'g');
+    const walker = document.createTreeWalker(
+      document.body, NodeFilter.SHOW_TEXT,
+      {
+        acceptNode(node) {
+          const p = node.parentElement;
+          if (!p) return NodeFilter.FILTER_REJECT;
+          const tag = p.tagName;
+          if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'TEXTAREA') {
+            return NodeFilter.FILTER_REJECT;
+          }
+          return node.nodeValue.includes(ORIG_OWNER)
+            ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+        },
+      });
+    const hits = [];
+    while (walker.nextNode()) hits.push(walker.currentNode);
+    hits.forEach(n => { n.nodeValue = n.nodeValue.replace(re, owner); });
+
+    // 图片 alt 属性
+    document.querySelectorAll('img[alt]').forEach(img => {
+      if (img.alt.includes(ORIG_OWNER)) img.alt = img.alt.replace(re, owner);
+    });
+  }
+
+  // 6) JSON-LD 结构化数据
+  const ld = document.querySelector('script[type="application/ld+json"]');
+  if (ld) {
+    try {
+      const j = JSON.parse(ld.textContent);
+      if (j.name) j.name = owner;
+      if (j.description) {
+        j.description = j.description
+          .replace(new RegExp(ORIG_OWNER, 'g'), owner)
+          .replace(/燕京理工学院/g, school);
+      }
+      ld.textContent = JSON.stringify(j, null, 2);
+    } catch (e) {}
+  }
+
+  // 记住替换规则,动态渲染出来的内容(自我介绍/时间线等)渲染完再扫一遍
+  window.__SITE_OWNER__ = owner;
+  window.__SITE_ORIG_OWNER__ = ORIG_OWNER;
+}
+
+/* 动态内容渲染完后再替换一遍姓名(自我介绍段落是异步渲染的,
+   首轮 applySite 时它还没进 DOM) */
+function rescanOwner() {
+  const owner = window.__SITE_OWNER__;
+  const orig = window.__SITE_ORIG_OWNER__;
+  if (!owner || !orig || owner === orig) return;
+  const re = new RegExp(orig, 'g');
+  const walker = document.createTreeWalker(
+    document.body, NodeFilter.SHOW_TEXT, {
+      acceptNode(node) {
+        const p = node.parentElement;
+        if (!p) return NodeFilter.FILTER_REJECT;
+        if (['SCRIPT', 'STYLE', 'TEXTAREA'].includes(p.tagName)) {
+          return NodeFilter.FILTER_REJECT;
+        }
+        return node.nodeValue.includes(orig)
+          ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+      },
+    });
+  const hits = [];
+  while (walker.nextNode()) hits.push(walker.currentNode);
+  hits.forEach(n => { n.nodeValue = n.nodeValue.replace(re, owner); });
+}
+
 
 // v2.2 荣誉等级 → 展示标签
 const HONOR_LEVEL_LABEL = {
@@ -38,6 +177,9 @@ async function loadDynamicContent() {
     if (!res.ok) return;
     data = await res.json();
   } catch { return; }   // 本地 file:// 打开或后台不在线,静默回退
+
+  // ---- v2.5 站点信息(每页都套用) ----
+  if (data.site) applySite(data.site);
 
   // ---- 技能树 ----
   if (Array.isArray(data.skills) && data.skills.length) {
@@ -203,6 +345,9 @@ async function loadDynamicContent() {
       observeReveals();
     }
   }
+
+  // 动态内容都渲染完了,再扫一遍姓名(自我介绍/时间线里可能有硬编码姓名)
+  rescanOwner();
 }
 
 // 随手记时间:同天显示「今天 HH:MM」,当年显示「M月D日」,否则「YYYY.M.D」

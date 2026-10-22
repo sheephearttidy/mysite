@@ -304,17 +304,20 @@ def api_content():
         notes=db.get_notes(),
         friendlinks=db.get_friendlinks(),
         songs=db.get_songs(),
+        site=db.get_site(),
     )
 
 
 # 每个页面需要的数据:拆分多页后,各页只拉自己那部分
+# v2.5:site(站点信息)每页都要,统一带上
 PAGE_FIELDS = {
-    "index": ("stats",),
-    "about": ("profile", "honors", "songs"),
-    "skills": ("skills",),
-    "works": ("works",),
-    "campus": ("timeline", "notes"),
-    "contact": ("friendlinks",),
+    "index": ("site", "stats"),
+    "about": ("site", "profile", "honors", "songs"),
+    "skills": ("site", "skills"),
+    "works": ("site", "works"),
+    "campus": ("site", "timeline", "notes"),
+    "contact": ("site", "friendlinks"),
+    "map": ("site",),
 }
 
 
@@ -631,6 +634,9 @@ def admin():
         "notes": db.get_notes(),
         "friendlinks": db.get_friendlinks(),
         "songs": db.get_songs(),
+        "site": db.get_site(),
+        "site_fields": [{"key": k, "label": v[0], "default": v[1]}
+                        for k, v in db.SITE_FIELDS.items()],
     }
     # 初始密码还没改过 → 前端弹窗提示修改
     return render_template("admin.html", data=data,
@@ -1440,6 +1446,29 @@ def delete_song(sid):
     return ("", 204) if ok else (jsonify(error="not found"), 404)
 
 
+# ---------------- v2.5 站点信息(前台可配置字段) ----------------
+
+@app.get("/api/site")
+@login_required
+def get_site_info():
+    """后台读取站点信息(带字段中文名,前端直接渲染表单)"""
+    return jsonify(
+        values=db.get_site(),
+        fields=[{"key": k, "label": v[0], "default": v[1]}
+                for k, v in db.SITE_FIELDS.items()],
+    )
+
+
+@app.put("/api/site")
+@login_required
+def update_site_info():
+    """批量保存站点信息。空值自动回落默认值,不接受的键直接忽略。"""
+    data = request.get_json(force=True, silent=True) or {}
+    if not isinstance(data, dict):
+        return jsonify(error="参数格式不对"), 400
+    return jsonify(values=db.set_site(data))
+
+
 # ---------------- 图片上传 ----------------
 
 def sniff_image(head: bytes) -> str | None:
@@ -1544,6 +1573,7 @@ def export_data():
         "notes": db.get_notes(),
         "friendlinks": db.get_friendlinks(),
         "songs": db.get_songs(),
+        "site": db.get_site(),
     }
     body = json.dumps(payload, ensure_ascii=False, indent=2)
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")

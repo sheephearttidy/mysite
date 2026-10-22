@@ -309,6 +309,53 @@ def set_setting(key: str, value: str):
                   "ON CONFLICT(key) DO UPDATE SET value=excluded.value", (key, value))
 
 
+# ---------------- v2.5 站点信息(前台可配置字段) ----------------
+# 站点不是给一个人写死的:姓名/站名/学校/专业/年级/方向/标语/版权后缀
+# 全部存进 settings 表,后台「站点信息」面板可改,前台各页动态套用。
+# 表里没有时用这里的默认值(就是原来硬编码的内容),保证老站升级后不变样。
+
+SITE_FIELDS = {
+    "site_owner":       ("姓名",        "至尊杰"),
+    "site_name":        ("站名",        "至尊杰的小窝"),
+    "site_school":      ("学校",        "燕京理工学院"),
+    "site_major":       ("专业",        "计算机科学与技术"),
+    "site_grade":       ("年级",        "2026 级"),
+    "site_focus":       ("方向/标签",   "智能车 AI"),
+    "site_slogan":      ("标语",        "learning and building"),
+    "site_credit":      ("版权后缀",    "纯手搓 + AI 协作"),
+    "site_start_year":  ("建站年份",    "2026"),
+}
+
+
+def get_site():
+    """返回全部站点信息(缺的用默认值补)"""
+    with get_db() as c:
+        rows = c.execute(
+            "SELECT key, value FROM settings WHERE key LIKE 'site\\_%' ESCAPE '\\'"
+        ).fetchall()
+    saved = {r["key"]: r["value"] for r in rows}
+    out = {}
+    for key, (_label, default) in SITE_FIELDS.items():
+        v = saved.get(key)
+        out[key] = v if v not in (None, "") else default
+    return out
+
+
+def set_site(data: dict) -> dict:
+    """批量保存站点信息,只接受白名单字段,空值回落默认"""
+    with get_db() as c:
+        for key, val in data.items():
+            if key not in SITE_FIELDS:
+                continue
+            val = (val or "").strip()
+            if not val:
+                val = SITE_FIELDS[key][1]
+            c.execute("INSERT INTO settings(key,value) VALUES(?,?) "
+                      "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                      (key, val))
+    return get_site()
+
+
 def get_pass_hash() -> str | None:
     return get_setting("pass_hash")
 
