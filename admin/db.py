@@ -1086,6 +1086,49 @@ def get_threads_for_export() -> list:
     return [dict(r) for r in rows]
 
 
+# 导入时的字段约束:v2.7.5 加固。以前直接把 JSON 里的值塞进 SQL,
+# percent 传 99999 也能落库(前台进度条会画出界),category 传任意串也能进。
+IMPORT_TEXT_LIMITS = {
+    "name": 80, "note": 200, "title": 120, "desc": 300, "label": 120,
+    "value": 2000, "content": 2000, "emoji": 8, "category": 20,
+    "color": 20, "pill": 40, "link": 500, "url": 500, "level": 20,
+    "time_label": 60, "mood": 20, "text": 500, "artist": 100,
+    "song_id": 40, "cover": 40, "kind": 20, "unit": 20, "year": 20,
+}
+IMPORT_NUM_RANGES = {
+    "percent": (0, 100),
+    "sort": (-100000, 100000),
+    "ts": (0, 4102444800),      # 到 2100 年
+}
+IMPORT_ENUMS = {
+    "category": ("serious", "passive"),
+}
+
+
+def _clean_import_value(table: str, field: str, v):
+    """把导入值规整到合法范围,非法值退回默认值而不是写脏数据"""
+    if field in IMPORT_NUM_RANGES:
+        lo, hi = IMPORT_NUM_RANGES[field]
+        try:
+            n = int(float(v))
+        except (TypeError, ValueError):
+            return 0
+        return max(lo, min(hi, n))
+    if field in IMPORT_ENUMS:
+        s = _as_text(v)
+        return s if s in IMPORT_ENUMS[field] else IMPORT_ENUMS[field][0]
+    if field in ("ts",):
+        try:
+            return max(0, int(float(v)))
+        except (TypeError, ValueError):
+            return 0
+    s = _as_text(v)
+    lim = IMPORT_TEXT_LIMITS.get(field)
+    if lim:
+        s = s[:lim]
+    return s
+
+
 def import_payload(payload: dict, replace: bool = False) -> dict:
     """把导出的 JSON 写回数据库,返回各表恢复条数
 
@@ -1105,7 +1148,8 @@ def import_payload(payload: dict, replace: bool = False) -> dict:
             for row in rows:
                 if not isinstance(row, dict):
                     continue
-                vals = tuple(row.get(f) for f in fields)
+                vals = tuple(_clean_import_value(table, f, row.get(f))
+                             for f in fields)
                 rid = row.get("id")
                 if rid is not None and not replace:
                     exists = c.execute(
@@ -1368,12 +1412,28 @@ MESSAGE_MAX_NAME = 20
 MSG_COLORS = ("pink", "orange", "teal", "purple", "yellow", "blue")
 
 
+def _as_text(v, default: str = "") -> str:
+    """v2.7.5 加固:把任意 JSON 值安全转成字符串。
+
+    之前直接 (name or "匿名").strip(),若前端传 {"name": {...}} 或 ["x"]
+    会抛 AttributeError → 500。公开接口不能因为畸形输入崩掉。
+    """
+    if isinstance(v, str):
+        return v
+    if v is None:
+        return default
+    if isinstance(v, (int, float)) and not isinstance(v, bool):
+        return str(v)
+    return default
+
+
 def add_message(name: str, body: str, color: str = "", ip: str = "") -> dict:
     """公开写留言:默认进待审核池。返回一次性访客凭证 token,用于之后继续追问"""
     import time as _t
     import secrets
-    name = (name or "匿名").strip()[:MESSAGE_MAX_NAME] or "匿名"
-    body = (body or "").strip()[:MESSAGE_MAX_BODY]
+    name = _as_text(name).strip()[:MESSAGE_MAX_NAME] or "匿名"
+    body = _as_text(body).strip()[:MESSAGE_MAX_BODY]
+    color = _as_text(color)
     if not body:
         return {"ok": False, "error": "内容不能为空"}
     if color not in MSG_COLORS:
@@ -1507,6 +1567,7 @@ def reply_message(mid: int, reply: str) -> bool:
 
 def verify_guest_token(mid: int, token: str) -> bool:
     """校验访客凭证是否属于该留言(v2.7.0)"""
+    token = _as_text(token)
     if not token:
         return False
     with get_db() as c:
@@ -1517,7 +1578,8 @@ def verify_guest_token(mid: int, token: str) -> bool:
 def add_guest_followup(mid: int, body: str, token: str, ip: str = "") -> dict:
     """访客继续追问:必须带原留言的 token。默认待审核"""
     import time as _t
-    body = (body or "").strip()[:MESSAGE_MAX_BODY]
+    body = _as_text(body).strip()[:MESSAGE_MAX_BODY]
+    token = _as_text(token)
     if not body:
         return {"ok": False, "error": "内容不能为空"}
     if not token:
