@@ -16,6 +16,7 @@ const PANELS = {
   'profile-info':  { title:'🪪 信息卡片',      crumb:'个人信息 / 信息卡片' },
   'site-info':     { title:'🏷️ 站点信息',      crumb:'个人信息 / 站点信息' },
   'uploads':       { title:'🖼️ 图片库',        crumb:'媒体资源 / 图片库' },
+  'gallery':       { title:'📷 相册',          crumb:'媒体资源 / 相册' },
   'dashboard':     { title:'📊 数据看板',      crumb:'站点维护 / 数据看板' },
   'fx':            { title:'🎉 前台特效',      crumb:'站点维护 / 前台特效' },
   'backup':        { title:'💾 数据备份',      crumb:'站点维护 / 数据备份' },
@@ -145,6 +146,7 @@ function showPanel(name) {
 
   // 图片库:每次进来刷新列表
   if (name === 'uploads' && typeof loadUploads === 'function') loadUploads();
+  if (name === 'gallery' && typeof loadGallery === 'function') loadGallery();
 
   // v2.5 站点信息:进面板时用当前值填表
   if (name === 'site-info') renderSiteForm();

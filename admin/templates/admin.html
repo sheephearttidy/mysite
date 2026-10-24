@@ -85,6 +85,8 @@
         <ul class="sb-sub">
           <li><a class="sb-link" data-panel="uploads" href="#uploads">
             🖼️ 图片库 <span class="sb-count" id="cnt-uploads">0</span></a></li>
+          <li><a class="sb-link" data-panel="gallery" href="#gallery">
+            📷 相册 <span class="sb-count" id="cnt-gallery">0</span></a></li>
         </ul>
       </div>
 
@@ -277,6 +279,21 @@
             <span class="hint" id="uploadHint">也可以直接把图片拖到这里</span>
           </div>
           <div class="up-grid" id="upGrid"></div>
+        </div>
+      </section>
+
+      <!-- 相册(v3.0.0) -->
+      <section class="panel" id="panel-gallery">
+        <div class="sec-head">
+          <span class="hint">把图片库里的图挑进相册,前台就能按分类翻看。图片文件本身在「图片库」管理</span>
+        </div>
+        <div class="item">
+          <div class="ops" style="margin-bottom:12px">
+            <button class="op add" onclick="openPhotoPick()">➕ 从图片库添加</button>
+            <button class="op edit" onclick="loadGallery()">🔄 刷新</button>
+            <span class="hint" id="galleryStat"></span>
+          </div>
+          <div id="galleryList"></div>
         </div>
       </section>
 
@@ -762,6 +779,24 @@
 </div>
 
 <div id="toast"></div>
+
+<!-- 相册挑图弹窗(v3.0.0) -->
+<div id="photoPickBox" class="ph-pick-box">
+  <div class="ph-pick-panel">
+    <div class="ph-pick-head">
+      <b>从图片库选择</b>
+      <button class="ph-pick-x" onclick="closePhotoPick()" aria-label="关闭">✕</button>
+    </div>
+    <div class="ph-pick-grid"></div>
+    <div class="ph-pick-foot">
+      <span class="hint">灰掉的已经在相册里了</span>
+      <span>
+        <button class="op" onclick="closePhotoPick()">取消</button>
+        <button class="op save" onclick="confirmPhotoPick()">✅ 加入相册</button>
+      </span>
+    </div>
+  </div>
+</div>
 
 <!-- 改密码弹窗 -->
 <div class="pmodal" id="passModal">

@@ -136,6 +136,23 @@ CREATE TABLE IF NOT EXISTS message_threads (
 );
 CREATE INDEX IF NOT EXISTS idx_mthread_msg ON message_threads(msg_id, ts);
 
+-- v3.0.0:相册(图片元数据;图片文件本身仍在 assets/uploads/ 下)
+CREATE TABLE IF NOT EXISTS photos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    file TEXT NOT NULL,                    -- 文件名(assets/uploads/ 下)
+    title TEXT DEFAULT '',                 -- 标题(可空)
+    desc TEXT DEFAULT '',                  -- 描述/拍摄故事
+    category TEXT DEFAULT '',              -- 分类(旅行/校园/日常…)
+    shot_at TEXT DEFAULT '',               -- 拍摄日期 YYYY-MM-DD(可空)
+    width INTEGER DEFAULT 0,               -- 像素宽(灯箱算比例用)
+    height INTEGER DEFAULT 0,              -- 像素高
+    shown INTEGER NOT NULL DEFAULT 1,      -- 1=公开 0=隐藏
+    sort INTEGER NOT NULL DEFAULT 0,       -- 排序(小的在前)
+    ts INTEGER NOT NULL DEFAULT 0          -- 加入时间
+);
+CREATE INDEX IF NOT EXISTS idx_photos_sort ON photos(sort, ts);
+CREATE INDEX IF NOT EXISTS idx_photos_cat ON photos(category);
+
 -- 点赞(按页面计数,无 cookie 无 IP,纯计数)
 CREATE TABLE IF NOT EXISTS likes (
     page TEXT PRIMARY KEY,
@@ -1650,6 +1667,127 @@ def add_like(page: str) -> dict:
             "ON CONFLICT(page) DO UPDATE SET n=n+1", (page,))
         n = c.execute("SELECT n FROM likes WHERE page=?", (page,)).fetchone()["n"]
     return {"ok": True, "page": page, "n": n}
+
+
+# ============================================================
+# 相册(v3.0.0)
+# ============================================================
+
+PHOTO_MAX_TITLE = 80
+PHOTO_MAX_DESC = 500
+PHOTO_MAX_CATEGORY = 20
+
+
+def _photo_row(r) -> dict:
+    d = dict(r)
+    d["url"] = f"/assets/uploads/{d['file']}"
+    return d
+
+
+def list_photos_public(category: str = "", limit: int = 500) -> list:
+    """前台:只给公开的,按 sort 再按加入时间倒序"""
+    with get_db() as c:
+        if category:
+            rows = c.execute(
+                """SELECT id,file,title,desc,category,shot_at,width,height,ts
+                   FROM photos WHERE shown=1 AND category=?
+                   ORDER BY sort ASC, ts DESC LIMIT ?""",
+                (category, limit)).fetchall()
+        else:
+            rows = c.execute(
+                """SELECT id,file,title,desc,category,shot_at,width,height,ts
+                   FROM photos WHERE shown=1
+                   ORDER BY sort ASC, ts DESC LIMIT ?""", (limit,)).fetchall()
+    return [_photo_row(r) for r in rows]
+
+
+def photo_categories() -> list:
+    """前台:有照片的分类及数量(按数量倒序)"""
+    with get_db() as c:
+        rows = c.execute(
+            """SELECT category, COUNT(*) n FROM photos
+               WHERE shown=1 AND category!=''
+               GROUP BY category ORDER BY n DESC, category ASC""").fetchall()
+    return [{"name": r["category"], "count": r["n"]} for r in rows]
+
+
+def list_photos_admin() -> list:
+    """后台:全部照片(含隐藏)"""
+    with get_db() as c:
+        rows = c.execute(
+            """SELECT id,file,title,desc,category,shot_at,width,height,shown,sort,ts
+               FROM photos ORDER BY sort ASC, ts DESC""").fetchall()
+    return [_photo_row(r) for r in rows]
+
+
+def add_photo(file: str, title: str = "", desc: str = "", category: str = "",
+              shot_at: str = "", width: int = 0, height: int = 0) -> dict:
+    """把一张已上传的图片加进相册"""
+    import time as _t
+    file = _as_text(file).strip()
+    if not file or "/" in file or "\\" in file or file.startswith("."):
+        return {"ok": False, "error": "文件名不合法"}
+    title = _as_text(title).strip()[:PHOTO_MAX_TITLE]
+    desc = _as_text(desc).strip()[:PHOTO_MAX_DESC]
+    category = _as_text(category).strip()[:PHOTO_MAX_CATEGORY]
+    shot_at = _as_text(shot_at).strip()[:10]
+    try:
+        width = max(0, min(20000, int(width or 0)))
+        height = max(0, min(20000, int(height or 0)))
+    except (TypeError, ValueError):
+        width = height = 0
+    with get_db() as c:
+        if c.execute("SELECT 1 FROM photos WHERE file=?", (file,)).fetchone():
+            return {"ok": False, "error": "这张图已经在相册里了"}
+        c.execute(
+            """INSERT INTO photos(file,title,desc,category,shot_at,width,height,
+                                  shown,sort,ts)
+               VALUES(?,?,?,?,?,?,?,1,0,?)""",
+            (file, title, desc, category, shot_at, width, height, int(_t.time())))
+        pid = c.execute("SELECT last_insert_rowid() id").fetchone()["id"]
+    return {"ok": True, "id": pid}
+
+
+def update_photo(pid: int, **kw) -> bool:
+    """改标题/描述/分类/拍摄日期/显隐/排序"""
+    fields, vals = [], []
+    if "title" in kw:
+        fields.append("title"); vals.append(_as_text(kw["title"]).strip()[:PHOTO_MAX_TITLE])
+    if "desc" in kw:
+        fields.append("desc"); vals.append(_as_text(kw["desc"]).strip()[:PHOTO_MAX_DESC])
+    if "category" in kw:
+        fields.append("category"); vals.append(_as_text(kw["category"]).strip()[:PHOTO_MAX_CATEGORY])
+    if "shot_at" in kw:
+        fields.append("shot_at"); vals.append(_as_text(kw["shot_at"]).strip()[:10])
+    if "shown" in kw:
+        fields.append("shown"); vals.append(1 if kw["shown"] else 0)
+    if "sort" in kw:
+        try:
+            fields.append("sort"); vals.append(max(-100000, min(100000, int(kw["sort"]))))
+        except (TypeError, ValueError):
+            pass
+    if not fields:
+        return False
+    with get_db() as c:
+        sets = ",".join(f"{f}=?" for f in fields)
+        cur = c.execute(f"UPDATE photos SET {sets} WHERE id=?", vals + [pid])
+        return cur.rowcount > 0
+
+
+def del_photo(pid: int) -> dict:
+    """从相册移除(可选是否连文件一起删,由调用方决定)"""
+    with get_db() as c:
+        row = c.execute("SELECT file FROM photos WHERE id=?", (pid,)).fetchone()
+        if not row:
+            return {"ok": False, "error": "照片不存在"}
+        c.execute("DELETE FROM photos WHERE id=?", (pid,))
+    return {"ok": True, "file": row["file"]}
+
+
+def photo_in_album(file: str) -> bool:
+    """某文件是否已被相册引用(删文件前检查用)"""
+    with get_db() as c:
+        return bool(c.execute("SELECT 1 FROM photos WHERE file=?", (file,)).fetchone())
 
 
 # ============================================================

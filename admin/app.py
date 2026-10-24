@@ -1621,6 +1621,60 @@ def sniff_image(head: bytes) -> str | None:
     return None
 
 
+def image_size(raw: bytes, kind: str) -> tuple[int, int]:
+    """v3.0.0:纯标准库读图片宽高,不引入 Pillow。
+
+    相册灯箱要靠宽高算比例、预留占位高度,避免加载时页面跳动。
+    读不到就返回 (0, 0),前端会退化成固定比例。
+    """
+    try:
+        if kind == "png" and len(raw) >= 24 and raw[12:16] == b"IHDR":
+            w = int.from_bytes(raw[16:20], "big")
+            h = int.from_bytes(raw[20:24], "big")
+            return w, h
+        if kind == "gif" and len(raw) >= 10:
+            w = int.from_bytes(raw[6:8], "little")
+            h = int.from_bytes(raw[8:10], "little")
+            return w, h
+        if kind == "jpeg":
+            i = 2
+            n = len(raw)
+            while i < n - 9:
+                if raw[i] != 0xFF:
+                    i += 1
+                    continue
+                marker = raw[i + 1]
+                # SOF0..SOF15(排除 DHT 0xC4 / JPG 0xC8 / DAC 0xCC)
+                if 0xC0 <= marker <= 0xCF and marker not in (0xC4, 0xC8, 0xCC):
+                    h = int.from_bytes(raw[i + 5:i + 7], "big")
+                    w = int.from_bytes(raw[i + 7:i + 9], "big")
+                    return w, h
+                seg = int.from_bytes(raw[i + 2:i + 4], "big")
+                if seg <= 0:
+                    break
+                i += 2 + seg
+            return 0, 0
+        if kind == "webp" and len(raw) >= 30:
+            # VP8X(扩展) / VP8(有损) / VP8L(无损) 三种块
+            chunk = raw[12:16]
+            if chunk == b"VP8X":
+                w = int.from_bytes(raw[24:27], "little") + 1
+                h = int.from_bytes(raw[27:30], "little") + 1
+                return w, h
+            if chunk == b"VP8 ":
+                w = int.from_bytes(raw[26:28], "little") & 0x3FFF
+                h = int.from_bytes(raw[28:30], "little") & 0x3FFF
+                return w, h
+            if chunk == b"VP8L":
+                b = int.from_bytes(raw[21:25], "little")
+                w = (b & 0x3FFF) + 1
+                h = ((b >> 14) & 0x3FFF) + 1
+                return w, h
+    except Exception:
+        pass
+    return 0, 0
+
+
 @app.post("/api/upload")
 @login_required
 def upload_image():
@@ -1651,10 +1705,84 @@ def upload_image():
         out.write(raw)
     os.chmod(path, 0o644)   # nginx 要能读
 
+    w, h = image_size(raw, real)
     db.add_audit("upload", client_ip(), f"上传图片 {name}({len(raw)} 字节)",
                  request.headers.get("User-Agent", ""))
     return jsonify(ok=True, url=f"{UPLOAD_URL}/{name}",
-                   size=len(raw), name=name)
+                   size=len(raw), name=name, width=w, height=h)
+
+
+# ---------------- 相册(v3.0.0) ----------------
+
+@app.get("/api/gallery")
+def api_gallery_public():
+    """前台:公开照片 + 分类清单"""
+    cat = request.args.get("category", "").strip()[:20]
+    return jsonify(photos=db.list_photos_public(cat),
+                   categories=db.photo_categories())
+
+
+@app.get("/api/photos/admin")
+@login_required
+def api_photos_admin():
+    """后台:全部照片(含隐藏)"""
+    return jsonify(photos=db.list_photos_admin())
+
+
+@app.post("/api/photos")
+@login_required
+def api_photo_add():
+    """把已上传的图片加入相册"""
+    b = request.get_json(silent=True) or {}
+    r = db.add_photo(file=b.get("file") or "",
+                     title=b.get("title") or "",
+                     desc=b.get("desc") or "",
+                     category=b.get("category") or "",
+                     shot_at=b.get("shot_at") or "",
+                     width=b.get("width") or 0,
+                     height=b.get("height") or 0)
+    if not r.get("ok"):
+        return jsonify(r), 400
+    db.add_audit("photo_add", client_ip(), f"相册加图 {b.get('file')}",
+                 request.headers.get("User-Agent", ""))
+    return jsonify(r)
+
+
+@app.put("/api/photos/<int:pid>")
+@login_required
+def api_photo_update(pid):
+    b = request.get_json(silent=True) or {}
+    ok = db.update_photo(pid, **{k: b[k] for k in
+                                 ("title", "desc", "category", "shot_at",
+                                  "shown", "sort") if k in b})
+    if not ok:
+        return jsonify(error="照片不存在或没有可改的字段"), 404
+    db.add_audit("photo_edit", client_ip(), f"改相册照片 id={pid}",
+                 request.headers.get("User-Agent", ""))
+    return jsonify(ok=True)
+
+
+@app.delete("/api/photos/<int:pid>")
+@login_required
+def api_photo_delete(pid):
+    """从相册移除;del_file=1 时连磁盘文件一起删"""
+    want_del_file = request.args.get("del_file") == "1"
+    r = db.del_photo(pid)
+    if not r.get("ok"):
+        return jsonify(error=r.get("error") or "not found"), 404
+    removed = False
+    if want_del_file and r.get("file") and not db.photo_in_album(r["file"]):
+        p = os.path.join(UPLOAD_DIR, r["file"])
+        if os.path.isfile(p):
+            try:
+                os.remove(p)
+                removed = True
+            except OSError:
+                pass
+    db.add_audit("photo_del", client_ip(),
+                 f"相册删图 id={pid} 文件={'删' if removed else '留'}",
+                 request.headers.get("User-Agent", ""))
+    return jsonify(ok=True, file_removed=removed)
 
 
 @app.get("/api/uploads")

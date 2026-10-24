@@ -855,3 +855,73 @@ body { background: var(--cream); color: var(--ink); }
   background: #e05656; color: #fff; font-weight: 700;
 }
 [data-theme="dark"] .admin-alert { background: var(--paper, #24222b); }
+
+/* ============================================================
+   v3.0.0 相册管理(后台)
+   ============================================================ */
+.ph-admin-item {
+  display: flex; gap: 12px; align-items: flex-start;
+  border: 2px solid var(--shadow); border-radius: 12px;
+  padding: 10px; margin-bottom: 10px; background: var(--card);
+}
+.ph-thumb {
+  width: 96px; height: 96px; object-fit: cover;
+  border-radius: 8px; border: 2px solid var(--shadow); flex: 0 0 auto;
+  background: var(--paper);
+}
+.ph-fields { flex: 1; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.ph-fields .sf-input { font-size: 13px; padding: 5px 9px; }
+.ph-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.ph-row .sf-input { max-width: 150px; font-size: 12.5px; padding: 4px 8px; }
+.ph-sw { display: flex; align-items: center; gap: 5px; font-size: 12.5px; white-space: nowrap; }
+.ph-ops { display: flex; flex-direction: column; gap: 6px; flex: 0 0 auto; }
+.ph-ops .op { white-space: nowrap; font-size: 12px; padding: 4px 10px; }
+
+/* 挑图弹窗 */
+.ph-pick-box {
+  position: fixed; inset: 0; z-index: 9998;
+  background: rgba(20, 18, 26, .5);
+  display: none; align-items: center; justify-content: center; padding: 20px;
+}
+.ph-pick-box.show { display: flex; }
+.ph-pick-panel {
+  background: var(--card, #fff); border: 2px solid var(--shadow);
+  border-radius: 16px; box-shadow: 6px 7px 0 var(--shadow);
+  width: min(760px, 100%); max-height: 82vh;
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.ph-pick-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px; border-bottom: 2px solid var(--line);
+}
+.ph-pick-x {
+  background: transparent; border: none; cursor: pointer;
+  font-size: 15px; color: var(--text-3); font-family: inherit;
+}
+.ph-pick-grid {
+  padding: 14px 16px; overflow-y: auto; flex: 1;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 10px;
+}
+.ph-pick-item {
+  position: relative; cursor: pointer; display: block;
+  border: 2px solid var(--shadow); border-radius: 10px; overflow: hidden;
+  background: var(--paper);
+}
+.ph-pick-item input { position: absolute; top: 6px; left: 6px; z-index: 2; width: 16px; height: 16px; }
+.ph-pick-item img { width: 100%; height: 92px; object-fit: cover; display: block; }
+.ph-pick-meta {
+  display: block; font-size: 11px; text-align: center;
+  padding: 3px 4px; background: rgba(255, 255, 255, .85); color: var(--ink);
+}
+.ph-pick-item.used { opacity: .45; cursor: not-allowed; }
+.ph-pick-foot {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; padding: 12px 16px; border-top: 2px solid var(--line);
+}
+.ph-pick-foot .op { margin-left: 6px; }
+[data-theme="dark"] .ph-pick-meta { background: rgba(30, 28, 38, .85); }
+@media (max-width: 720px) {
+  .ph-admin-item { flex-wrap: wrap; }
+  .ph-ops { flex-direction: row; width: 100%; }
+  .ph-ops .op { flex: 1; }
+}

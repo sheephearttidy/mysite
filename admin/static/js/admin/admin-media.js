@@ -108,3 +108,131 @@ async function doImport(file, replace) {
     toast('件件读取失败,确认是导出的 JSON 吗? 😵');
   }
 }
+
+/* ============================================================
+   相册管理(v3.0.0)
+   ============================================================ */
+let _photoCache = [];
+
+async function loadGallery() {
+  const box = document.getElementById('galleryList');
+  const stat = document.getElementById('galleryStat');
+  if (!box) return;
+  try {
+    const r = await api('GET', '/api/photos/admin');
+    _photoCache = r.photos || [];
+    const shownN = _photoCache.filter(p => p.shown).length;
+    if (stat) stat.textContent = `共 ${_photoCache.length} 张,公开 ${shownN} 张`;
+    const cnt = document.getElementById('cnt-gallery');
+    if (cnt) cnt.textContent = _photoCache.length;
+
+    if (!_photoCache.length) {
+      box.innerHTML = '<p class="hint">相册还是空的,点上面「从图片库添加」挑几张吧~</p>';
+      return;
+    }
+    box.innerHTML = _photoCache.map(p => `
+      <div class="ph-admin-item" data-id="${p.id}">
+        <img class="ph-thumb" src="${escAttr(p.url)}" alt="" loading="lazy" />
+        <div class="ph-fields">
+          <input class="sf-input ph-t" maxlength="80" placeholder="标题(可留空)"
+                 value="${escAttr(p.title || '')}" />
+          <input class="sf-input ph-c" maxlength="20" placeholder="分类,如 校园/旅行/日常"
+                 value="${escAttr(p.category || '')}" />
+          <input class="sf-input ph-d" maxlength="500" placeholder="描述(可留空)"
+                 value="${escAttr(p.desc || '')}" />
+          <div class="ph-row">
+            <input class="sf-input ph-s" type="date" value="${escAttr(p.shot_at || '')}" />
+            <input class="sf-input ph-o" type="number" placeholder="排序" style="max-width:90px"
+                   value="${p.sort || 0}" />
+            <label class="ph-sw">
+              <input type="checkbox" ${p.shown ? 'checked' : ''} onchange="togglePhoto(${p.id}, this.checked)" />
+              前台可见
+            </label>
+          </div>
+        </div>
+        <div class="ph-ops">
+          <button class="op save" onclick="savePhoto(${p.id}, this)">💾 保存</button>
+          <button class="op del" onclick="removePhoto(${p.id})">🗑️ 移出相册</button>
+        </div>
+      </div>`).join('');
+  } catch (e) {
+    box.innerHTML = '<p class="hint">加载失败:' + esc(e.message) + '</p>';
+  }
+}
+
+async function savePhoto(id, btn) {
+  const item = btn.closest('.ph-admin-item');
+  const body = {
+    title: item.querySelector('.ph-t').value,
+    category: item.querySelector('.ph-c').value,
+    desc: item.querySelector('.ph-d').value,
+    shot_at: item.querySelector('.ph-s').value,
+    sort: Number(item.querySelector('.ph-o').value || 0)
+  };
+  btn.disabled = true;
+  try {
+    await api('PUT', '/api/photos/' + id, body);
+    toast('已保存 ✅');
+    loadGallery();
+  } catch (e) { toast('保存失败:' + e.message); }
+  finally { btn.disabled = false; }
+}
+
+async function togglePhoto(id, on) {
+  try {
+    await api('PUT', '/api/photos/' + id, { shown: on });
+    toast(on ? '前台可见' : '已隐藏');
+  } catch (e) { toast('操作失败:' + e.message); loadGallery(); }
+}
+
+async function removePhoto(id) {
+  if (!confirm('从相册移除这张?(图片文件会留在图片库里)')) return;
+  try {
+    await api('DELETE', '/api/photos/' + id);
+    toast('已移出相册');
+    loadGallery();
+  } catch (e) { toast('操作失败:' + e.message); }
+}
+
+/* 从图片库挑图加入相册 */
+async function openPhotoPick() {
+  let items = [];
+  try {
+    const r = await api('GET', '/api/uploads');
+    items = r.items || [];
+  } catch (e) { return toast('读取图片库失败:' + e.message); }
+  if (!items.length) return toast('图片库还是空的,先去「图片库」传几张');
+
+  const inAlbum = new Set(_photoCache.map(p => p.file));
+  const html = items.map(it => `
+    <label class="ph-pick-item ${inAlbum.has(it.name) ? 'used' : ''}">
+      <input type="checkbox" value="${escAttr(it.name)}"
+             ${inAlbum.has(it.name) ? 'disabled' : ''} />
+      <img src="${escAttr(it.url)}" alt="" loading="lazy" />
+      <span class="ph-pick-meta">${inAlbum.has(it.name) ? '已在相册' : (it.size / 1024).toFixed(0) + ' KB'}</span>
+    </label>`).join('');
+
+  const box = document.getElementById('photoPickBox');
+  box.querySelector('.ph-pick-grid').innerHTML = html;
+  box.classList.add('show');
+}
+
+async function confirmPhotoPick() {
+  const box = document.getElementById('photoPickBox');
+  const names = [...box.querySelectorAll('input[type=checkbox]:checked')].map(i => i.value);
+  if (!names.length) return toast('还没选图片');
+  let ok = 0;
+  for (const name of names) {
+    try {
+      await api('POST', '/api/photos', { file: name });
+      ok++;
+    } catch (e) { /* 单张失败继续 */ }
+  }
+  box.classList.remove('show');
+  toast(`已加入相册 ${ok} 张`);
+  loadGallery();
+}
+
+function closePhotoPick() {
+  document.getElementById('photoPickBox').classList.remove('show');
+}
