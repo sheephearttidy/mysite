@@ -1,4 +1,4 @@
-﻿/* ============================================================
+/* ============================================================
    后台 · admin-app:收尾初始化 + 两步验证 2FA(v2.1 拆分)
    ============================================================ *//* ==================== v2.0:两步验证(2FA) ==================== */
 
@@ -27,27 +27,27 @@ async function twofaStart() {
     holder.innerHTML = '';
     new QRCode(holder, { text: d.uri, width: 172, height: 172,
                          correctLevel: QRCode.CorrectLevel.M });
-  } catch (e) { toast('生成失败:' + e.message); }
+  } catch (e) { toast('二维码没生成出来:' + e.message); }
 }
 
 async function twofaConfirm() {
   const code = document.getElementById('twofaCode').value.trim();
-  if (!/^\d{6}$/.test(code)) return toast('请输入 6 位数字动态码');
+  if (!/^\d{6}$/.test(code)) return toast('请输入手机上显示的 6 位数字');
   try {
     await api('POST', '/api/security/2fa/enable', { code });
     document.getElementById('twofaBox').style.display = 'none';
     document.getElementById('twofaCode').value = '';
-    toast('两步验证已启用!下次登录要用上它啦 🔐');
+    toast('两步验证开好啦!以后登录要多输一次手机上的数字 🔐');
     twofaRefresh();
-  } catch (e) { toast('启用失败:' + e.message); }
+  } catch (e) { toast('开启失败:' + e.message); }
 }
 
 async function twofaOff() {
-  const code = prompt('输入当前 6 位动态码以确认关闭两步验证:');
+  const code = prompt('输入手机上现在的 6 位数字,确认关闭两步验证:');
   if (code === null) return;
   try {
     await api('POST', '/api/security/2fa/disable', { code: code.trim() });
-    toast('两步验证已关闭');
+    toast('两步验证已关闭,以后只用密码就能登录');
     twofaRefresh();
   } catch (e) { toast('关闭失败:' + e.message); }
 }

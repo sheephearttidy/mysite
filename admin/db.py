@@ -1068,6 +1068,24 @@ IMPORT_FIELDS = {
 }
 
 
+def get_messages_for_export() -> list:
+    """v2.7.3 备份用:全部留言(含待审/隐藏),带上 token 以便恢复后原留言人还能追问"""
+    with get_db() as c:
+        rows = c.execute(
+            """SELECT id,name,body,color,ts,ip,shown,reply,token
+               FROM messages ORDER BY id ASC""").fetchall()
+    return [dict(r) for r in rows]
+
+
+def get_threads_for_export() -> list:
+    """v2.7.3 备份用:全部对话线程(含待审追问)"""
+    with get_db() as c:
+        rows = c.execute(
+            """SELECT id,msg_id,role,body,ts,ip,shown
+               FROM message_threads ORDER BY id ASC""").fetchall()
+    return [dict(r) for r in rows]
+
+
 def import_payload(payload: dict, replace: bool = False) -> dict:
     """把导出的 JSON 写回数据库,返回各表恢复条数
 
@@ -1103,6 +1121,75 @@ def import_payload(payload: dict, replace: bool = False) -> dict:
                 c.execute(f"INSERT INTO {table}({cols}) VALUES({marks})", vals)
                 n += 1
             counts[table] = n
+
+        # v2.7.3:留言与对话线程。结构特殊(要保留 id、带 token),单独处理,
+        # 且必须「先留言后线程」,否则线程会找不到所属留言。
+        if replace:
+            c.execute("DELETE FROM message_threads")
+            c.execute("DELETE FROM messages")
+
+        msg_rows = payload.get("messages")
+        if isinstance(msg_rows, list):
+            n = 0
+            for row in msg_rows:
+                if not isinstance(row, dict) or not row.get("body"):
+                    continue
+                fields = ("id", "name", "body", "color", "ts", "ip", "shown",
+                          "reply", "token")
+                vals = tuple(row.get(f) for f in fields)
+                vals = (vals[0], vals[1] or "匿名", vals[2], vals[3] or "pink",
+                        vals[4] or 0, vals[5] or "", vals[6] if vals[6] is not None else 1,
+                        vals[7] or "", vals[8] or "")
+                rid = vals[0]
+                exists = (rid is not None and c.execute(
+                    "SELECT 1 FROM messages WHERE id=?", (rid,)).fetchone())
+                if exists:
+                    sets = ",".join(f"{f}=?" for f in fields[1:])
+                    c.execute(f"UPDATE messages SET {sets} WHERE id=?",
+                              vals[1:] + (rid,))
+                elif rid is not None:
+                    cols = ",".join(fields)
+                    marks = ",".join("?" * len(fields))
+                    c.execute(f"INSERT INTO messages({cols}) VALUES({marks})", vals)
+                else:
+                    c.execute(
+                        """INSERT INTO messages(name,body,color,ts,ip,shown,reply,token)
+                           VALUES(?,?,?,?,?,?,?,?)""", vals[1:])
+                n += 1
+            counts["messages"] = n
+
+        thr_rows = payload.get("message_threads")
+        if isinstance(thr_rows, list):
+            n = 0
+            for row in thr_rows:
+                if not isinstance(row, dict) or not row.get("body"):
+                    continue
+                fields = ("id", "msg_id", "role", "body", "ts", "ip", "shown")
+                vals = tuple(row.get(f) for f in fields)
+                vals = (vals[0], vals[1], vals[2] or "guest", vals[3],
+                        vals[4] or 0, vals[5] or "",
+                        vals[6] if vals[6] is not None else 1)
+                # 所属留言不存在就跳过,避免留下孤儿线程
+                if not vals[1] or not c.execute(
+                        "SELECT 1 FROM messages WHERE id=?", (vals[1],)).fetchone():
+                    continue
+                rid = vals[0]
+                exists = (rid is not None and c.execute(
+                    "SELECT 1 FROM message_threads WHERE id=?", (rid,)).fetchone())
+                if exists:
+                    sets = ",".join(f"{f}=?" for f in fields[1:])
+                    c.execute(f"UPDATE message_threads SET {sets} WHERE id=?",
+                              vals[1:] + (rid,))
+                elif rid is not None:
+                    cols = ",".join(fields)
+                    marks = ",".join("?" * len(fields))
+                    c.execute(f"INSERT INTO message_threads({cols}) VALUES({marks})", vals)
+                else:
+                    c.execute(
+                        """INSERT INTO message_threads(msg_id,role,body,ts,ip,shown)
+                           VALUES(?,?,?,?,?,?)""", vals[1:])
+                n += 1
+            counts["message_threads"] = n
     # site is exported as a key/value object, not a table-shaped list.
     # Restore only whitelisted fields through the same validation/default path
     # as the site settings editor.

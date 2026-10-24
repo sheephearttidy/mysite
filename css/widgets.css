@@ -159,8 +159,21 @@ select.sf-input { cursor: pointer; }
   background: #fff; border-radius: 14px; padding: 14px 16px 12px;
   border: 2px solid var(--shadow); box-shadow: 4px 4px 0 var(--shadow);
   transform: rotate(var(--rot));
-  transition: transform .18s ease, box-shadow .18s ease;
+  transition: transform .18s ease, box-shadow .18s ease, opacity .5s ease;
   position: relative;
+}
+/* v2.7.3 修复:便签同时带 .reveal 时,reveal 的 transform:translateY()
+   会覆盖这里的 rotate(var(--rot)),导致前 3 张便签的随机倾斜完全失效。
+   这里用 translate 独立属性接管入场位移,把 transform 留给旋转。 */
+.msg-note.reveal {
+  transform: rotate(var(--rot));
+  translate: 0 26px;
+  transition: translate .65s cubic-bezier(.16,1,.3,1),
+              transform .18s ease, box-shadow .18s ease, opacity .65s ease;
+}
+.msg-note.reveal.visible {
+  transform: rotate(var(--rot));
+  translate: 0 0;
 }
 /* 内容长短影响便签的松紧:短句更紧凑、长文稍收字号 */
 .msg-note.msg-short { padding: 11px 13px 9px; }

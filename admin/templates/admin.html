@@ -112,8 +112,8 @@
           <li><a class="sb-link" data-panel="sec-pass" href="#sec-pass">🔑 后台密码</a></li>
           <li><a class="sb-link" data-panel="sec-login" href="#sec-login">🛡️ 登录防护</a></li>
           <li><a class="sb-link" data-panel="sec-blocked" href="#sec-blocked">⛔ 封锁名单</a></li>
-          <li><a class="sb-link" data-panel="sec-sessions" href="#sec-sessions">💻 登录会话</a></li>
-          <li><a class="sb-link" data-panel="sec-audit" href="#sec-audit">📜 审计日志</a></li>
+          <li><a class="sb-link" data-panel="sec-sessions" href="#sec-sessions">💻 登录中的设备</a></li>
+          <li><a class="sb-link" data-panel="sec-audit" href="#sec-audit">📜 操作记录</a></li>
           <li><a class="sb-link" data-panel="sec-status" href="#sec-status">🛡️ 防护状态</a></li>
         </ul>
       </div>
@@ -194,7 +194,7 @@
         <div class="item">
           <h3>👤 基本身份</h3>
           <p class="hint" style="margin-top:4px">
-            这些值会自动套用到前台 7 个页面的导航栏、标题、页脚、SEO 标签和结构化数据里
+            改这里,前台 7 个页面的导航栏、标题、页脚、分享卡片会一起跟着变
           </p>
           <div class="secform" style="margin-top:12px" id="siteForm"></div>
           <div style="margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
@@ -260,7 +260,7 @@
       <section class="panel" id="panel-songs">
         <div class="sec-head">
           <button class="add" onclick="editItem('songs')">＋ 新增歌曲</button>
-          <span class="hint">「关于我」页的「最近在听」;贴 QQ 音乐分享链接自动认歌曲 ID;VIP 歌访客只能试听 60 秒(版权限制)</span>
+          <span class="hint">「关于我」页的「最近在听」;贴 QQ 音乐的分享链接就行,会自动认出来是哪首歌;VIP 歌访客只能试听 60 秒(版权限制)</span>
         </div>
         <div class="grid" id="list-songs"></div>
       </section>
@@ -268,7 +268,7 @@
       <!-- 图片库 -->
       <section class="panel" id="panel-uploads">
         <div class="sec-head">
-          <span class="hint">支持 png/jpg/gif/webp,单张 ≤5MB,传完可直接复制路径</span>
+          <span class="hint">支持 png/jpg/gif/webp 四种格式,一张不超过 5MB,传完点一下就能复制链接</span>
         </div>
         <div class="item">
           <div class="upload-zone" id="uploadZone">
@@ -342,34 +342,39 @@
         <div class="item" style="margin-top:18px">
           <h3>🗺️ 访客城市分布</h3>
           <div id="dashCities"></div>
-          <p class="hint" style="margin-top:6px">按 IP 解析到省/市(淘宝 IP 库),只存城市不存 IP;悬停前台地图页的星星可见</p>
+          <p class="hint" style="margin-top:6px">按访客的大致位置显示到省份/城市(不记录真实地址),鼠标移到前台地图上的星星就能看到</p>
         </div>
 
         <div class="item" style="margin-top:18px">
           <h3>🧾 最近访问</h3>
           <div id="dashRecent"></div>
           <div class="ops" style="margin-top:12px">
-            <a class="op save" href="/api/stats/visits/csv?days=7" download>⬇️ 导出近 7 天 CSV</a>
-            <a class="op edit" href="/api/stats/visits/csv?days=30" download>⬇️ 导出近 30 天 CSV</a>
+            <a class="op save" href="/api/stats/visits/csv?days=7" download>⬇️ 导出近 7 天的表格</a>
+            <a class="op edit" href="/api/stats/visits/csv?days=30" download>⬇️ 导出近 30 天的表格</a>
           </div>
-          <p class="hint" style="margin-top:6px">CSV 只含页面/来源/设备/城市,不含 IP;导出动作会记入审计日志</p>
+          <p class="hint" style="margin-top:6px">导出的表格只有「哪个页面、从哪来、什么设备、哪个城市」,不含访客真实地址;每次导出都会留下记录</p>
         </div>
       </section>
 
       <!-- 数据备份 -->
       <section class="panel" id="panel-backup">
         <div class="sec-head">
-          <span class="hint">导出所有内容为 JSON;换服务器或改坏了可以一键恢复</span>
+          <span class="hint">把站里的内容打包存一份;换电脑、换服务器,或者不小心改坏了,都能一键搬回来</span>
         </div>
         <div class="item">
           <div class="ops" style="margin-top:0">
-            <a class="op save" href="/api/export" download>⬇️ 导出全部数据</a>
-            <button class="op edit" onclick="document.getElementById('importInput').click()">⬆️ 从 JSON 恢复</button>
+            <a class="op save" href="/api/export" download>⬇️ 下载一份备份</a>
+            <button class="op edit" onclick="document.getElementById('importInput').click()">⬆️ 从备份恢复</button>
             <input type="file" id="importInput" accept="application/json,.json" hidden />
-            <button class="op del" onclick="importReplace()">⚠️ 清空并恢复</button>
+            <button class="op del" onclick="importReplace()">⚠️ 清空后恢复</button>
           </div>
           <p class="hint" style="margin-top:10px">
-            「从 JSON 恢复」= 合并(同 id 覆盖,新的追加);「清空并恢复」= 先删光再导入,谨慎使用
+            「从备份恢复」= 保留现有内容,同一条覆盖、新的加进去;
+            「清空后恢复」= 先删掉现在所有内容再导入,只在你确定要回到备份那一刻时用
+          </p>
+          <p class="hint" style="margin-top:6px">
+            备份里包含:技能、校园日常、趣味统计、项目、自我介绍、荣誉、随手记、友链、音乐、
+            站点信息,以及<strong>全部留言和对话</strong>
           </p>
         </div>
       </section>
@@ -401,7 +406,7 @@
             <button class="op edit" onclick="loadMessages()">🔄 刷新</button>
           </div>
           <div id="msgAdminList"></div>
-          <p class="hint" style="margin-top:8px">新留言默认待审核;「展示」后前台留言墙才会出现。置顶回复框可继续追问,留言人带凭证也能追问(需审核)</p>
+          <p class="hint" style="margin-top:8px">新留言默认待审核;「展示」后前台留言墙才会出现。每条留言下面都能直接回一句;留言的人自己也能接着追问,同样要你审核后才显示</p>
         </div>
       </section>
 
@@ -428,7 +433,7 @@
       <!-- 站点公告 -->
       <section class="panel" id="panel-notices">
         <div class="sec-head">
-          <span class="hint">发布后前台会弹出公告卡片;访客可关闭,本次会话不再弹</span>
+          <span class="hint">发布后前台会弹出一个小卡片;访客点掉之后,这次浏览期间不会再出现</span>
         </div>
         <div class="item" style="margin-top:16px">
           <h3>✏️ 写公告</h3>
@@ -447,7 +452,7 @@
       <!-- 倒计时 -->
       <section class="panel" id="panel-countdown">
         <div class="sec-head">
-          <span class="hint">前台右下角挂件;active 的里面取日期最近的一个展示</span>
+          <span class="hint">前台右下角的小挂件;开了好几个的话,自动显示离得最近的那个</span>
         </div>
         <div class="item" style="margin-top:16px">
           <div class="secform">
@@ -470,7 +475,7 @@
       <!-- 前台特效 -->
       <section class="panel" id="panel-fx">
         <div class="sec-head">
-          <span class="hint">节日装饰、粒子动效由这里控制,关掉就完全不出现</span>
+          <span class="hint">节日装饰、飘落的小动画都在这里开关,关掉就一个都不出现</span>
         </div>
 
         <div class="item">
@@ -550,7 +555,7 @@
       <!-- 安全中心 · 后台密码 -->
       <section class="panel" id="panel-sec-pass">
         <div class="sec-head">
-          <span class="hint">密码强度与更换</span>
+          <span class="hint">改密码,顺便看看现在这个够不够结实</span>
         </div>
         <div class="sec-grid">
           <div class="sec-card ok" id="secCardCaptcha">
@@ -563,27 +568,28 @@
           </div>
           <div class="sec-card" id="secCardBlocked">
             <div class="sc-ic">⛔</div>
-            <div class="sc-body"><div class="sc-t">封锁中的 IP</div><div class="sc-v" id="scBlockedVal">–</div></div>
+            <div class="sc-body"><div class="sc-t">被挡住的人数</div><div class="sc-v" id="scBlockedVal">–</div></div>
           </div>
           <div class="sec-card" id="secCardSessions">
             <div class="sc-ic">💻</div>
-            <div class="sc-body"><div class="sc-t">活跃会话</div><div class="sc-v" id="scSessionsVal">–</div></div>
+            <div class="sc-body"><div class="sc-t">正在登录的设备</div><div class="sc-v" id="scSessionsVal">–</div></div>
           </div>
         </div>
         <div class="item" style="margin-top:16px">
           <h3>🔑 修改密码</h3>
           <p class="hint" style="margin-top:6px">
-            密码以 PBKDF2(120k 迭代)哈希存在数据库里,明文不落盘。建议定期更换。
+            密码会加密保存,就算别人拿到你的数据文件也看不到原密码。建议隔一段时间换一次。
           </p>
           <div class="ops">
             <button class="op edit" onclick="openPassModal()">🔑 修改密码</button>
-            <button class="op del" onclick="revokeAllSessions()">🚪 踢掉其他所有会话</button>
+            <button class="op del" onclick="revokeAllSessions()">🚪 让其他设备全部退出登录</button>
           </div>
         </div>
         <div class="item" style="margin-top:16px">
-          <h3>🔐 两步验证(2FA)</h3>
+          <h3>🔐 两步验证(更安全)</h3>
           <p class="hint" style="margin-top:6px">
-            启用后登录需要密码 + 手机验证器的 6 位动态码(TOTP,兼容 Google Authenticator / 微软验证器 / 1Password 等)。
+            开启后,登录要输两次:先输密码,再输手机上那个 App 显示的 6 位数字。
+            这样就算密码被别人知道了,他也进不来。
           </p>
           <div class="sec-grid" style="margin-top:10px">
             <div class="sec-card" id="secCard2fa">
@@ -595,7 +601,7 @@
             </div>
           </div>
           <div class="ops" style="margin-top:12px">
-            <button class="op edit" onclick="twofaStart()">📱 绑定验证器</button>
+            <button class="op edit" onclick="twofaStart()">📱 绑定手机验证器</button>
             <button class="op del" onclick="twofaOff()">🔓 关闭两步验证</button>
           </div>
           <div id="twofaBox" style="display:none;margin-top:14px">
@@ -605,12 +611,13 @@
               <!-- qrcode.min.js 往这个容器里画 canvas,不能是 <img> -->
             </div>
             <p class="hint" id="twofaHint" style="margin-top:8px">
-              用手机验证器扫上面的码,然后输入显示的 6 位动态码确认
+              用手机上的验证器 App(比如微软验证器、Google 验证器)扫一下上面的方块,
+              再把手机上出现的 6 位数字填到下面
             </p>
             <div class="sf-row" style="margin-top:8px;max-width:300px">
               <input type="text" id="twofaCode" class="sf-input" maxlength="6"
-                     inputmode="numeric" placeholder="6 位动态码" />
-              <button class="op save" onclick="twofaConfirm()">✅ 确认启用</button>
+                     inputmode="numeric" placeholder="手机上的 6 位数字" />
+              <button class="op save" onclick="twofaConfirm()">✅ 确认开启</button>
             </div>
           </div>
         </div>
@@ -619,14 +626,14 @@
       <!-- 安全中心 · 登录防护 -->
       <section class="panel" id="panel-sec-login">
         <div class="sec-head">
-          <span class="hint">验证码、失败封锁、会话时长,全部手动开关</span>
+          <span class="hint">防别人乱猜密码:验证码、错太多次就锁住、多久不用自动退出,都能自己调</span>
         </div>
         <div class="item">
           <div class="secform">
             <div class="sf-row">
               <label class="sf-label">
-                登录验证码
-                <span class="sf-note">开启后每次登录都要输图形验证码</span>
+                登录要填图片验证码
+                <span class="sf-note">开启后每次登录都要认一遍图上的字母数字</span>
               </label>
               <label class="switch">
                 <input type="checkbox" id="setCaptcha" />
@@ -634,43 +641,43 @@
               </label>
             </div>
             <div class="sf-row">
-              <label class="sf-label">验证码位数<span class="sf-note">3~6 位,越长越难认</span></label>
+              <label class="sf-label">验证码几个字<span class="sf-note">3~6 个,越多越难认</span></label>
               <input class="sf-input" type="number" id="setCaptchaLen" min="3" max="6" />
             </div>
             <div class="sf-row">
-              <label class="sf-label">失败几次后封锁<span class="sf-note">超过这个次数就临时禁止登录</span></label>
+              <label class="sf-label">密码输错几次就锁住<span class="sf-note">超过这个次数,暂时不让登录</span></label>
               <input class="sf-input" type="number" id="setFailThreshold" min="1" max="50" />
             </div>
             <div class="sf-row">
-              <label class="sf-label">封锁时长(分钟)<span class="sf-note">期间该 IP 无法登录</span></label>
+              <label class="sf-label">锁住多久(分钟)<span class="sf-note">这段时间里从同一个地方进不来</span></label>
               <input class="sf-input" type="number" id="setBlockMinutes" min="1" max="1440" />
             </div>
             <div class="sf-row">
-              <label class="sf-label">空闲自动登出(分钟)<span class="sf-note">0 = 不自动登出</span></label>
+              <label class="sf-label">多久不动就自动退出(分钟)<span class="sf-note">填 0 表示一直不退出</span></label>
               <input class="sf-input" type="number" id="setIdleMinutes" min="0" max="1440" />
             </div>
             <div class="sf-row">
-              <label class="sf-label">会话有效期(小时)<span class="sf-note">超过后必须重新登录</span></label>
+              <label class="sf-label">登录一次管多久(小时)<span class="sf-note">超过这个时间要重新输密码</span></label>
               <input class="sf-input" type="number" id="setSessionHours" min="1" max="720" />
             </div>
             <div class="sf-row">
-              <label class="sf-label">审计日志保留条数<span class="sf-note">超出后只显示最新的</span></label>
+              <label class="sf-label">操作记录最多留几条<span class="sf-note">超出后只显示最近的</span></label>
               <input class="sf-input" type="number" id="setAuditKeep" min="50" max="5000" />
             </div>
             <div class="sf-row">
-              <label class="sf-label">密码最小长度(v2.3)<span class="sf-note">改密码时强制校验,6~64 位</span></label>
+              <label class="sf-label">密码最少几位<span class="sf-note">改密码时按这个要求检查,6~64 位</span></label>
               <input class="sf-input" type="number" id="setPassMinlen" min="6" max="64" />
             </div>
             <div class="sf-row">
-              <label class="sf-label">密码字符种类下限(v2.3)<span class="sf-note">小写/大写/数字/符号,至少占几种,1~4</span></label>
+              <label class="sf-label">密码要混几种字符<span class="sf-note">小写、大写、数字、符号,至少用到几种,1~4</span></label>
               <input class="sf-input" type="number" id="setPassClasses" min="1" max="4" />
             </div>
             <div class="sf-row">
-              <label class="sf-label">登录失败时延(秒,v2.3)<span class="sf-note">答错密码后强制等这么久,拖垮爆破速度,0~10</span></label>
+              <label class="sf-label">密码输错后等几秒(秒)<span class="sf-note">每次输错都卡一下,让别人没法快速试密码,0~10</span></label>
               <input class="sf-input" type="number" id="setLoginDelay" min="0" max="10" />
             </div>
             <div class="sf-row">
-              <label class="sf-label">会话绑定登录 IP(v2.3)<span class="sf-note">开启后 Cookie 换网络即失效;IP 会变的网络慎开</span></label>
+              <label class="sf-label">换了网络就得重新登录<span class="sf-note">开启后,别人把你的登录状态偷走也用不了;但你自己的网络经常换就别开</span></label>
               <label class="switch">
                 <input type="checkbox" id="setBindIp" />
                 <span class="slider"></span>
@@ -687,7 +694,7 @@
       <!-- 安全中心 · 封锁名单 -->
       <section class="panel" id="panel-sec-blocked">
         <div class="sec-head">
-          <span class="hint">失败次数超限被临时封锁的 IP</span>
+          <span class="hint">密码输错太多次、被暂时挡在门外的人</span>
         </div>
         <div class="item">
           <div id="secBlockedList"></div>
@@ -700,28 +707,28 @@
       <!-- 安全中心 · 登录会话 -->
       <section class="panel" id="panel-sec-sessions">
         <div class="sec-head">
-          <span class="hint">发现陌生会话直接踢下线</span>
+          <span class="hint">这里是「谁正在登录着你的后台」。看到不认识的设备,直接让它下线</span>
         </div>
         <div class="item">
-          <p class="hint">改了密码后建议把其他会话全踢掉,强制所有设备重新登录。</p>
+          <p class="hint">如果你刚改过密码,建议把其他设备都退掉,让它们重新登录一次。</p>
           <div id="secSessionList"></div>
           <div class="ops" style="margin-top:12px">
             <button class="op edit" onclick="loadSecOverview()">↻ 刷新</button>
-            <button class="op del" onclick="revokeAllSessions()">🚪 踢掉其他所有会话</button>
+            <button class="op del" onclick="revokeAllSessions()">🚪 让其他设备全部退出登录</button>
           </div>
         </div>
       </section>
 
-      <!-- 安全中心 · 审计日志 -->
+      <!-- 安全中心 · 操作记录 -->
       <section class="panel" id="panel-sec-audit">
         <div class="sec-head">
-          <span class="hint">登录、改密码、改设置、上传、备份等敏感操作留痕</span>
+          <span class="hint">你在这里做过的每件事都记一笔:登录、改密码、改设置、传图、备份……万一出事能查</span>
         </div>
         <div class="item">
           <div id="secAuditList"></div>
           <div class="ops" style="margin-top:12px">
             <button class="op edit" onclick="loadAudit()">↻ 刷新</button>
-            <button class="op del" onclick="clearAudit()">🗑️ 清空日志</button>
+            <button class="op del" onclick="clearAudit()">🗑️ 清空记录</button>
           </div>
         </div>
       </section>
@@ -729,23 +736,23 @@
       <!-- 安全中心 · 防护状态 -->
       <section class="panel" id="panel-sec-status">
         <div class="sec-head">
-          <span class="hint">当前全站安全措施一览</span>
+          <span class="hint">你的站现在有哪些防护,一眼看明白</span>
         </div>
         <div class="item">
           <ul class="seclist">
-            <li>✅ 全站 HTTPS + HSTS(强制跳转)</li>
-            <li>✅ Session Cookie 带 Secure / HttpOnly / SameSite=Lax</li>
-            <li>✅ 登录验证码(图形,3 分钟过期,一次性)</li>
-            <li>✅ 登录限速:nginx 10 次/分钟 + 应用层失败封锁</li>
-            <li>✅ 失败记录落库,重启不丢,支持手动解封</li>
-            <li>✅ 登录成功重置 session(防会话固定)</li>
-            <li>✅ 会话可远程踢下线 + 空闲自动登出</li>
-            <li>✅ 敏感操作全程审计留痕</li>
-            <li>✅ 后台以专用用户 <code>mysite</code> 运行(非 root)</li>
-            <li>✅ 数据库与源码不在 webroot 可访问路径</li>
-            <li>✅ SSH 仅公钥登录</li>
-            <li>✅ 上传校验真实文件头,防改扩展名 webshell</li>
-            <li>✅ JSON 请求体 64KB 上限,防内存放大</li>
+            <li>✅ 全站加密传输(HTTPS),别人偷看不了你输的密码</li>
+            <li>✅ 登录状态存在浏览器里,别人用脚本偷不走</li>
+            <li>✅ 登录要填图片验证码(3 分钟过期,用过一次就作废)</li>
+            <li>✅ 密码输太多次会被暂时拦住</li>
+            <li>✅ 输错记录存在硬盘里,重启也不丢,可以手动放行</li>
+            <li>✅ 每次登录成功都换一把新钥匙,防止被人提前占位</li>
+            <li>✅ 登录着的设备可以远程踢下线,长时间不动也会自动退出</li>
+            <li>✅ 所有操作都有记录,出事能查是谁做的</li>
+            <li>✅ 后台用专门的低权限账号运行,不是最高权限</li>
+            <li>✅ 数据库和源代码放在别人访问不到的地方</li>
+            <li>✅ 服务器只认密钥登录,猜密码进不来</li>
+            <li>✅ 上传图片会检查真实文件类型,改个后缀骗不过去</li>
+            <li>✅ 单次提交有大小上限,防止被人塞爆内存</li>
           </ul>
         </div>
       </section>

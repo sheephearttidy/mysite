@@ -1,4 +1,4 @@
-﻿/* ============================================================
+/* ============================================================
    后台 · admin-media:图片上传/图片库/数据导入(v2.1 拆分)
    ============================================================ *//* ---------- 图片上传 ---------- */
 const fileInput = document.getElementById('fileInput');
@@ -89,7 +89,7 @@ function importReplace() {
 }
 
 async function doImport(file, replace) {
-  if (!confirm(replace ? '⚠️ 确定清空并恢复?' : '确定用这个文件恢复内容吗?')) return;
+  if (!confirm(replace ? '⚠️ 确定清空并恢复?' : '确定用这个件件恢复内容吗?')) return;
   try {
     const text = await file.text();
     const payload = JSON.parse(text);
@@ -105,6 +105,6 @@ async function doImport(file, replace) {
     toast('恢复成功 ✅ ' + summary);
     setTimeout(() => location.reload(), 1200);
   } catch (err) {
-    toast('文件读取失败,确认是导出的 JSON 吗? 😵');
+    toast('件件读取失败,确认是导出的 JSON 吗? 😵');
   }
 }

@@ -423,7 +423,7 @@ async function saveSecSettings() {
 async function unblockIp(ip) {
   try {
     await api('POST', '/api/security/unblock', { ip });
-    toast('已解除封锁:' + ip);
+    toast('已放行:' + ip);
     loadSecOverview();
   } catch (e) { toast('操作失败:' + e.message); }
 }
@@ -432,7 +432,7 @@ async function revokeSession(sid) {
   if (!confirm('确定把这个会话踢下线?对方需要重新登录。')) return;
   try {
     await api('POST', '/api/security/revoke', { sid });
-    toast('已踢下线');
+    toast('已让它退出登录');
     loadSecOverview();
   } catch (e) { toast('操作失败:' + e.message); }
 }
@@ -441,7 +441,7 @@ async function revokeAllSessions() {
   if (!confirm('踢掉除当前会话以外的所有登录?其他设备都需要重新登录。')) return;
   try {
     const r = await api('POST', '/api/security/revoke-all');
-    toast(`已踢下线 ${r.revoked} 个会话`);
+    toast(`已让它退出登录 ${r.revoked} 个会话`);
     loadSecOverview();
   } catch (e) { toast('操作失败:' + e.message); }
 }
@@ -485,7 +485,7 @@ async function loadAudit() {
           <td style="font-size:11.5px">${esc(r.detail || '')}</td>
         </tr>`;
       }).join('')}</tbody></table>`;
-  } catch (e) { toast('审计日志加载失败:' + e.message); }
+  } catch (e) { toast('操作记录加载失败:' + e.message); }
 }
 
 async function clearAudit() {

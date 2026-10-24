@@ -18,7 +18,7 @@ async function submitPassword() {
   const new2 = document.getElementById('newPass2').value;
   err.style.display = 'none';
 
-  if (new1 !== new2) { showPerr('两次输入的新密码不一样'); return; }
+  if (new1 !== new2) { showPerr('两次入入的新密码不一样'); return; }
   if (new1.length < 6) { showPerr('新密码至少 6 位啦'); return; }
   if (new1 === 'admin') { showPerr('不能还用 admin 当密码!换一个'); return; }
 
@@ -181,7 +181,7 @@ async function msgThreadDel(mid, tid) {
 }
 
 function msgReply(id, current) {
-  const reply = prompt('输入站主回复(留空清除回复,最多 140 字):', current || '');
+  const reply = prompt('入入站主回复(留空清除回复,最多 140 字):', current || '');
   if (reply === null) return;
   fetch(`/api/messages/${id}/mod`, {
     method: 'POST',

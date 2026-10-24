@@ -1670,9 +1670,13 @@ def delete_upload(name):
 @app.get("/api/export")
 @login_required
 def export_data():
-    """导出全部内容为 JSON(不含密码哈希)"""
+    """导出全部内容为 JSON(不含密码哈希)
+
+    v2.7.3:补上留言与对话线程——此前只导内容板块,「导出全部数据」名不副实,
+    换服务器恢复后留言墙和所有追问都会丢。
+    """
     payload = {
-        "version": 2,
+        "version": 3,
         "exported_at": datetime.now(timezone.utc).isoformat(),
         "skills": db.get_skills(),
         "timeline": db.get_timeline(),
@@ -1683,6 +1687,8 @@ def export_data():
         "notes": db.get_notes(),
         "friendlinks": db.get_friendlinks(),
         "songs": db.get_songs(),
+        "messages": db.get_messages_for_export(),
+        "message_threads": db.get_threads_for_export(),
         "site": db.get_site(),
     }
     body = json.dumps(payload, ensure_ascii=False, indent=2)
@@ -1702,7 +1708,9 @@ def import_data():
     if not isinstance(payload, dict):
         return jsonify(error="文件格式不对,需要导出的 JSON"), 400
 
-    kinds = ("skills", "timeline", "stats", "works", "profile")
+    # 修:v2.7.3 之前这里只列了 5 张表,漏掉 honors/notes/friendlinks/songs,
+    # 导致只含这几类的备份被误判成「没有可恢复的数据」。直接用 db 的字段表做白名单。
+    kinds = tuple(db.IMPORT_FIELDS.keys())
     site_data = payload.get("site")
     has_site = isinstance(site_data, dict) and any(
         key in db.SITE_FIELDS and isinstance(value, str)
