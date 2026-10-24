@@ -434,6 +434,11 @@ select.sf-input { cursor: pointer; }
 /* ============================================================
    v3.0.0 前台相册页
    ============================================================ */
+/* v3.0.1 修复:相册页一进去就弹出灯箱。
+   原因:.gal-lightbox / .gal-filter 写了 display:flex,优先级高于浏览器
+   对 [hidden] 的默认 display:none,于是 hidden 属性失效、灯箱常驻全屏。
+   这里给 [hidden] 加 !important 兜底(只作用于本页组件,不影响其它元素)。 */
+.gal-lightbox[hidden], .gal-filter[hidden], .gal-lb-nav[hidden] { display: none !important; }
 .gal-filter {
   display: flex; flex-wrap: wrap; gap: 8px;
   justify-content: center; margin: 0 auto 22px; max-width: 900px;
@@ -482,7 +487,9 @@ select.sf-input { cursor: pointer; }
 
 /* 灯箱 */
 body.lb-open { overflow: hidden; }
-.gal-lightbox {
+/* v3.0.1:默认不显示,只有 .show 才显示(配合 JS 的 class 控制) */
+.gal-lightbox { display: none; }
+.gal-lightbox.show {
   position: fixed; inset: 0; z-index: 9000;
   background: rgba(16, 14, 20, .92);
   display: flex; align-items: center; justify-content: center;

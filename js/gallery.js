@@ -121,7 +121,9 @@
     if (p.shot_at) bits.push('📅 ' + fmtDate(p.shot_at));
     if (p.category) bits.push('🏷️ ' + p.category);
     lbMeta.textContent = bits.join('  ');
-    lb.hidden = false;
+    // v3.0.1:改用 class 控制显隐(不再碰 hidden 属性,
+    // 避免 display:flex 覆盖 [hidden] 导致灯箱常驻)
+    lb.classList.add('show');
     document.body.classList.add('lb-open');
     // 只有一张时不显示左右
     var multi = shown.length > 1;
@@ -130,7 +132,7 @@
   }
 
   function closeLb() {
-    lb.hidden = true;
+    lb.classList.remove('show');
     document.body.classList.remove('lb-open');
     lbImg.src = '';
     cur = -1;
@@ -159,7 +161,7 @@
     if (e.target === lb) closeLb();     // 点背景关闭
   });
   document.addEventListener('keydown', function (e) {
-    if (lb.hidden) return;
+    if (!lb.classList.contains('show')) return;
     if (e.key === 'Escape') closeLb();
     else if (e.key === 'ArrowLeft') stepLb(-1);
     else if (e.key === 'ArrowRight') stepLb(1);
