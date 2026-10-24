@@ -1,4 +1,4 @@
-﻿/* ---------- 改密码 ---------- */
+/* ---------- 改密码 ---------- */
 const MUST_CHANGE = !!window.__ADMIN_MUST_CHANGE__;
 const passModal = document.getElementById('passModal');
 
@@ -66,8 +66,13 @@ async function loadMessages() {
     document.getElementById('msgPending').textContent = c.pending ?? 0;
     document.getElementById('msgShownN').textContent = c.shown ?? 0;
     document.getElementById('msgTotalN').textContent = c.total ?? 0;
+    const tpEl = document.getElementById('msgThreadPending');
+    if (tpEl) tpEl.textContent = c.thread_pending ?? 0;
     const cnt = document.getElementById('cnt-messages');
-    if (cnt) cnt.textContent = c.pending ? `待审${c.pending}` : c.total;
+    if (cnt) {
+      const n = (c.pending || 0) + (c.thread_pending || 0);
+      cnt.textContent = n ? `待审${n}` : c.total;
+    }
 
     const list = document.getElementById('msgAdminList');
     if (!d.messages.length) {
@@ -82,15 +87,38 @@ async function loadMessages() {
           <span class="hint">${fmtMsgTime(m.ts)} · ${esc(m.ip || '未知IP')} · ${m.color}</span>
         </div>
         <div class="mai-body">${esc(m.body)}</div>
-        ${m.reply ? `<div class="mai-reply">站主回复:${esc(m.reply)}</div>` : ''}
+        ${(m.threads && m.threads.length) ? `<div class="mai-thread">${m.threads.map(t => `
+          <div class="mai-turn ${t.role}">
+            <span class="mai-who">${t.role === 'owner' ? '🧑‍💻 站主' : '💬 留言人'}</span>
+            <span class="mai-turntext">${esc(t.body)}</span>
+            ${t.role === 'guest' ? `
+              <span class="badge ${MSG_STATE_CLS[t.shown]}">${MSG_STATE[t.shown]}</span>
+              ${t.shown !== 1 ? `<button class="op save" onclick="msgThreadMod(${m.id},${t.id},'show')">公开</button>` : ''}
+              ${t.shown === 1 ? `<button class="op" onclick="msgThreadMod(${m.id},${t.id},'hide')">隐藏</button>` : ''}
+              <button class="op del" onclick="msgThreadDel(${m.id},${t.id})">删</button>` : ''}
+          </div>`).join('')}</div>` : ''}
+        <div class="mai-reply-box">
+          <textarea class="sf-input mai-reply-input" rows="2" maxlength="140"
+            placeholder="站主回复(140 字内,回车发送,Shift+回车换行)"></textarea>
+          <button class="op save" onclick="msgReplyInline(${m.id}, this)">💬 发送回复</button>
+        </div>
         <div class="ops" style="margin-top:8px">
           ${m.shown !== 1 ? `<button class="op save" onclick="msgMod(${m.id},'show')">✅ 展示</button>` : ''}
           ${m.shown === 1 ? `<button class="op" onclick="msgMod(${m.id},'hide')">🙈 隐藏</button>` : ''}
           ${m.shown === 2 ? `<button class="op" onclick="msgMod(${m.id},'pending')">↩️ 转待审</button>` : ''}
-          <button class="op edit" onclick="msgReply(${m.id},'${esc(m.reply || '').replace(/'/g, "\\'")}')">💬 回复</button>
-          <button class="op del" onclick="msgDel(${m.id})">🗑️ 删除</button>
+          <button class="op del" onclick="msgDel(${m.id})">🗑️ 删除留言</button>
         </div>
       </div>`).join('');
+
+    // 回车发送(Shift+回车换行)
+    list.querySelectorAll('.mai-reply-input').forEach(ta => {
+      ta.addEventListener('keydown', ev => {
+        if (ev.key === 'Enter' && !ev.shiftKey) {
+          ev.preventDefault();
+          msgReplyInline(Number(ta.closest('.msg-admin-item').dataset.id), ta);
+        }
+      });
+    });
   } catch (e) {
     console.error('loadMessages', e);
   }
@@ -104,6 +132,51 @@ async function msgMod(id, action) {
   });
   const d = await r.json();
   if (!d.ok) return alert(d.error || '操作失败');
+  loadMessages();
+}
+
+/* v2.7.0:内联回复框(替代 prompt 弹窗) */
+async function msgReplyInline(id, btn) {
+  const box = btn.closest('.mai-reply-box');
+  const ta = box.querySelector('.mai-reply-input');
+  const text = (ta.value || '').trim();
+  if (!text) { ta.focus(); return; }
+  btn.disabled = true;
+  try {
+    const r = await fetch(`/api/messages/${id}/mod`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'reply', reply: text })
+    });
+    const d = await r.json();
+    if (!d.ok) return alert(d.error || '回复失败');
+    loadMessages();
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+/* v2.7.0:审核访客追问 */
+async function msgThreadMod(mid, tid, action) {
+  const r = await fetch(`/api/messages/${mid}/mod`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'thread_' + action, tid })
+  });
+  const d = await r.json();
+  if (!d.ok) return alert(d.error || '操作失败');
+  loadMessages();
+}
+
+async function msgThreadDel(mid, tid) {
+  if (!confirm('删除这条追问?')) return;
+  const r = await fetch(`/api/messages/${mid}/mod`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'thread_delete', tid })
+  });
+  const d = await r.json();
+  if (!d.ok) return alert(d.error || '删除失败');
   loadMessages();
 }
 

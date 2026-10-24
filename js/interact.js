@@ -144,6 +144,33 @@
         .catch(function () { });
     }
 
+    /* v2.7.0:访客凭证,只有原留言人能继续追问 */
+    var TOK_KEY = 'mysite_msg_tokens';
+    function getTokens() {
+      try { return JSON.parse(localStorage.getItem(TOK_KEY) || '{}') || {}; }
+      catch (e) { return {}; }
+    }
+    function setToken(id, tk) {
+      try {
+        var all = getTokens();
+        all[id] = tk;
+        localStorage.setItem(TOK_KEY, JSON.stringify(all));
+      } catch (e) { }
+    }
+    function hasToken(id) { return !!getTokens()[id]; }
+
+    function threadHtml(threads) {
+      if (!threads || !threads.length) return '';
+      var out = '';
+      threads.forEach(function (t) {
+        var owner = t.role === 'owner';
+        out += '<div class="msg-turn ' + (owner ? 'owner' : 'guest') + '">' +
+          '<span class="turn-who">' + (owner ? '站主' : '留言人') + '</span>' +
+          '<span class="turn-text">' + esc(t.body) + '</span></div>';
+      });
+      return '<div class="msg-thread">' + out + '</div>';
+    }
+
     function render(list) {
       grid.innerHTML = '';
       emptyEl.hidden = list.length > 0;
@@ -155,17 +182,57 @@
         if (i < 3) card.classList.add('reveal');
         if (i === 1) card.classList.add('d1');
         if (i === 2) card.classList.add('d2');
-        var replyHtml = m.reply
-          ? '<div class="msg-reply"><b>站主:</b>' + esc(m.reply) + '</div>' : '';
         card.innerHTML =
           '<div class="msg-head"><b class="msg-name">' + esc(m.name) + '</b>' +
           '<span class="msg-time">' + fmtTime(m.ts) + '</span></div>' +
-          '<div class="msg-body-text">' + esc(m.body) + '</div>' + replyHtml;
+          '<div class="msg-body-text">' + esc(m.body) + '</div>' +
+          threadHtml(m.threads) +
+          (hasToken(m.id)
+            ? '<button class="msg-follow-btn" type="button">💬 继续追问</button>' +
+              '<div class="msg-follow-box" hidden>' +
+              '<textarea class="sf-input" rows="2" maxlength="140" ' +
+              'placeholder="追问一句(140 字内,审核后显示)"></textarea>' +
+              '<div class="msg-follow-foot"><span class="hint msg-follow-tip"></span>' +
+              '<button class="btn msg-follow-send" type="button">发送</button></div></div>'
+            : '');
         // 便签随机小角度,更像贴纸
         var rot = (Math.random() * 4 - 2).toFixed(2);
         card.style.setProperty('--rot', rot + 'deg');
         grid.appendChild(card);
+
+        var fBtn = card.querySelector('.msg-follow-btn');
+        if (fBtn) {
+          var box = card.querySelector('.msg-follow-box');
+          var ta = box.querySelector('textarea');
+          var tip = box.querySelector('.msg-follow-tip');
+          var sBtn = box.querySelector('.msg-follow-send');
+          fBtn.addEventListener('click', function () {
+            box.hidden = !box.hidden;
+            if (!box.hidden) ta.focus();
+          });
+          sBtn.addEventListener('click', function () {
+            var txt = (ta.value || '').trim();
+            if (!txt) { tip.textContent = '写点什么呀~'; return; }
+            sBtn.disabled = true;
+            fetch('/api/messages/' + m.id + '/follow', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ body: txt, token: getTokens()[m.id] })
+            }).then(function (r) { return r.json(); }).then(function (d) {
+              if (d.ok) {
+                ta.value = '';
+                box.hidden = true;
+                tip.textContent = '';
+                if (typeof showToast === 'function') showToast('追问已提交,审核后显示');
+              } else {
+                tip.textContent = d.error || '发送失败';
+              }
+            }).catch(function () { tip.textContent = '网络开小差了'; })
+              .finally(function () { sBtn.disabled = false; });
+          });
+        }
       });
+
       // v2.0.2 修复:卡片是 fetch 后动态插入的,main.js 的滚动观察器
       // 只在页面加载时收集 .reveal,这些卡永远等不到 visible → 一直透明。
       // 自己观察一轮,进视口就显形
@@ -214,6 +281,7 @@
         }).then(function (r) { return r.json().then(function (d) { return { s: r.status, d: d }; }); })
           .then(function (r) {
             if (r.s === 200 && r.d.ok) {
+              if (r.d.token && r.d.id) setToken(r.d.id, r.d.token);
               tipEl.textContent = '贴上去啦!审核通过后就会出现在墙上 🎨';
               tipEl.classList.remove('warn');
               bodyIn.value = '';

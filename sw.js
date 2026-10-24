@@ -6,7 +6,7 @@
    - API(/api/*): 完全不缓存,永远走网络
    版本号 CACHE_NAME 变更即自动清旧缓存
    ============================================================ */
-const CACHE_NAME = 'mysite-v2.6.0';
+const CACHE_NAME = 'mysite-v2.7.0';
 const OFFLINE_URLS = [
   '/',
   '/about.html', '/skills.html', '/works.html',

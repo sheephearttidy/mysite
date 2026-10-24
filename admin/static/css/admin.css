@@ -675,6 +675,20 @@ select.sf-input:disabled { opacity: .45; cursor: not-allowed; }
   margin-top: 8px; padding: 7px 10px; font-size: 13px;
   background: rgba(126, 200, 184, .14); border-radius: 8px;
 }
+/* v2.7.0:留言对话线程(站主/留言人多轮) */
+.mai-thread { margin-top: 9px; display: flex; flex-direction: column; gap: 6px; }
+.mai-turn {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 6px 10px; border-radius: 9px; font-size: 13px;
+}
+.mai-turn.owner { background: rgba(126, 200, 184, .16); border: 1px solid rgba(126, 200, 184, .4); }
+.mai-turn.guest { background: rgba(255, 255, 255, .5); border: 1px dashed rgba(0, 0, 0, .18); }
+.mai-who { font-size: 11px; opacity: .75; white-space: nowrap; }
+.mai-turntext { flex: 1; min-width: 120px; word-break: break-word; line-height: 1.55; }
+.mai-reply-box { display: flex; gap: 8px; align-items: flex-start; margin-top: 9px; }
+.mai-reply-input { flex: 1; font-size: 13px; resize: vertical; font-family: inherit; }
+[data-theme="dark"] .mai-turn.owner { background: rgba(126, 200, 184, .2); }
+[data-theme="dark"] .mai-turn.guest { background: rgba(255, 255, 255, .06); border-color: rgba(255, 255, 255, .22); }
 .badge { font-size: 11px; padding: 2px 8px; border-radius: 999px; font-weight: 700; }
 .badge.ok { background: #d9f2e5; color: #1d7a4c; }
 .badge.warn { background: #ffedcc; color: #a05e03; }

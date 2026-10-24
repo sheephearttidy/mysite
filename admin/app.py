@@ -521,6 +521,35 @@ def api_messages_post():
 _MSG_LAST = {}
 
 
+@app.post("/api/messages/<int:mid>/follow")
+def api_message_followup(mid):
+    """v2.7.0:访客继续追问。必须带原留言的 token,默认进待审核"""
+    body = request.get_json(silent=True) or {}
+    ip = request.headers.get("X-Forwarded-For", "").split(",")[0].strip() \
+        or request.remote_addr or ""
+    # 先校验凭证(失败不消耗防刷配额),再防刷,最后落库
+    token = body.get("token") or ""
+    if not token:
+        return jsonify(ok=False, error="缺少追问凭证"), 400
+    if not db.verify_guest_token(mid, token):
+        return jsonify(ok=False, error="只有原留言人可以继续追问"), 403
+
+    import time as _t
+    now = _t.time()
+    last = _MSG_LAST.get("f:" + ip, 0)
+    if now - last < 30:
+        wait = int(30 - (now - last))
+        return jsonify(ok=False, error=f"说太快啦,歇 {wait} 秒~"), 429
+    _MSG_LAST["f:" + ip] = now
+
+    r = db.add_guest_followup(mid, body.get("body") or "", token, ip)
+    if not r.get("ok"):
+        return jsonify(r), 400
+    db.add_audit("message_followup", ip, f"追问留言 id={mid}",
+                 request.headers.get("User-Agent", "")[:200])
+    return jsonify(r)
+
+
 @app.get("/api/likes")
 def api_likes_get():
     """全部页面点赞数(公开)"""
@@ -946,7 +975,8 @@ def api_messages_admin():
 @app.post("/api/messages/<int:mid>/mod")
 @login_required
 def api_message_mod(mid):
-    """审核/回复/删除,action = show | hide | pending | reply | delete"""
+    """审核/回复/删除,action = show | hide | pending | reply | delete
+    v2.7.0 追加:thread_show | thread_hide | thread_pending | thread_delete(针对访客追问)"""
     body = request.get_json(silent=True) or {}
     act = body.get("action")
     ok, detail = False, ""
@@ -966,6 +996,15 @@ def api_message_mod(mid):
     elif act == "delete":
         ok = db.del_message(mid)
         detail = "删除留言"
+    elif act in ("thread_show", "thread_hide", "thread_pending"):
+        tid = int(body.get("tid") or 0)
+        ok = db.set_thread_shown(tid, {"thread_show": 1, "thread_hide": 2,
+                                       "thread_pending": 0}[act])
+        detail = f"线程{tid}审核为{act.split('_')[1]}"
+    elif act == "thread_delete":
+        tid = int(body.get("tid") or 0)
+        ok = db.del_thread(tid)
+        detail = f"删除追问 {tid}"
     else:
         return jsonify(error="未知操作"), 400
 

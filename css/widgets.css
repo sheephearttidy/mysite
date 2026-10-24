@@ -170,6 +170,40 @@ select.sf-input { cursor: pointer; }
   background: rgba(126, 200, 184, .14); border-radius: 8px;
 }
 [data-theme="dark"] .msg-reply { background: rgba(126, 200, 184, .18); }
+/* ---- v2.7.0 对话线程:站主气泡靠右、留言人追问靠左 ---- */
+.msg-thread { margin-top: 9px; display: flex; flex-direction: column; gap: 6px; }
+.msg-turn {
+  max-width: 92%; padding: 7px 10px; border-radius: 11px;
+  font-size: 13px; line-height: 1.55; position: relative;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.msg-turn.owner {
+  align-self: flex-end; background: rgba(126, 200, 184, .16);
+  border: 1px solid rgba(126, 200, 184, .45); border-bottom-right-radius: 4px;
+}
+.msg-turn.guest {
+  align-self: flex-start; background: rgba(255, 255, 255, .72);
+  border: 1px dashed rgba(0, 0, 0, .16); border-bottom-left-radius: 4px;
+}
+.turn-who { font-size: 10px; opacity: .6; letter-spacing: .04em; }
+.msg-turn.owner .turn-who { align-self: flex-end; }
+.turn-text { word-break: break-word; }
+[data-theme="dark"] .msg-turn.owner { background: rgba(126, 200, 184, .2); }
+[data-theme="dark"] .msg-turn.guest { background: rgba(255, 255, 255, .07); border-color: rgba(255,255,255,.2); }
+
+.msg-follow-btn {
+  margin-top: 9px; padding: 4px 10px; font-size: 12px; cursor: pointer;
+  background: transparent; color: inherit; border: 1px dashed rgba(0,0,0,.22);
+  border-radius: 999px; opacity: .8; font-family: inherit;
+}
+.msg-follow-btn:hover { opacity: 1; background: rgba(255,255,255,.55); }
+[data-theme="dark"] .msg-follow-btn { border-color: rgba(255,255,255,.28); }
+[data-theme="dark"] .msg-follow-btn:hover { background: rgba(255,255,255,.1); }
+.msg-follow-box { margin-top: 8px; }
+.msg-follow-box .sf-input { width: 100%; font-size: 13px; resize: vertical; }
+.msg-follow-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 5px; }
+.msg-follow-send { padding: 3px 12px; font-size: 12px; }
+.msg-follow-tip { color: #e05656; font-size: 11px; }
 .msg-empty { text-align: center; margin-top: 18px; }
 
 /* 六色便签(莫兰迪);深色态映射在 dark.css(v2.1 归位) */

@@ -119,9 +119,22 @@ CREATE TABLE IF NOT EXISTS messages (
     ts INTEGER NOT NULL,                   -- 发布时间戳
     ip TEXT DEFAULT '',                    -- 仅后台可见(风控用)
     shown INTEGER NOT NULL DEFAULT 0,      -- 0=待审核 1=展示中 2=已隐藏
-    reply TEXT DEFAULT ''                  -- 站长回复(可空)
+    reply TEXT DEFAULT '',                 -- 站长回复(可空,v2.7起作为首条 owner 线程的兼容字段)
+    token TEXT DEFAULT ''                  -- v2.7.0:访客凭证,只有原留言人能继续追问
 );
 CREATE INDEX IF NOT EXISTS idx_messages_ts ON messages(ts);
+
+-- v2.7.0:留言对话线程(留言 -> 站主回复 -> 访客追问 -> 站主再回复)
+CREATE TABLE IF NOT EXISTS message_threads (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    msg_id INTEGER NOT NULL,               -- 关联 messages.id
+    role TEXT NOT NULL DEFAULT 'guest',    -- owner=站主 / guest=访客追问
+    body TEXT NOT NULL,                    -- 内容(不超 140 字)
+    ts INTEGER NOT NULL,                   -- 发送时间戳
+    ip TEXT DEFAULT '',                    -- 仅后台可见
+    shown INTEGER NOT NULL DEFAULT 1       -- 1=公开 0=待审核(访客追问默认待审)
+);
+CREATE INDEX IF NOT EXISTS idx_mthread_msg ON message_threads(msg_id, ts);
 
 -- 点赞(按页面计数,无 cookie 无 IP,纯计数)
 CREATE TABLE IF NOT EXISTS likes (
@@ -623,6 +636,16 @@ def init_db(path):
             c.executemany(
                 "INSERT INTO friendlinks(name,url,emoji,desc,sort) VALUES(?,?,?,?,?)",
                 SEED["friendlinks"])
+        # v2.7.0:留言对话线程
+        # 1) messages 加 token 列(访客追问凭证)
+        mcols = [r["name"] for r in c.execute("PRAGMA table_info(messages)")]
+        if "token" not in mcols:
+            c.execute("ALTER TABLE messages ADD COLUMN token TEXT DEFAULT ''")
+        # 2) 老数据的站长回复(reply 字段)搬进 message_threads,只搬一次
+        c.execute("""INSERT INTO message_threads(msg_id,role,body,ts,ip,shown)
+                     SELECT m.id,'owner',m.reply,m.ts,'',1 FROM messages m
+                     WHERE m.reply!='' AND NOT EXISTS(
+                       SELECT 1 FROM message_threads t WHERE t.msg_id=m.id AND t.role='owner')""")
         # v2.4 音乐:旧库/中间版本的 songs 表可能用的是 song_mid,统一迁到 song_id
         # (官方外链播放器只认数字 songid,mid 喂进去是白屏)
         song_cols = [r["name"] for r in c.execute("PRAGMA table_info(songs)")]
@@ -1259,8 +1282,9 @@ MSG_COLORS = ("pink", "orange", "teal", "purple", "yellow", "blue")
 
 
 def add_message(name: str, body: str, color: str = "", ip: str = "") -> dict:
-    """公开写留言:默认进待审核池,返回脱敏后的记录"""
+    """公开写留言:默认进待审核池。返回一次性访客凭证 token,用于之后继续追问"""
     import time as _t
+    import secrets
     name = (name or "匿名").strip()[:MESSAGE_MAX_NAME] or "匿名"
     body = (body or "").strip()[:MESSAGE_MAX_BODY]
     if not body:
@@ -1268,41 +1292,79 @@ def add_message(name: str, body: str, color: str = "", ip: str = "") -> dict:
     if color not in MSG_COLORS:
         import random
         color = random.choice(MSG_COLORS)
+    token = secrets.token_urlsafe(16)
     with get_db() as c:
         c.execute(
-            "INSERT INTO messages(name,body,color,ts,ip,shown) VALUES(?,?,?,?,?,0)",
-            (name, body, color, int(_t.time()), (ip or "")[:64]))
+            "INSERT INTO messages(name,body,color,ts,ip,shown,token) VALUES(?,?,?,?,?,0,?)",
+            (name, body, color, int(_t.time()), (ip or "")[:64], token))
         mid = c.execute("SELECT last_insert_rowid() id").fetchone()["id"]
-    return {"ok": True, "id": mid, "name": name, "body": body, "color": color}
+    return {"ok": True, "id": mid, "name": name, "body": body,
+            "color": color, "token": token}
+
+
+def _threads_of(c, msg_ids) -> dict:
+    """批量取一批留言的公开线程,避免 N+1"""
+    if not msg_ids:
+        return {}
+    qs = ",".join("?" * len(msg_ids))
+    rows = c.execute(
+        f"""SELECT id,msg_id,role,body,ts FROM message_threads
+            WHERE shown=1 AND msg_id IN ({qs}) ORDER BY ts ASC""",
+        tuple(msg_ids)).fetchall()
+    out = {}
+    for r in rows:
+        out.setdefault(r["msg_id"], []).append(
+            {"id": r["id"], "role": r["role"], "body": r["body"], "ts": r["ts"]})
+    return out
 
 
 def list_messages_public(limit: int = 30) -> list:
-    """前台:只给展示中的,新的在前"""
+    """前台:只给展示中的,新的在前;每条带上公开的对话线程"""
     with get_db() as c:
         rows = c.execute(
-            """SELECT id,name,body,color,ts,reply FROM messages
+            """SELECT id,name,body,color,ts FROM messages
                WHERE shown=1 ORDER BY ts DESC LIMIT ?""", (limit,)).fetchall()
-    return [dict(r) for r in rows]
+        items = [dict(r) for r in rows]
+        ths = _threads_of(c, [m["id"] for m in items])
+    for m in items:
+        m["threads"] = ths.get(m["id"], [])
+    return items
 
 
 def list_messages_admin() -> list:
-    """后台:全部状态,旧的待审核排前面方便处理"""
+    """后台:全部状态 + 全部线程(含待审追问),旧的待审核排前面方便处理"""
     with get_db() as c:
         rows = c.execute(
-            """SELECT id,name,body,color,ts,ip,shown,reply FROM messages
+            """SELECT id,name,body,color,ts,ip,shown FROM messages
                ORDER BY shown ASC, ts DESC LIMIT 500""").fetchall()
-    return [dict(r) for r in rows]
+        items = [dict(r) for r in rows]
+        ids = [m["id"] for m in items]
+        ths = {}
+        if ids:
+            qs = ",".join("?" * len(ids))
+            for r in c.execute(
+                f"""SELECT id,msg_id,role,body,ts,shown FROM message_threads
+                    WHERE msg_id IN ({qs}) ORDER BY ts ASC""", tuple(ids)):
+                ths.setdefault(r["msg_id"], []).append(
+                    {"id": r["id"], "role": r["role"], "body": r["body"],
+                     "ts": r["ts"], "shown": r["shown"]})
+    for m in items:
+        m["threads"] = ths.get(m["id"], [])
+    return items
 
 
 def message_counts() -> dict:
-    """后台卡片:待审 / 展示中 / 总数"""
+    """后台卡片:待审留言 / 展示中 / 总留言 / 待审追问"""
     with get_db() as c:
         pending = c.execute(
             "SELECT COUNT(*) n FROM messages WHERE shown=0").fetchone()["n"]
         shown = c.execute(
             "SELECT COUNT(*) n FROM messages WHERE shown=1").fetchone()["n"]
         total = c.execute("SELECT COUNT(*) n FROM messages").fetchone()["n"]
-    return {"pending": pending, "shown": shown, "total": total}
+        tpending = c.execute(
+            "SELECT COUNT(*) n FROM message_threads WHERE shown=0").fetchone()["n"]
+    return {"pending": pending, "shown": shown, "total": total,
+            "thread_pending": tpending}
 
 
 def set_message_shown(mid: int, shown: int) -> bool:
@@ -1315,14 +1377,70 @@ def set_message_shown(mid: int, shown: int) -> bool:
 
 
 def reply_message(mid: int, reply: str) -> bool:
-    reply = (reply or "").strip()[:140]
+    """v2.7.0:站主回复改为追加一条 owner 线程(不再覆盖),同时回写 reply 兼容字段"""
+    import time as _t
+    reply = (reply or "").strip()[:MESSAGE_MAX_BODY]
+    if not reply:
+        return False
     with get_db() as c:
-        cur = c.execute("UPDATE messages SET reply=? WHERE id=?", (reply, mid))
+        if not c.execute("SELECT 1 FROM messages WHERE id=?", (mid,)).fetchone():
+            return False
+        c.execute(
+            """INSERT INTO message_threads(msg_id,role,body,ts,ip,shown)
+               VALUES(?,'owner',?,?,'',1)""", (mid, reply, int(_t.time())))
+        c.execute("UPDATE messages SET reply=? WHERE id=?", (reply, mid))
+        return True
+
+
+def verify_guest_token(mid: int, token: str) -> bool:
+    """校验访客凭证是否属于该留言(v2.7.0)"""
+    if not token:
+        return False
+    with get_db() as c:
+        row = c.execute("SELECT token FROM messages WHERE id=?", (mid,)).fetchone()
+    return bool(row and row["token"] and row["token"] == token)
+
+
+def add_guest_followup(mid: int, body: str, token: str, ip: str = "") -> dict:
+    """访客继续追问:必须带原留言的 token。默认待审核"""
+    import time as _t
+    body = (body or "").strip()[:MESSAGE_MAX_BODY]
+    if not body:
+        return {"ok": False, "error": "内容不能为空"}
+    if not token:
+        return {"ok": False, "error": "缺少追问凭证"}
+    with get_db() as c:
+        row = c.execute("SELECT token,shown FROM messages WHERE id=?", (mid,)).fetchone()
+        if not row:
+            return {"ok": False, "error": "留言不存在"}
+        if not row["token"] or row["token"] != token:
+            return {"ok": False, "error": "只有原留言人可以继续追问"}
+        c.execute(
+            """INSERT INTO message_threads(msg_id,role,body,ts,ip,shown)
+               VALUES(?,'guest',?,?,?,0)""", (mid, body, int(_t.time()), (ip or "")[:64]))
+        tid = c.execute("SELECT last_insert_rowid() id").fetchone()["id"]
+    return {"ok": True, "id": tid}
+
+
+def set_thread_shown(tid: int, shown: int) -> bool:
+    """审核访客追问:0 待审 / 1 公开 / 2 隐藏"""
+    if shown not in (0, 1, 2):
+        return False
+    with get_db() as c:
+        cur = c.execute("UPDATE message_threads SET shown=? WHERE id=?", (shown, tid))
+        return cur.rowcount > 0
+
+
+def del_thread(tid: int) -> bool:
+    with get_db() as c:
+        cur = c.execute("DELETE FROM message_threads WHERE id=?", (tid,))
         return cur.rowcount > 0
 
 
 def del_message(mid: int) -> bool:
+    """删除留言(连带线程)"""
     with get_db() as c:
+        c.execute("DELETE FROM message_threads WHERE msg_id=?", (mid,))
         cur = c.execute("DELETE FROM messages WHERE id=?", (mid,))
         return cur.rowcount > 0
 
