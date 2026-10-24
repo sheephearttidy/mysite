@@ -179,6 +179,11 @@
         var card = document.createElement('div');
         // v2.0.2 修复:此前 i=0 时 classList.add('') 抛异常导致整墙渲染崩溃
         card.className = 'msg-note msg-' + (m.color || 'pink');
+        // v2.7.2:按内容量决定便签松紧,短句紧凑、长文略收字号
+        var total = (m.body || '').length;
+        (m.threads || []).forEach(function (t) { total += (t.body || '').length; });
+        if (total <= 24) card.classList.add('msg-short');
+        else if (total >= 120) card.classList.add('msg-long');
         if (i < 3) card.classList.add('reveal');
         if (i === 1) card.classList.add('d1');
         if (i === 2) card.classList.add('d2');

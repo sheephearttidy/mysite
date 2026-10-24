@@ -141,18 +141,31 @@ select.sf-input { cursor: pointer; }
 #msgTip.warn { color: #e05656; }
 
 /* ---- 便签墙 ---- */
+/* v2.7.2:改多列瀑布流。原来用 grid,同一行最高的便签会把同排都拉成一样高,
+   一句「喵」也占一大块空白;现在每张便签只按自己的内容撑高,短的自然小。 */
 .msgwall-grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 16px; max-width: 980px; margin: 0 auto;
+  columns: 220px;
+  column-gap: 16px;
+  max-width: 980px; margin: 0 auto;
 }
 .msg-note {
   --rot: 0deg;
+  display: inline-block;      /* 多列布局里不会跨列断开 */
+  width: 100%;
+  margin: 0 0 16px;
+  vertical-align: top;
+  break-inside: avoid;
+  -webkit-column-break-inside: avoid;
   background: #fff; border-radius: 14px; padding: 14px 16px 12px;
   border: 2px solid var(--shadow); box-shadow: 4px 4px 0 var(--shadow);
   transform: rotate(var(--rot));
   transition: transform .18s ease, box-shadow .18s ease;
   position: relative;
 }
+/* 内容长短影响便签的松紧:短句更紧凑、长文稍收字号 */
+.msg-note.msg-short { padding: 11px 13px 9px; }
+.msg-note.msg-short .msg-body-text { font-size: 15px; margin-top: 4px; }
+.msg-note.msg-long .msg-body-text { font-size: 13.5px; }
 .msg-note:hover { transform: rotate(0deg) translateY(-3px); box-shadow: 6px 7px 0 var(--shadow); }
 .msg-note::before {           /* 顶部胶带 */
   content: ''; position: absolute; top: -9px; left: 50%;
