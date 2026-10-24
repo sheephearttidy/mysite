@@ -1,0 +1,21 @@
+<nav class="nav">
+  <div class="container nav-inner">
+    <a href="/" class="logo"><span class="dot"></span><span data-site="site_name">至尊杰的小窝</span></a>
+    <button class="nav-toggle" id="navToggle" aria-label="打开菜单">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
+    <ul class="nav-links" id="navLinks">
+      <li><a href="/" class="{% if page_id == 'index' %}active{% endif %}">首页</a></li>
+      <li><a href="/about.html" class="{% if page_id == 'about' %}active{% endif %}">关于我</a></li>
+      <li><a href="/skills.html" class="{% if page_id == 'skills' %}active{% endif %}">技能树</a></li>
+      <li><a href="/works.html" class="{% if page_id == 'works' %}active{% endif %}">小破项目</a></li>
+      <li><a href="/campus.html" class="{% if page_id == 'campus' %}active{% endif %}">校园日常</a></li>
+      <li><a href="/map.html" class="{% if page_id == 'map' %}active{% endif %}">来访地图</a></li>
+      <li><a href="/contact.html" class="{% if page_id == 'contact' %}active{% endif %}">来找我玩</a></li>
+      <li><button class="theme-toggle" id="themeToggle" aria-label="切换深色模式" title="切换深色模式">
+        <span class="ti-sun">☀️</span><span class="ti-moon">🌙</span>
+      </button></li>
+    </ul>
+  </div>
+</nav>
+

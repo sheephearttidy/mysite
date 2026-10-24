@@ -2,8 +2,8 @@
 
 [![](https://img.shields.io/badge/powered_by-dsh-4D6BFE?style=flat-square&logo=deepseek&logoColor=white)](https://github.com/deepseek-ai/deepseek-harness)
 
-青春贴纸风的学生个人主页,前台纯 HTML / CSS / JavaScript 手搓,零框架零依赖;
-后台是一个 Flask + SQLite 的轻量管理系统,改内容不用再碰代码。
+青春贴纸风的学生个人主页,前台使用 Flask + Jinja 模板输出页面,
+样式和交互仍是原生 CSS / JavaScript;后台用 Flask + SQLite 管理内容。
 
 > 🏫 某某大学 · 某工科专业
 > 🏎️ 爱好某技术方向 · 状态:learning and building
@@ -45,25 +45,24 @@
 | `v2.4.0` | **「最近在听」QQ 音乐区块**(关于我页):后台「内容管理 → 🎵 音乐」增删改查歌单,前台用 QQ 音乐官方外链播放器 `i.y.qq.com/n2/m/outchain/player/index.html?songid=<数字id>` 内嵌播放。后台可直接贴 QQ 音乐分享链接(带 songmid 也行),服务端自动查接口换成播放器要的数字 songid 再入库。**同时修掉两个隐藏故障**:(1) nginx 的 `mysite-headers.conf` 给 `/admin/` 也发了一份无 nonce 的 CSP,浏览器对多条 CSP 取交集 → 带 nonce 的内联数据脚本被拦 → `__ADMIN_DATA__` 为空 → `renderAll()` 首行抛错 → 侧边栏计数全 0、面板全空(留言板因单独拉取仍正常),拆分出 `mysite-headers-nocsp.conf` 供后台/接口专用;(2) `renderAll()` 改为 `safeRender()` 逐个隔离,单个面板渲染异常不再连累其它面板与计数。前台 CSP 补 `frame-src` 放行播放器。测试:v2.4 专项 36 + 前台 Chrome 12 + 全量回归(pages 98 / split 89 / sec 95 / v2.2 28 / v2.3 23)+ v231 12,全绿 |
 | `v2.5.0` | **后台可配置站点信息**。姓名、站名、学校、专业、年级、方向/标签、标语、版权后缀、建站年份共 9 个字段,原先全部硬编码在 7 个前台页面里(仅姓名一项就有 60 处),换人用只能改源码。现在存 `settings` 表,后台「个人信息 → 🏷️ 站点信息」面板逐项编辑,带实时前台效果预览;`/api/page/<name>` 每页返回 `site`,`js/main.js` 的 `applySite()` 套用到导航 logo、首屏标题/徽章/标签、页脚版权、`<title>`、SEO/OG meta、图片 alt、JSON-LD;站名默认值会跟着姓名联动。测试:专项 27/27 + 面板切换 25/25 + 全量回归 369 项全绿 + 生产真机 9/9 |
 | `v2.4.1` | 修「来访地图错了」:**底图换成真实世界地图**(原来是手绘抽象多边形,跟经纬度投影完全对不上——画的大陆实际落在完全错误的经度上,星星被算到空白海面,于是星星飘在空白里、底图只剩几块灰斑)。改用 world-atlas land-110m 真实陆地数据内置进 `map.html`:服务端 TopoJSON 解码 + Douglas-Peucker 简化 + 等距圆柱投影,与 `js/map.js` 的 `project()` 用同一套公式,星星必然落在陆地上;顺带处理极地拉伸(纬度裁 78°N~58°S)、超界碎块、跨 ±180° 经线的回绕直线(拆成独立子路径)。**修「同一城市显示两遍」**:部分城市不在 `cities.js` 经纬度表里,旧逻辑先当普通城市插一条、末尾又汇总插一条「没在地图上」;现在一次循环处理,查不到坐标的标 ❓ 并注明未定位,并补全了缺失的城市坐标。测试:v2.4.1 地图专项 8/8 + 全量回归 369 项全绿 |
+| `v2.6.0` | 前台七页迁入 Jinja 模板,新增共享基础布局/导航/页脚,Flask 同时提供前台页面与后台 API;Nginx 将页面请求反代到 Flask,保留原 `.html` 页面地址。 |
 
 ## 预览
 
 - 线上地址:`https://<你的域名>`
 - 后台入口:`https://<你的域名>/admin`(输密码进入)
-- 本地看前台:在项目根目录起个静态服务器(如 `python -m http.server 8000`)再访问 <http://127.0.0.1:8000>,多页导航才能跳转;直接双击 `index.html` 也能看单页,但页面间跳转会失效(本地无后台时动态内容静默回退)
-- 本地跑后台:`cd admin && python -m venv venv && venv\Scripts\pip install -r requirements.txt && venv\Scripts\python app.py`,然后访问 <http://127.0.0.1:5100/admin>
+- 本地运行:`cd admin && python -m venv .venv && .venv\Scripts\pip install -r requirements.txt && .venv\Scripts\python app.py`,然后访问 <http://127.0.0.1:5100/>。前台模板、API 和后台由同一个 Flask 服务提供。
+- 本地登录后台时,HTTP 不会发送 Secure Cookie;如需登录,在启动前设置 `$env:MYSITE_COOKIE_SECURE='0'`(仅本地开发),再访问 <http://127.0.0.1:5100/admin>
 
 ## 文件结构
 
 ```
 my-portfolio/
-├── index.html            ← 首页(Hero + 数据统计 + 跑马灯 + 窝里导航)
-├── about.html            ← 关于我
-├── skills.html           ← 技能树 + 技能背包
-├── works.html            ← 项目墙
-├── campus.html           ← 校园时间线
-├── map.html              ← 来访地图(访客城市贴纸星星)
-├── contact.html          ← 联系(微信二维码 + GitHub)
+├── templates/front/      ← Flask + Jinja 前台模板
+│   ├── base.html         ← 公共 head、资源引用、导航、页脚与脚本
+│   ├── _nav.html         ← 共用导航(按当前页面标记)
+│   ├── _footer.html      ← 共用页脚、二维码弹窗与返回顶部
+│   └── index/about/...   ← 七个页面主体与各自 SEO 信息
 ├── robots.txt            ← 搜索引擎规则(禁收录 /admin 和 /api)
 ├── sitemap.xml           ← 站点地图
 ├── css/                  ← 前台样式,按层拆分(加载顺序有意义,别乱调)
@@ -162,8 +161,9 @@ my-portfolio/
 | `admin/static/js/holiday.js` / `holiday-fx.js` | 节日检测 + 粒子(与前台同一份) |
 | `admin/templates/*.html` | 只有 HTML 结构 |
 
-后台模板通过 `/admin/static/` 引用资源,由 Flask 的 `static_folder` 提供,
-不经过 Jinja 渲染,所以 CSS/JS 可以直接被浏览器缓存。
+前台模板通过 `templates/front/base.html` 继承公共布局,导航和页脚分别放在
+`_nav.html` 与 `_footer.html`;七个页面只保留自己的 SEO 数据和主体内容。
+CSS/JS 继续作为静态资源提供,统一由基础模板引用;后台资源通过 `/admin/static/` 提供。
 
 **模板数据注入**:`admin.html` 里只剩一小段内联脚本,把后端数据挂到 `window` 上:
 
@@ -180,15 +180,15 @@ window.__ADMIN_MUST_CHANGE__ = {{ 'true' if must_change else 'false' }};
 **缓存版本号**:静态资源 URL 自动带 `?v=<时间戳>`,取 `app.py` 和所有静态文件的
 最大修改时间。每次部署版本号都会变,浏览器立刻拿到新的 CSS/JS,不用手动 Ctrl+F5。
 
-前台 7 个页面(不经过 Jinja)则用**内容哈希**:`js/holiday.js?v=15712256`。
+前台 7 个模板引用使用**内容哈希**:`js/holiday.js?v=15712256`。
 哈希由 `deploy/add_asset_ver.py` 按文件内容算(sha256 前 8 位),文件改了哈希就变,
 URL 跟着变,自动绕过浏览器和 nginx 的 7 天强缓存。
 
 > ⚠️ **改完前台 CSS/JS 后必须重跑一次 `add_asset_ver.py`**,否则 URL 不变,
-> 用户拿到的还是旧缓存文件。脚本会同时更新 7 个页面的引用。
+> 用户拿到的还是旧缓存文件。脚本会更新公共基础模板和地图页的资源引用。
 
 ```bash
-python deploy/add_asset_ver.py    # 重新算哈希并写回 7 个页面
+python deploy/add_asset_ver.py    # 重新算哈希并写回公共模板
 ```
 
 ## 分享卡片与 SEO
@@ -202,7 +202,7 @@ python deploy/add_asset_ver.py    # 重新算哈希并写回 7 个页面
 | `robots.txt` | 允许收录首页,禁止收录 `/admin` 和 `/api` |
 | `sitemap.xml` | 站点地图,提交给搜索引擎 |
 
-`index.html` 头部有完整的 `og:*`、`twitter:*` 和 JSON-LD 结构化数据。
+`templates/front/index.html` 有首页 JSON-LD;共享基础模板统一输出 `og:*` 与 `twitter:*` 标签。
 
 ## 访问统计
 
@@ -292,14 +292,14 @@ python deploy/add_asset_ver.py    # 重新算哈希并写回 7 个页面
 | 技能 / 时间线 / 统计 / 项目墙 / 关于我 | 后台 `https://<你的域名>/admin` 在线改(推荐) |
 | 图片素材 | 后台上传,或直接替换 `assets/` 里的文件 |
 | 姓名 / 站名 / 学校 / 专业 / 年级 / 方向 / 标语 / 版权 / 建站年份 | 后台 `https://<你的域名>/admin` → 🏷️ 站点信息(推荐,v2.5 起支持) |
-| 跑马灯文案 | `index.html`(这块没做进后台) |
-| 关于我文案 / 技能背包 / 作品兜底卡片 | `about.html` / `skills.html` / `works.html`(后台数据拉不到时显示的兜底) |
-| 联系方式按钮 | `contact.html`(微信按钮 + GitHub) |
+| 跑马灯文案 | `templates/front/index.html`(这块没做进后台) |
+| 关于我文案 / 技能背包 / 作品兜底卡片 | `templates/front/about.html` / `skills.html` / `works.html`(后台数据拉不到时显示的兜底) |
+| 联系方式按钮 | `templates/front/contact.html`(微信按钮 + GitHub) |
 | 节日特效(开关 / 指定节日) | 后台 `https://<你的域名>/admin` → 🎉 前台特效(推荐,可提前预览) |
 | 节日特效(加节日 / 换样式) | `js/holiday.js` + `css/holidays.css` + `js/holiday-fx.js`(后台同步 `admin/static/` 里同一份) |
 | 节日特效默认模式 | `admin/db.py` 的 `FX_DEFAULTS`(默认 `auto` 按日期自动) |
 | 地图星星坐标 | `js/cities.js`(城市名 → 经纬度表) |
-| 地图页文案 / 布局 | `map.html` + `css/home.css` 里 `.map-*` 块 |
+| 地图页文案 / 布局 | `templates/front/map.html` + `css/home.css` 里 `.map-*` 块 |
 | 前台配色(浅色) | `css/base.css` 顶部 `:root` |
 | 前台配色(深色) | `css/dark.css` 的 `[data-theme="dark"]` 块 |
 | 后台配色(浅色) | `admin/static/css/admin.css` 顶部 `:root` |
@@ -313,9 +313,8 @@ python deploy/add_asset_ver.py    # 重新算哈希并写回 7 个页面
 
 ```
 浏览器 → Nginx(80/443, 证书 Let's Encrypt)
-   ├── /            → /var/www/mysite 静态文件
-   ├── /api/...     → 反代到 127.0.0.1:5100(Flask, gunicorn)
-   └── /admin/...   → 同上
+   ├── 页面/API/后台 → 反代到 127.0.0.1:5100(Flask + Jinja, gunicorn)
+   └── CSS/JS/图片   → Nginx 静态文件
 Flask 服务由 systemd 守护(mysite-admin.service),开机自启、挂了自动拉起
 ```
 

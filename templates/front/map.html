@@ -1,77 +1,12 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>来访地图 · 至尊杰的小窝</title>
-<meta name="description" content="看我这个小窝被哪些城市的朋友逛过 —— 一张星星贴纸地图,记录每一只来访的陌生人。" />
-<meta name="author" content="至尊杰" />
-<meta name="theme-color" content="#ffd93d" media="(prefers-color-scheme: light)" />
-<meta name="theme-color" content="#1b1922" media="(prefers-color-scheme: dark)" />
-<link rel="canonical" href="https://imyxj.xyz/map.html" />
-
-<!-- 图标 -->
-<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
-<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
-
-<!-- 分享卡片 -->
-<meta property="og:type" content="website" />
-<meta property="og:site_name" content="至尊杰的小窝" />
-<meta property="og:title" content="来访地图 · 至尊杰的小窝" />
-<meta property="og:description" content="看我这个小窝被哪些城市的朋友逛过 —— 一张星星贴纸地图,记录每一只来访的陌生人。" />
-<meta property="og:url" content="https://imyxj.xyz/map.html" />
-<meta property="og:image" content="https://imyxj.xyz/assets/og-image.png" />
-<meta property="og:locale" content="zh_CN" />
-
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="css/base.css?v=9c1a3c75" />
-<link rel="stylesheet" href="css/home.css?v=4db91ab2" />
-<link rel="stylesheet" href="css/widgets.css?v=ba07f867" />
-<link rel="stylesheet" href="css/dark.css?v=8e37ff2c" />
-<link rel="stylesheet" href="css/holidays.css?v=f8ce91f5" />
-<link rel="stylesheet" href="css/responsive.css?v=33168979" />
-<script>
-  // 尽早应用主题,避免深色模式闪白
-  (function () {
-    try {
-      var t = localStorage.getItem('theme');
-      if (!t) t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-      if (t === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-      document.documentElement.setAttribute('data-theme-source',
-        localStorage.getItem('theme') ? 'manual' : 'system');
-    } catch (e) {}
-  })();
-</script>
-  <script src="js/holiday.js?v=15712256"></script>
-  <link rel="manifest" href="/manifest.json" />
-  <meta name="theme-color" content="#ff6b9d" />
-</head>
-<body data-page="map">
-
-<!-- ================= 导航 ================= -->
-<nav class="nav">
-  <div class="container nav-inner">
-    <a href="/" class="logo"><span class="dot"></span><span data-site="site_name">至尊杰的小窝</span></a>
-    <button class="nav-toggle" id="navToggle" aria-label="打开菜单">
-      <svg viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
-    </button>
-    <ul class="nav-links" id="navLinks">
-      <li><a href="/">首页</a></li>
-      <li><a href="/about.html">关于我</a></li>
-      <li><a href="/skills.html">技能树</a></li>
-      <li><a href="/works.html">小破项目</a></li>
-      <li><a href="/campus.html">校园日常</a></li>
-      <li><a href="/map.html" class="active">来访地图</a></li>
-      <li><a href="/contact.html">来找我玩</a></li>
-      <li><button class="theme-toggle" id="themeToggle" aria-label="切换深色模式" title="切换深色模式">
-        <span class="ti-sun">☀️</span><span class="ti-moon">🌙</span>
-      </button></li>
-    </ul>
-  </div>
-</nav>
-
+{% extends 'front/base.html' %}
+{% set page_id = 'map' %}
+{% set description = '看我这个小窝被哪些城市的朋友逛过 —— 一张星星贴纸地图,记录每一只来访的陌生人。' %}
+{% set og_title = '来访地图 · 至尊杰的小窝' %}
+{% set og_description = '看我这个小窝被哪些城市的朋友逛过 —— 一张星星贴纸地图,记录每一只来访的陌生人。' %}
+{% set canonical_url = 'https://imyxj.xyz/map.html' %}
+{% set og_type = 'website' %}
+{% block title %}来访地图 · 至尊杰的小窝{% endblock %}
+{% block content %}
 <!-- ================= 来访地图 ================= -->
 <section id="map" class="sec-yellow page-head">
   <div class="container">
@@ -148,39 +83,6 @@
     <p class="hint" style="margin-top:10px">喜欢这页就点个赞吧,每人每页只能点一次~</p>
   </div>
 </section>
-
-<footer>
-  <div class="container">
-    <p data-site="footer">© 2026 至尊杰 · 燕京理工学院 · 纯手搓 + AI 协作 · learning and building <span class="sprout">🌱</span></p>
-  </div>
-</footer>
-
-<button class="back-top" id="backTop" aria-label="返回顶部">🚀</button>
-
-<!-- 微信二维码弹窗 -->
-<div class="qr-overlay" id="qrOverlay" role="dialog" aria-label="微信二维码">
-  <div class="card qr-box">
-    <button class="qr-close" id="qrClose" aria-label="关闭">✕</button>
-    <img src="assets/wechat-qr.jpg" alt="至尊杰的微信二维码" />
-    <p>微信扫一扫,加个好友吧 🎉</p>
-  </div>
-</div>
-
-<script src="js/theme.js?v=096f27e7"></script>
-<script src="js/core.js?v=9344e996"></script>
-<script src="js/ambience.js?v=53b26589"></script>
-<script src="js/site-extra.js?v=2a9678a9"></script>
-<script src="js/cities.js?v=05791460"></script>
-<script src="js/map.js?v=0851b472"></script>
-<script src="js/main.js?v=1b329a25"></script>
-<script src="js/interact.js?v=c8d12e03"></script>
-<script src="js/holiday-fx.js?v=8d1010f5"></script>
-<script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', function () {
-      navigator.serviceWorker.register('/sw.js').catch(function () {});
-    });
-  }
-</script>
-</body>
-</html>
+{% endblock %}
+{% block page_scripts %}<script src="/js/cities.js?v=05791460"></script>
+<script src="/js/map.js?v=0851b472"></script>{% endblock %}

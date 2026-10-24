@@ -1,47 +1,12 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>至尊杰 · 大学生活实录 🎓</title>
-<meta name="description" content="至尊杰的小窝 —— 燕京理工学院计算机科学与技术,沉迷智能车 AI,正在 learning and building。" />
-<meta name="author" content="至尊杰" />
-<meta name="theme-color" content="#ffd93d" media="(prefers-color-scheme: light)" />
-<meta name="theme-color" content="#1b1922" media="(prefers-color-scheme: dark)" />
-<link rel="canonical" href="https://imyxj.xyz/" />
-
-<!-- 图标 -->
-<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
-<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
-
-<!-- 分享卡片:微信/QQ/Twitter/飞书等 -->
-<meta property="og:type" content="website" />
-<meta property="og:site_name" content="至尊杰的小窝" />
-<meta property="og:title" content="至尊杰 · 大学生活实录 🎓" />
-<meta property="og:description" content="燕京理工学院计算机科学与技术,沉迷智能车 AI,正在 learning and building。" />
-<meta property="og:url" content="https://imyxj.xyz/" />
-<meta property="og:image" content="https://imyxj.xyz/assets/og-image.png" />
-<meta property="og:image:width" content="1200" />
-<meta property="og:image:height" content="630" />
-<meta property="og:image:alt" content="至尊杰的小窝 —— learning and building" />
-<meta property="og:locale" content="zh_CN" />
-
-<!-- Twitter 卡片 -->
-<meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:title" content="至尊杰 · 大学生活实录 🎓" />
-<meta name="twitter:description" content="燕京理工学院计算机科学与技术,沉迷智能车 AI,正在 learning and building。" />
-<meta name="twitter:image" content="https://imyxj.xyz/assets/og-image.png" />
-
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="css/base.css?v=9c1a3c75" />
-<link rel="stylesheet" href="css/home.css?v=4db91ab2" />
-<link rel="stylesheet" href="css/widgets.css?v=ba07f867" />
-<link rel="stylesheet" href="css/dark.css?v=8e37ff2c" />
-<link rel="stylesheet" href="css/holidays.css?v=f8ce91f5" />
-<link rel="stylesheet" href="css/responsive.css?v=33168979" />
-<script type="application/ld+json">
+{% extends 'front/base.html' %}
+{% set page_id = 'index' %}
+{% set description = '至尊杰的小窝 —— 燕京理工学院计算机科学与技术,沉迷智能车 AI,正在 learning and building。' %}
+{% set og_title = '至尊杰 · 大学生活实录 🎓' %}
+{% set og_description = '燕京理工学院计算机科学与技术,沉迷智能车 AI,正在 learning and building。' %}
+{% set canonical_url = 'https://imyxj.xyz/' %}
+{% set og_type = 'website' %}
+{% block title %}至尊杰 · 大学生活实录 🎓{% endblock %}
+{% block head_extra %}<script type="application/ld+json" nonce="{{ csp_nonce }}">
 {
   "@context": "https://schema.org",
   "@type": "Person",
@@ -56,49 +21,8 @@
   "knowsAbout": ["智能车 AI", "计算机视觉", "全栈开发", "嵌入式"],
   "sameAs": ["https://github.com/sheephearttidy"]
 }
-</script>
-<script>
-  // 尽早应用主题,避免深色模式闪白
-  // 优先级:手动选择 > 系统偏好;都没选过就跟随系统
-  (function () {
-    try {
-      var t = localStorage.getItem('theme');
-      if (!t) t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-      if (t === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-      // 告诉 CSS 当前是不是系统在控制,便于按钮显示正确状态
-      document.documentElement.setAttribute('data-theme-source',
-        localStorage.getItem('theme') ? 'manual' : 'system');
-    } catch (e) {}
-  })();
-</script>
-  <script src="js/holiday.js?v=15712256"></script>
-  <link rel="manifest" href="/manifest.json" />
-  <meta name="theme-color" content="#ff6b9d" />
-</head>
-<body data-page="index">
-
-<!-- ================= 导航 ================= -->
-<nav class="nav">
-  <div class="container nav-inner">
-    <a href="/" class="logo"><span class="dot"></span><span data-site="site_name">至尊杰的小窝</span></a>
-    <button class="nav-toggle" id="navToggle" aria-label="打开菜单">
-      <svg viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
-    </button>
-    <ul class="nav-links" id="navLinks">
-      <li><a href="/" class="active">首页</a></li>
-      <li><a href="/about.html">关于我</a></li>
-      <li><a href="/skills.html">技能树</a></li>
-      <li><a href="/works.html">小破项目</a></li>
-      <li><a href="/campus.html">校园日常</a></li>
-      <li><a href="/map.html">来访地图</a></li>
-      <li><a href="/contact.html">来找我玩</a></li>
-      <li><button class="theme-toggle" id="themeToggle" aria-label="切换深色模式" title="切换深色模式">
-        <span class="ti-sun">☀️</span><span class="ti-moon">🌙</span>
-      </button></li>
-    </ul>
-  </div>
-</nav>
-
+</script>{% endblock %}
+{% block content %}
 <!-- ================= Hero ================= -->
 <header class="hero" id="top">
   <span class="doodle d-1">✨</span>
@@ -272,37 +196,4 @@
     <p class="hint" style="margin-top:10px">喜欢这个窝就点个赞吧,每人每页只能点一次~</p>
   </div>
 </section>
-
-<footer>
-  <div class="container">
-    <p data-site="footer">© 2026 至尊杰 · 燕京理工学院 · 纯手搓 + AI 协作 · learning and building <span class="sprout">🌱</span></p>
-  </div>
-</footer>
-
-<button class="back-top" id="backTop" aria-label="返回顶部">🚀</button>
-
-<!-- 微信二维码弹窗 -->
-<div class="qr-overlay" id="qrOverlay" role="dialog" aria-label="微信二维码">
-  <div class="card qr-box">
-    <button class="qr-close" id="qrClose" aria-label="关闭">✕</button>
-    <img src="assets/wechat-qr.jpg" alt="至尊杰的微信二维码" />
-    <p>微信扫一扫,加个好友吧 🎉</p>
-  </div>
-</div>
-
-<script src="js/theme.js?v=096f27e7"></script>
-<script src="js/core.js?v=9344e996"></script>
-<script src="js/ambience.js?v=53b26589"></script>
-<script src="js/site-extra.js?v=2a9678a9"></script>
-<script src="js/main.js?v=1b329a25"></script>
-<script src="js/interact.js?v=c8d12e03"></script>
-<script src="js/holiday-fx.js?v=8d1010f5"></script>
-<script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', function () {
-      navigator.serviceWorker.register('/sw.js').catch(function () {});
-    });
-  }
-</script>
-</body>
-</html>
+{% endblock %}

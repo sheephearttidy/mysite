@@ -1080,6 +1080,16 @@ def import_payload(payload: dict, replace: bool = False) -> dict:
                 c.execute(f"INSERT INTO {table}({cols}) VALUES({marks})", vals)
                 n += 1
             counts[table] = n
+    # site is exported as a key/value object, not a table-shaped list.
+    # Restore only whitelisted fields through the same validation/default path
+    # as the site settings editor.
+    site = payload.get("site")
+    if isinstance(site, dict):
+        allowed_site = {k: v for k, v in site.items()
+                        if k in SITE_FIELDS and isinstance(v, str)}
+        if allowed_site:
+            set_site(allowed_site)
+            counts["site"] = len(allowed_site)
     return counts
 
 

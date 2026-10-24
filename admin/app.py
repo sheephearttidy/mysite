@@ -15,10 +15,12 @@ import urllib.parse
 import urllib.request
 from datetime import datetime, timezone, timedelta
 from functools import wraps
+from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 
 from flask import (Flask, request, jsonify, render_template,
                    redirect, url_for, session, flash, send_from_directory,
-                   make_response)
+                   make_response, abort)
+from jinja2 import ChoiceLoader, FileSystemLoader
 
 import db
 import captcha
@@ -26,6 +28,7 @@ import geo
 import totp as totp_mod
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(BASE_DIR)
 
 # 后台静态资源(CSS/JS)放在 admin/static,不经过 Jinja 渲染。
 # 必须作为构造参数传入:Flask 在 __init__ 里就注册了静态路由,
@@ -33,16 +36,28 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 app = Flask(__name__,
             static_folder=os.path.join(BASE_DIR, "static"),
             static_url_path="/admin/static")
+app.jinja_loader = ChoiceLoader([
+    FileSystemLoader(os.path.join(PROJECT_ROOT, "templates")),
+    app.jinja_loader,
+])
 
 app.secret_key = os.environ.get("MYSITE_SECRET_KEY", os.urandom(24))
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
-app.config["SESSION_COOKIE_SECURE"] = True      # 只走 HTTPS
+app.config["SESSION_COOKIE_SECURE"] = os.environ.get(
+    "MYSITE_COOKIE_SECURE", "1") != "0"      # 生产默认只走 HTTPS;本地 HTTP 可显式关闭
 app.config["SESSION_COOKIE_HTTPONLY"] = True    # 禁止 JS 读取
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=7)
 # 全局上限按上传放宽,但普通 JSON 接口另有更严格的检查(见 before_request)
 app.config["MAX_CONTENT_LENGTH"] = 8 * 1024 * 1024
 
 JSON_MAX_BYTES = 64 * 1024   # 普通 JSON 请求体上限 64KB
+VISIT_TOKEN_MAX_AGE = 4 * 60 * 60
+
+
+def _visit_token(vid: int) -> str:
+    """为停留时长补报签发短期凭证，避免公开接口按递增 ID 篡改记录。"""
+    return URLSafeTimedSerializer(app.secret_key, salt="visit-duration-v1").dumps(
+        {"vid": int(vid)})
 
 # 本站对外域名(v2.3 Origin/Referer 校验用,防跨站伪造写请求)
 SITE_ORIGIN = os.environ.get("MYSITE_SITE_ORIGIN", "https://imyxj.xyz")
@@ -60,7 +75,10 @@ def verify_write_origin():
         return None
     origin = request.headers.get("Origin", "")
     if origin:
-        if origin.rstrip("/") != SITE_ORIGIN:
+        expected = SITE_ORIGIN
+        if request.host.split(":", 1)[0].lower() in ("127.0.0.1", "localhost"):
+            expected = f"{request.scheme}://{request.host}"
+        if origin.rstrip("/") != expected:
             db.add_audit("csrf_block", client_ip(),
                          f"跨站写被拒:{origin} {request.path}")
             return jsonify(error="非法来源(Origin 校验失败)"), 403
@@ -146,7 +164,7 @@ def inject_csp_nonce():
     return {"csp_nonce": getattr(g, "csp_nonce", "")}
 
 
-# 前台静态站由 nginx 直出,CSP 只需要罩住 Flask 渲染的后台页
+# 前台模板和后台页面由 Flask 渲染,统一使用 nonce 与站点资源白名单。
 # v2.3.1 修复:去掉 'strict-dynamic'——它会让浏览器忽略 'self' 且只认
 # nonce 链,导致没带 nonce 的外链模块脚本(admin 七模块/theme/qrcode)
 # 全部被拦,后台 JS 整体失效。改为:所有 <script>(内联+外链)统一带
@@ -155,15 +173,56 @@ CSP_POLICY = (
     "default-src 'self'; "
     "script-src 'self' 'nonce-{nonce}'; "
     "script-src-attr 'unsafe-inline'; "
-    "style-src 'self' 'unsafe-inline'; "
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
     "img-src 'self' data:; "
-    "font-src 'self' data:; "
+    "font-src 'self' data: https://fonts.gstatic.com; "
     "connect-src 'self'; "
+    "frame-src https://i.y.qq.com https://y.qq.com; "
     "frame-ancestors 'self'; "
     "base-uri 'self'; "
     "form-action 'self'; "
     "object-src 'none'"
 )
+
+
+# ---------------- 前台 Jinja 页面 ----------------
+
+FRONT_PAGES = {"index", "about", "skills", "works", "campus", "map", "contact"}
+
+
+@app.get("/")
+def frontend_home():
+    return render_template("front/index.html")
+
+
+@app.get("/<page>.html")
+def frontend_page(page: str):
+    if page not in FRONT_PAGES:
+        abort(404)
+    return render_template(f"front/{page}.html")
+
+
+@app.get("/css/<path:filename>")
+def frontend_css(filename: str):
+    return send_from_directory(os.path.join(PROJECT_ROOT, "css"), filename)
+
+
+@app.get("/js/<path:filename>")
+def frontend_js(filename: str):
+    return send_from_directory(os.path.join(PROJECT_ROOT, "js"), filename)
+
+
+@app.get("/assets/<path:filename>")
+def frontend_assets(filename: str):
+    return send_from_directory(os.path.join(PROJECT_ROOT, "assets"), filename)
+
+
+@app.get("/sw.js")
+@app.get("/manifest.json")
+@app.get("/robots.txt")
+@app.get("/sitemap.xml")
+def frontend_root_asset():
+    return send_from_directory(PROJECT_ROOT, request.path.lstrip("/"))
 
 # 上传目录:放在静态站下面,前台可直接引用
 WEBROOT = os.path.dirname(BASE_DIR)                       # /var/www/mysite
@@ -395,19 +454,24 @@ def track_visit():
                               dur_s=0)
     except Exception:
         return jsonify(ok=False), 200   # 统计失败不影响用户
-    return jsonify(ok=True, vid=vid)
+    return jsonify(ok=True, vid=vid, dur_token=_visit_token(vid))
 
 
 @app.post("/api/track/dur")
 def track_duration():
     """v1.10:离开/隐藏时补报停留时长。vid + dur_s,轻校验。"""
     body = request.get_json(silent=True) or {}
+    token = body.get("dur_token") or ""
     try:
-        vid = int(body.get("vid") or 0)
-    except (TypeError, ValueError):
-        vid = 0
-    if vid <= 0:
-        return jsonify(ok=False), 400
+        claims = URLSafeTimedSerializer(
+            app.secret_key, salt="visit-duration-v1").loads(
+                token, max_age=VISIT_TOKEN_MAX_AGE)
+        vid = int(claims.get("vid", 0))
+        supplied_vid = int(body.get("vid") or 0)
+    except (BadSignature, SignatureExpired, TypeError, ValueError, AttributeError):
+        return jsonify(ok=False, error="停留凭证无效或已过期"), 400
+    if vid <= 0 or supplied_vid != vid:
+        return jsonify(ok=False, error="停留凭证无效"), 400
     db.update_visit_dur(vid, body.get("dur_s") or 0)
     return jsonify(ok=True)
 
@@ -1593,7 +1657,11 @@ def import_data():
         return jsonify(error="文件格式不对,需要导出的 JSON"), 400
 
     kinds = ("skills", "timeline", "stats", "works", "profile")
-    if not any(isinstance(payload.get(k), list) for k in kinds):
+    site_data = payload.get("site")
+    has_site = isinstance(site_data, dict) and any(
+        key in db.SITE_FIELDS and isinstance(value, str)
+        for key, value in site_data.items())
+    if not has_site and not any(isinstance(payload.get(k), list) for k in kinds):
         return jsonify(error="里面没有可恢复的数据"), 400
 
     replace = bool(payload.get("replace"))

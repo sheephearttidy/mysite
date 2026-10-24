@@ -10,9 +10,9 @@ import sys
 
 sys.stdout.reconfigure(encoding="utf-8")
 
-ROOT = r"D:\Agent_Work_Base\my-portfolio"
-PAGES = ["index.html", "about.html", "skills.html", "works.html",
-         "campus.html", "map.html", "contact.html"]
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PAGES = [os.path.join("templates", "front", "base.html"),
+         os.path.join("templates", "front", "map.html")]
 
 # 先算每个资源文件的内容哈希(8 位)
 hashes = {}
@@ -50,13 +50,14 @@ for page in PAGES:
 
     def repl(m):
         attr, url = m.group(1), m.group(2)
-        base = url.split("?")[0]
+        prefix = "/" if url.startswith("/") else ""
+        base = url.lstrip("/").split("?")[0]
         h = hashes.get(base)
         if not h:
             return m.group(0)
-        return f'{attr}="{base}?v={h}"'
+        return f'{attr}="{prefix}{base}?v={h}"'
 
-    html = re.sub(r'(src|href)="((?:js|css)/[^"?]+)(?:\?[^"]*)?"', repl, html)
+    html = re.sub(r'(src|href)="(/?(?:js|css)/[^"?]+)(?:\?[^"]*)?"', repl, html)
 
     if html != orig:
         with io.open(path, "w", encoding="utf-8", newline="\n") as f:
@@ -68,8 +69,8 @@ print()
 print(f"共修改 {changed} 个页面")
 
 # 验证
-print("\n=== 验证 index.html ===")
-with io.open(os.path.join(ROOT, "index.html"), encoding="utf-8") as f:
+print("\n=== 验证公共模板 ===")
+with io.open(os.path.join(ROOT, "templates", "front", "base.html"), encoding="utf-8") as f:
     h = f.read()
-for r in re.findall(r'(?:src|href)="((?:js|css)/[^"]+)"', h):
+for r in re.findall(r'(?:src|href)="/?((?:js|css)/[^"]+)"', h):
     print(f"  {'✓' if '?v=' in r else '✗'} {r}")

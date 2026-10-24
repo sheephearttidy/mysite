@@ -379,6 +379,7 @@ loadDynamicContent();
 
   const payload = JSON.stringify({ path: location.pathname, is_new: isNew });
   let vid = 0;
+  let durToken = '';
   const t0 = Date.now();
 
   // v1.10:停留时长补报(切走/关闭时发;重复发无害,后端取 MAX)
@@ -386,7 +387,7 @@ loadDynamicContent();
     if (!vid) return;
     const dur = Math.round((Date.now() - t0) / 1000);
     if (dur < 1) return;
-    const body = JSON.stringify({ vid, dur_s: dur });
+    const body = JSON.stringify({ vid, dur_token: durToken, dur_s: dur });
     try {
       if (navigator.sendBeacon) {
         navigator.sendBeacon('/api/track/dur',
@@ -410,5 +411,8 @@ loadDynamicContent();
     headers: { 'Content-Type': 'application/json' },
     body: payload,
     keepalive: true,
-  }).then(r => r.json()).then(d => { vid = d.vid || 0; }).catch(() => {});
+  }).then(r => r.json()).then(d => {
+    vid = d.vid || 0;
+    durToken = d.dur_token || '';
+  }).catch(() => {});
 })();

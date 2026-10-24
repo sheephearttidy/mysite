@@ -1,0 +1,86 @@
+{% extends 'front/base.html' %}
+{% set page_id = 'about' %}
+{% set description = '至尊杰 —— 燕京理工学院计算机科学与技术,主攻智能车 AI,前后端都有涉猎,正在 learning and building。' %}
+{% set og_title = '关于我 · 至尊杰的小窝' %}
+{% set og_description = '燕京理工学院计算机科学与技术,主攻智能车 AI,正在 learning and building。' %}
+{% set canonical_url = 'https://imyxj.xyz/about.html' %}
+{% set og_type = 'profile' %}
+{% block title %}关于我 · 至尊杰的小窝{% endblock %}
+{% block content %}
+<!-- ================= 关于 ================= -->
+<section id="about" class="sec-yellow page-head">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="tag">ABOUT ME</span>
+      <h2>关于我这只人类 🧍</h2>
+      <div class="wave-line"></div>
+    </div>
+    <div class="about-grid">
+      <div class="card about-card reveal" id="aboutCard">
+        <p><strong>是谁:</strong>至尊杰,燕京理工学院计算机科学与技术 2026 级。每天在
+          <span class="sticker-word sw-teal">上课</span>
+          <span class="sticker-word sw-pink">写代码</span>和
+          <span class="sticker-word sw-yellow">调车</span>
+          之间反复横跳。</p>
+        <p><strong>在干嘛:</strong>主攻方向是智能车 AI——从循迹、避障到让小车自己学会跑圈。
+          前后端也都有涉猎,坚信「能用代码解决的事就不算事」。</p>
+        <p><strong>小目标:</strong>让小车稳稳跑完全程不撞墙,顺便把 AI 和 Agent 玩明白,
+          做出真正能跑起来、有人用的东西。</p>
+      </div>
+      <div class="info-cards" id="infoCards">
+        <div class="info-card reveal"><span class="ic">🎓</span><div class="k">专业</div><div class="v">计算机科学与技术</div></div>
+        <div class="info-card reveal d1"><span class="ic">🏫</span><div class="k">学校</div><div class="v">燕京理工学院</div></div>
+        <div class="info-card reveal d2"><span class="ic">🔥</span><div class="k">正在沉迷</div><div class="v">智能车 AI</div></div>
+        <div class="info-card reveal d3"><span class="ic">⚡</span><div class="k">当前状态</div><div class="v">learning & building</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 荣誉墙(v2.2) ================= -->
+<section class="sec-teal" id="honors">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="tag">HONORS</span>
+      <h2>荣誉小墙 🏆</h2>
+      <div class="wave-line"></div>
+      <p class="section-sub">拿过的奖、踩过的坑,都值得贴出来晒晒</p>
+    </div>
+    <div class="honor-grid" id="honorWall">
+      <div class="honor-card reveal hl-school">
+        <div class="honor-top"><span class="honor-emoji">🏅</span><span class="honor-level">校级</span></div>
+        <div class="honor-year">2024</div>
+        <h3 class="honor-title">校程序设计新生赛</h3>
+        <p class="honor-desc">写代码的手感,是从这里开始的</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 最近在听(v2.4) ================= -->
+<section class="sec-pink" id="music">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="tag">NOW PLAYING</span>
+      <h2>最近在听 🎧</h2>
+      <div class="wave-line"></div>
+      <p class="section-sub">写代码、调车、熬夜的时候,耳机里循环的这几首</p>
+    </div>
+    <div class="music-grid" id="musicList"></div>
+    <p class="music-tip">
+      🎵 播放器来自 QQ 音乐官方外链 · 免费歌曲可完整播放,
+      VIP 歌曲未登录时只能试听 60 秒(版权限制,不是坏了哦)
+    </p>
+  </div>
+</section>
+
+<!-- ================= 点赞 ================= -->
+<section class="sec-cream" id="likebar">
+  <div class="container" style="text-align:center">
+    <button class="like-btn" id="likeBtn" aria-label="给这页点个赞">
+      <span class="like-ico">❤️</span> <span class="like-n">–</span>
+    </button>
+    <p class="hint" style="margin-top:10px">喜欢这页就点个赞吧,每人每页只能点一次~</p>
+  </div>
+</section>
+{% endblock %}

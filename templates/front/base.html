@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>{% block title %}{% endblock %}</title>
+<meta name="description" content="{{ description }}" />
+<meta name="author" content="至尊杰" />
+<meta name="theme-color" content="#ffd93d" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#1b1922" media="(prefers-color-scheme: dark)" />
+<link rel="canonical" href="{{ canonical_url }}" />
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
+<meta property="og:type" content="{{ og_type }}" />
+<meta property="og:site_name" content="至尊杰的小窝" />
+<meta property="og:title" content="{{ og_title }}" />
+<meta property="og:description" content="{{ og_description }}" />
+<meta property="og:url" content="{{ canonical_url }}" />
+<meta property="og:image" content="https://imyxj.xyz/assets/og-image.png" />
+<meta property="og:locale" content="zh_CN" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="{{ og_title }}" />
+<meta name="twitter:description" content="{{ og_description }}" />
+<meta name="twitter:image" content="https://imyxj.xyz/assets/og-image.png" />
+{% if page_id == 'index' %}<meta property="og:image:width" content="1200" /><meta property="og:image:height" content="630" /><meta property="og:image:alt" content="至尊杰的小窝 —— learning and building" />{% endif %}
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/css/base.css?v=9c1a3c75" />
+<link rel="stylesheet" href="/css/home.css?v=4db91ab2" />
+<link rel="stylesheet" href="/css/widgets.css?v=ba07f867" />
+<link rel="stylesheet" href="/css/dark.css?v=8e37ff2c" />
+<link rel="stylesheet" href="/css/holidays.css?v=f8ce91f5" />
+<link rel="stylesheet" href="/css/responsive.css?v=33168979" />
+{% block head_extra %}{% endblock %}
+<script nonce="{{ csp_nonce }}">
+(function(){try{var t=localStorage.getItem('theme');if(!t)t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';if(t==='dark')document.documentElement.setAttribute('data-theme','dark');document.documentElement.setAttribute('data-theme-source',localStorage.getItem('theme')?'manual':'system')}catch(e){}})();
+</script>
+<script src="/js/holiday.js?v=15712256"></script>
+<link rel="manifest" href="/manifest.json" />
+<meta name="theme-color" content="#ff6b9d" />
+</head>
+<body data-page="{{ page_id }}">
+{% include 'front/_nav.html' %}
+{% block content %}{% endblock %}
+{% include 'front/_footer.html' %}
+<script src="/js/theme.js?v=096f27e7"></script>
+<script src="/js/core.js?v=9344e996"></script>
+<script src="/js/ambience.js?v=53b26589"></script>
+<script src="/js/site-extra.js?v=2a9678a9"></script>
+{% block page_scripts %}{% endblock %}
+<script src="/js/main.js?v=f0c10c6b"></script>
+<script src="/js/interact.js?v=c8d12e03"></script>
+<script src="/js/holiday-fx.js?v=8d1010f5"></script>
+<script nonce="{{ csp_nonce }}">
+if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js').catch(function(){});});}
+</script>
+</body>
+</html>

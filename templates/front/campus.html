@@ -1,0 +1,79 @@
+{% extends 'front/base.html' %}
+{% set page_id = 'campus' %}
+{% set description = '至尊杰的校园打怪升级记录 —— 从开学踏入燕京理工,到一脚踏进智能车,learning and building 持续施工中。' %}
+{% set og_title = '校园日常 · 至尊杰的小窝' %}
+{% set og_description = '从开学踏入燕京理工,到一脚踏进智能车,learning and building 持续施工中。' %}
+{% set canonical_url = 'https://imyxj.xyz/campus.html' %}
+{% set og_type = 'website' %}
+{% block title %}校园日常 · 至尊杰的小窝{% endblock %}
+{% block content %}
+<!-- ================= 校园时间线 ================= -->
+<section id="campus" class="sec-pink page-head">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="tag">CAMPUS LIFE</span>
+      <h2>校园打怪升级记录 🗺️</h2>
+      <div class="wave-line"></div>
+    </div>
+    <div class="timeline">
+      <div class="tl-item reveal" data-emoji="🎒">
+        <div class="card tl-card">
+          <span class="time">2026.09</span>
+          <h3>开学!踏入燕京理工</h3>
+          <p>计算机科学与技术 2026 级新生报到,从此笔记本里装的不只是游戏,还有 IDE。</p>
+        </div>
+      </div>
+      <div class="tl-item reveal" data-emoji="💻">
+        <div class="card tl-card">
+          <span class="time">第一学期</span>
+          <h3>Hello World 启动</h3>
+          <p>从 C 语言的 printf 开始,一路学到 C++ / Python,越学越觉得有意思。</p>
+        </div>
+      </div>
+      <div class="tl-item reveal" data-emoji="🏎️">
+        <div class="card tl-card">
+          <span class="time">入坑</span>
+          <h3>一脚踏进智能车</h3>
+          <p>见到智能车的那一刻 DNA 动了:小车 + AI + 代码,这不就是我要搞的东西吗!</p>
+        </div>
+      </div>
+      <div class="tl-item reveal" data-emoji="🤖">
+        <div class="card tl-card">
+          <span class="time">现在</span>
+          <h3>learning and building</h3>
+          <p>学算法、学系统设计、玩 AI 和 Agent,同时把这个网页搓了出来。持续施工中 🔨</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 随手记(v2.2) ================= -->
+<section class="sec-teal" id="notes">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="tag">NOTES</span>
+      <h2>随手记 📝</h2>
+      <div class="wave-line"></div>
+      <p class="section-sub">零碎的想法和日常,贴一面便签墙</p>
+    </div>
+    <div class="note-grid" id="noteWall">
+      <div class="note-card note-teal reveal">
+        <span class="note-emoji">🛠️</span>
+        <p class="note-text">今天给小车换了新的循迹算法,弯道终于不画龙了!</p>
+        <span class="note-date">–</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 点赞 ================= -->
+<section class="sec-cream" id="likebar">
+  <div class="container" style="text-align:center">
+    <button class="like-btn" id="likeBtn" aria-label="给这页点个赞">
+      <span class="like-ico">❤️</span> <span class="like-n">–</span>
+    </button>
+    <p class="hint" style="margin-top:10px">喜欢这页就点个赞吧,每人每页只能点一次~</p>
+  </div>
+</section>
+{% endblock %}
