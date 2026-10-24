@@ -1353,6 +1353,32 @@ def list_messages_admin() -> list:
     return items
 
 
+def alert_snapshot() -> dict:
+    """v2.7.1 后台实时提醒:待审留言/追问计数 + 最新一条摘要(不含 IP)"""
+    with get_db() as c:
+        mp = c.execute("SELECT COUNT(*) n FROM messages WHERE shown=0").fetchone()["n"]
+        tp = c.execute(
+            "SELECT COUNT(*) n FROM message_threads WHERE shown=0 AND role='guest'"
+        ).fetchone()["n"]
+        latest_msg = c.execute(
+            """SELECT id,name,body,ts FROM messages WHERE shown=0
+               ORDER BY ts DESC LIMIT 1""").fetchone()
+        latest_thr = c.execute(
+            """SELECT t.id,t.msg_id,t.body,t.ts,m.name FROM message_threads t
+               JOIN messages m ON m.id=t.msg_id
+               WHERE t.shown=0 AND t.role='guest'
+               ORDER BY t.ts DESC LIMIT 1""").fetchone()
+        newest_ts = c.execute(
+            "SELECT COALESCE(MAX(ts),0) t FROM messages").fetchone()["t"]
+    return {
+        "pending_messages": mp,
+        "pending_threads": tp,
+        "newest_ts": newest_ts,
+        "latest_message": dict(latest_msg) if latest_msg else None,
+        "latest_thread": dict(latest_thr) if latest_thr else None,
+    }
+
+
 def message_counts() -> dict:
     """后台卡片:待审留言 / 展示中 / 总留言 / 待审追问"""
     with get_db() as c:

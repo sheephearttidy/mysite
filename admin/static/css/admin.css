@@ -817,3 +817,41 @@ body { background: var(--cream); color: var(--ink); }
   .sidebar { box-shadow: 12px 0 32px rgba(25, 31, 45, .14); }
   .main-head { gap: 9px; }
 }
+
+/* ============================================================
+   v2.7.1 后台实时提醒弹窗(新留言 / 新追问)
+   ============================================================ */
+.admin-alert {
+  position: fixed; top: 18px; right: 18px; z-index: 9999;
+  width: min(340px, calc(100vw - 32px));
+  background: var(--card, #fff); color: var(--ink);
+  border: 2px solid var(--shadow); border-radius: 14px;
+  box-shadow: 5px 6px 0 var(--shadow);
+  padding: 12px 14px;
+  transform: translateX(calc(100% + 26px)); opacity: 0;
+  transition: transform .32s cubic-bezier(.2,.9,.3,1.2), opacity .22s ease;
+  pointer-events: none;
+}
+.admin-alert.show { transform: translateX(0); opacity: 1; pointer-events: auto; }
+.aa-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.aa-title { font-size: 14px; }
+.aa-close {
+  background: transparent; border: none; cursor: pointer; font-size: 14px;
+  color: var(--text-3); padding: 2px 4px; line-height: 1; font-family: inherit;
+}
+.aa-close:hover { color: var(--ink); }
+.aa-body { margin-top: 8px; font-size: 13px; line-height: 1.6; }
+.aa-line { margin: 0 0 4px; word-break: break-word; }
+.aa-line:last-child { margin-bottom: 0; }
+.aa-foot { margin-top: 10px; text-align: right; }
+.aa-go {
+  font-size: 12px; padding: 4px 12px; cursor: pointer; font-family: inherit;
+  background: var(--accent, #7ec8b8); color: var(--on-accent, #fff);
+  border: 2px solid var(--shadow); border-radius: 999px;
+  box-shadow: 2px 2px 0 var(--shadow); transition: transform .12s ease;
+}
+.aa-go:hover { transform: translateY(-1px); }
+.sb-link .cnt.has-new {
+  background: #e05656; color: #fff; font-weight: 700;
+}
+[data-theme="dark"] .admin-alert { background: var(--paper, #24222b); }

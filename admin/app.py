@@ -965,6 +965,13 @@ def save_fx_settings():
 
 # ---------------- 留言板(后台管理) ----------------
 
+@app.get("/api/admin/alerts")
+@login_required
+def api_admin_alerts():
+    """v2.7.1:后台实时提醒轮询口。只返回计数 + 最新待审摘要,轻量高频安全"""
+    return jsonify(db.alert_snapshot())
+
+
 @app.get("/api/messages/admin")
 @login_required
 def api_messages_admin():
