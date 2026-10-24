@@ -1,0 +1,51 @@
+{% extends 'front/base.html' %}
+{% set page_id = 'gallery' %}
+{% set description = '至尊杰的相册 —— 校园、旅行、日常里随手拍下的碎片,点开能看大图。' %}
+{% set og_title = '相册 · 至尊杰的小窝' %}
+{% set og_description = '校园、旅行、日常里随手拍下的碎片,点开能看大图。' %}
+{% set canonical_url = 'https://imyxj.xyz/gallery.html' %}
+{% set og_type = 'website' %}
+{% block title %}相册 · 至尊杰的小窝{% endblock %}
+{% block content %}
+<!-- ================= 相册 ================= -->
+<section class="sec-cream page-head" id="gallery">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="tag">ALBUM</span>
+      <h2>相册 📷</h2>
+      <div class="wave-line"></div>
+      <p class="section-sub">随手拍下的碎片,点开看大图</p>
+    </div>
+
+    <!-- 分类筛选 -->
+    <div class="gal-filter reveal" id="galFilter" hidden></div>
+
+    <!-- 照片墙 -->
+    <div class="gal-grid" id="galGrid" aria-live="polite"></div>
+
+    <!-- 空状态 -->
+    <p class="hint gal-empty" id="galEmpty" hidden>
+      相册还空着,等拍了好看的照片再放上来 🌱
+    </p>
+    <p class="hint gal-loading" id="galLoading">正在加载…</p>
+  </div>
+</section>
+
+<!-- 灯箱 -->
+<div class="gal-lightbox" id="galLightbox" hidden>
+  <button class="gal-lb-close" id="galLbClose" aria-label="关闭">✕</button>
+  <button class="gal-lb-nav gal-lb-prev" id="galLbPrev" aria-label="上一张">‹</button>
+  <button class="gal-lb-nav gal-lb-next" id="galLbNext" aria-label="下一张">›</button>
+  <figure class="gal-lb-figure">
+    <img class="gal-lb-img" id="galLbImg" alt="" />
+    <figcaption class="gal-lb-cap">
+      <b id="galLbTitle"></b>
+      <span id="galLbDesc"></span>
+      <span class="gal-lb-meta" id="galLbMeta"></span>
+    </figcaption>
+  </figure>
+</div>
+{% endblock %}
+{% block page_scripts %}
+<script src="/js/gallery.js?v=40306100"></script>
+{% endblock %}

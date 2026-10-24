@@ -11,7 +11,7 @@ import hashlib
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-PAGE_NAMES = ["index", "about", "skills", "works", "campus", "map", "contact"]
+PAGE_NAMES = ["index", "about", "skills", "works", "campus", "map", "contact", "gallery"]
 PAGES = [os.path.join("templates", "front", f"{name}.html") for name in PAGE_NAMES]
 SHARED = [os.path.join("templates", "front", name) for name in
           ("base.html", "_nav.html", "_footer.html")]
@@ -34,7 +34,7 @@ def sha8(path):
 
 
 pages_abs = [os.path.join(ROOT, p) for p in PAGES]
-ck("7 个页面文件存在", all(os.path.exists(p) for p in pages_abs),
+ck("8 个页面文件存在", all(os.path.exists(p) for p in pages_abs),
    str([p for p in pages_abs if not os.path.exists(p)]))
 ck("公共模板文件存在", all(os.path.exists(os.path.join(ROOT, p)) for p in SHARED),
    str([p for p in SHARED if not os.path.exists(os.path.join(ROOT, p))]))
@@ -46,7 +46,7 @@ nav_path = os.path.join(ROOT, "templates", "front", "_nav.html")
 nav_text = io.open(nav_path, encoding="utf-8").read() if os.path.exists(nav_path) else ""
 nav_match = nav_re.search(nav_text)
 nav_links = sorted(link_re.findall(nav_match.group(0))) if nav_match else []
-ck("共享导航包含 6 个子页面链接", len(nav_links) == 6, str(nav_links))
+ck("共享导航包含 7 个子页面链接", len(nav_links) == 7, str(nav_links))
 ck("每页都继承公共布局", all("extends 'front/base.html'" in io.open(p, encoding="utf-8").read()
                                for p in pages_abs if os.path.exists(p)))
 

@@ -430,3 +430,115 @@ select.sf-input { cursor: pointer; }
 @media (prefers-reduced-motion: reduce) {
   .err-digit, .err-zero { animation: none; }
 }
+
+/* ============================================================
+   v3.0.0 前台相册页
+   ============================================================ */
+.gal-filter {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  justify-content: center; margin: 0 auto 22px; max-width: 900px;
+}
+.gal-chip {
+  font-family: inherit; font-size: 13px; font-weight: 700;
+  padding: 6px 14px; cursor: pointer;
+  background: #fff; color: var(--text-2);
+  border: 2px solid var(--shadow); border-radius: 999px;
+  box-shadow: 2px 2px 0 var(--shadow);
+  transition: transform .12s ease, background .15s ease;
+}
+.gal-chip:hover { transform: translateY(-1px); }
+.gal-chip.on { background: var(--pink); color: #fff; }
+.gal-chip i {
+  font-style: normal; font-size: 11px; opacity: .75; margin-left: 2px;
+}
+
+/* 瀑布流 */
+.gal-grid { columns: 260px; column-gap: 16px; max-width: 1100px; margin: 0 auto; }
+.gal-item {
+  display: inline-block; width: 100%; margin: 0 0 16px;
+  break-inside: avoid; -webkit-column-break-inside: avoid;
+  background: #fff; border: 2px solid var(--shadow); border-radius: 14px;
+  box-shadow: 4px 4px 0 var(--shadow); overflow: hidden;
+  cursor: zoom-in; position: relative;
+  opacity: 0; transform: translateY(14px);
+  transition: opacity .5s ease, transform .5s ease, box-shadow .18s ease;
+}
+.gal-item.in { opacity: 1; transform: translateY(0); }
+.gal-item:hover { box-shadow: 6px 7px 0 var(--shadow); }
+.gal-item:focus-visible { outline: 3px solid var(--pink); outline-offset: 3px; }
+.gal-imgwrap { position: relative; width: 100%; overflow: hidden; }
+.gal-imgwrap img {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; display: block;
+  transition: transform .35s ease;
+}
+.gal-item:hover .gal-imgwrap img { transform: scale(1.04); }
+.gal-cap {
+  padding: 8px 12px; font-size: 13px; font-weight: 700;
+  color: var(--text-2); white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+}
+.gal-empty, .gal-loading { text-align: center; margin-top: 24px; }
+
+/* 灯箱 */
+body.lb-open { overflow: hidden; }
+.gal-lightbox {
+  position: fixed; inset: 0; z-index: 9000;
+  background: rgba(16, 14, 20, .92);
+  display: flex; align-items: center; justify-content: center;
+  padding: 40px 60px; animation: lb-fade .2s ease;
+}
+@keyframes lb-fade { from { opacity: 0; } to { opacity: 1; } }
+.gal-lb-figure {
+  margin: 0; max-width: 100%; max-height: 100%;
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+}
+.gal-lb-img {
+  max-width: 100%; max-height: calc(100vh - 180px);
+  object-fit: contain; border-radius: 8px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, .5);
+  background: #111;
+}
+.gal-lb-cap {
+  color: #fff; text-align: center; max-width: 720px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.gal-lb-cap b { font-size: 16px; }
+.gal-lb-cap span { font-size: 13px; opacity: .8; line-height: 1.6; }
+.gal-lb-meta { font-size: 12px !important; opacity: .65 !important; }
+.gal-lb-close, .gal-lb-nav {
+  position: absolute; z-index: 2; cursor: pointer;
+  background: rgba(255, 255, 255, .12); color: #fff;
+  border: 2px solid rgba(255, 255, 255, .28); border-radius: 50%;
+  font-family: inherit; line-height: 1;
+  transition: background .15s ease, transform .12s ease;
+}
+.gal-lb-close:hover, .gal-lb-nav:hover {
+  background: rgba(255, 255, 255, .26); transform: scale(1.06);
+}
+.gal-lb-close {
+  top: 18px; right: 18px; width: 42px; height: 42px; font-size: 17px;
+}
+.gal-lb-nav {
+  top: 50%; transform: translateY(-50%);
+  width: 48px; height: 48px; font-size: 30px; padding-bottom: 4px;
+}
+.gal-lb-prev { left: 14px; }
+.gal-lb-next { right: 14px; }
+.gal-lb-nav:hover { transform: translateY(-50%) scale(1.06); }
+[data-theme="dark"] .gal-chip { background: var(--card, #24222b); }
+[data-theme="dark"] .gal-item { background: var(--card, #24222b); }
+
+@media (max-width: 720px) {
+  .gal-grid { columns: 160px; column-gap: 10px; }
+  .gal-item { margin-bottom: 10px; }
+  .gal-lightbox { padding: 20px 12px; }
+  .gal-lb-img { max-height: calc(100vh - 160px); }
+  .gal-lb-nav { width: 40px; height: 40px; font-size: 24px; }
+  .gal-lb-prev { left: 6px; }
+  .gal-lb-next { right: 6px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gal-item { transition: none; opacity: 1; transform: none; }
+  .gal-item:hover .gal-imgwrap img { transform: none; }
+}

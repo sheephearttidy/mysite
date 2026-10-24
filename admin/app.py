@@ -187,7 +187,8 @@ CSP_POLICY = (
 
 # ---------------- 前台 Jinja 页面 ----------------
 
-FRONT_PAGES = {"index", "about", "skills", "works", "campus", "map", "contact"}
+FRONT_PAGES = {"index", "about", "skills", "works", "campus", "map", "contact",
+               "gallery"}
 
 
 @app.get("/")
