@@ -59,6 +59,8 @@
             🎵 音乐 <span class="sb-count" id="cnt-songs">0</span></a></li>
           <li><a class="sb-link" data-panel="messages" href="#messages">
             ✉️ 留言板 <span class="sb-count" id="cnt-messages">0</span></a></li>
+          <li><a class="sb-link" data-panel="questions" href="#questions">
+            💬 提问箱 <span class="sb-count" id="cnt-questions">0</span></a></li>
         </ul>
       </div>
 
@@ -87,6 +89,8 @@
             🖼️ 图片库 <span class="sb-count" id="cnt-uploads">0</span></a></li>
           <li><a class="sb-link" data-panel="gallery" href="#gallery">
             📷 相册 <span class="sb-count" id="cnt-gallery">0</span></a></li>
+          <li><a class="sb-link" data-panel="doodles" href="#doodles">
+            🎨 涂鸦墙 <span class="sb-count" id="cnt-doodles">0</span></a></li>
         </ul>
       </div>
 
@@ -297,6 +301,33 @@
         </div>
       </section>
 
+      <!-- v3.1.0 涂鸦墙 -->
+      <section class="panel" id="panel-doodles">
+        <div class="sec-head">
+          <div class="msg-cards">
+            <span class="dash-card c1" style="min-width:90px">
+              <span class="dc-num" id="dooPending">0</span>
+              <span class="dc-lbl">待审核</span>
+            </span>
+            <span class="dash-card c2" style="min-width:90px">
+              <span class="dc-num" id="dooShownN">0</span>
+              <span class="dc-lbl">展示中</span>
+            </span>
+            <span class="dash-card c3" style="min-width:90px">
+              <span class="dc-num" id="dooTotalN">0</span>
+              <span class="dc-lbl">累计</span>
+            </span>
+          </div>
+        </div>
+        <div class="item" style="margin-top:16px">
+          <div class="ops" style="margin-bottom:10px">
+            <button class="op edit" onclick="loadDoodles()">🔄 刷新</button>
+          </div>
+          <div id="dooAdminList"></div>
+          <p class="hint" style="margin-top:8px">访客在「来找我玩」页的画板上涂鸦,交上来默认待审核,点「展示」后前台涂鸦墙才会出现;删除会把图片文件一起删掉</p>
+        </div>
+      </section>
+
       <!-- 数据看板 -->
       <section class="panel" id="panel-dashboard">
         <div class="sec-head">
@@ -427,6 +458,33 @@
         </div>
       </section>
 
+      <!-- v3.1.0 提问箱 -->
+      <section class="panel" id="panel-questions">
+        <div class="sec-head">
+          <div class="msg-cards">
+            <span class="dash-card c1" style="min-width:90px">
+              <span class="dc-num" id="qPending">0</span>
+              <span class="dc-lbl">待回答</span>
+            </span>
+            <span class="dash-card c2" style="min-width:90px">
+              <span class="dc-num" id="qShownN">0</span>
+              <span class="dc-lbl">已公开</span>
+            </span>
+            <span class="dash-card c3" style="min-width:90px">
+              <span class="dc-num" id="qTotalN">0</span>
+              <span class="dc-lbl">累计</span>
+            </span>
+          </div>
+        </div>
+        <div class="item" style="margin-top:16px">
+          <div class="ops" style="margin-bottom:10px">
+            <button class="op edit" onclick="loadQuestions()">🔄 刷新</button>
+          </div>
+          <div id="qAdminList"></div>
+          <p class="hint" style="margin-top:8px">访客在「来找我玩」页匿名提问;写下回答就自动公开(问题+回答一起展示在前台),不想展示的回答完再点「隐藏」就行</p>
+        </div>
+      </section>
+
       <!-- 点赞统计 -->
       <section class="panel" id="panel-likes">
         <div class="sec-head">
@@ -547,6 +605,16 @@
               </label>
               <label class="switch">
                 <input type="checkbox" id="fxEffects" />
+                <span class="slider"></span>
+              </label>
+            </div>
+            <div class="sf-row">
+              <label class="sf-label">
+                🐳 小鲸鱼桌宠
+                <span class="sf-note">开着时小鲸鱼会不时从页面左下角探头;深夜 0~5 点换晚安台词(彩蛋立绘同款)</span>
+              </label>
+              <label class="switch">
+                <input type="checkbox" id="fxPet" />
                 <span class="slider"></span>
               </label>
             </div>

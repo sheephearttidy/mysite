@@ -6,7 +6,7 @@
    - API(/api/*): 完全不缓存,永远走网络
    版本号 CACHE_NAME 变更即自动清旧缓存
    ============================================================ */
-const CACHE_NAME = 'mysite-v3.0.0';
+const CACHE_NAME = 'mysite-v3.1.0';
 const OFFLINE_URLS = [
   '/',
   '/about.html', '/skills.html', '/works.html',
@@ -15,7 +15,7 @@ const OFFLINE_URLS = [
   '/css/dark.css', '/css/holidays.css', '/css/responsive.css',
   '/js/holiday.js', '/js/theme.js', '/js/core.js', '/js/ambience.js',
   '/js/main.js', '/js/interact.js', '/js/site-extra.js', '/js/holiday-fx.js',
-  '/js/gallery.js',
+  '/js/gallery.js', '/js/pet.js', '/js/doodle.js',
   '/manifest.json'
 ];
 

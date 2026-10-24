@@ -925,3 +925,17 @@ body { background: var(--cream); color: var(--ink); }
   .ph-ops { flex-direction: row; width: 100%; }
   .ph-ops .op { flex: 1; }
 }
+
+/* ============ v3.1.0 涂鸦墙审核列表 ============ */
+.doo-admin-item {
+  display: flex; gap: 14px; align-items: flex-start;
+  padding: 12px 0; border-bottom: 1px dashed var(--rule);
+}
+.doo-admin-item:last-child { border-bottom: 0; }
+.doo-thumb {
+  flex: 0 0 120px; display: block;
+  border: 2px solid var(--rule-2); border-radius: 10px;
+  overflow: hidden; background: #fff;
+}
+.doo-thumb img { display: block; width: 120px; height: 90px; object-fit: contain; }
+.doo-meta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }

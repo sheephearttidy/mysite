@@ -236,3 +236,136 @@ async function loadLikes() {
     console.error('loadLikes', e);
   }
 }
+
+/* ==================== v3.1.0:提问箱管理 ==================== */
+
+const Q_STATE = { 0: '待回答', 1: '已公开', 2: '已隐藏' };
+
+async function loadQuestions() {
+  try {
+    const d = await api('GET', '/api/questions/admin');
+    const c = d.counts || {};
+    document.getElementById('qPending').textContent = c.pending ?? 0;
+    document.getElementById('qShownN').textContent = c.shown ?? 0;
+    document.getElementById('qTotalN').textContent = c.total ?? 0;
+    const cnt = document.getElementById('cnt-questions');
+    if (cnt) cnt.textContent = c.pending ? `待答${c.pending}` : c.total;
+
+    const list = document.getElementById('qAdminList');
+    if (!d.questions.length) {
+      list.innerHTML = '<p class="hint">还没人提问,去前台「来找我玩」页问问看~</p>';
+      return;
+    }
+    list.innerHTML = d.questions.map(q => `
+      <div class="msg-admin-item" data-id="${q.id}">
+        <div class="mai-head">
+          <b>🫥 匿名</b>
+          <span class="badge ${MSG_STATE_CLS[q.shown]}">${Q_STATE[q.shown]}</span>
+          <span class="hint">${fmtMsgTime(q.ts)} · ${esc(q.ip || '未知IP')}</span>
+        </div>
+        <div class="mai-body">${esc(q.body)}</div>
+        ${q.answer ? `<div class="mai-thread">
+          <div class="mai-turn owner">
+            <span class="mai-who">🧑‍💻 我的回答</span>
+            <span class="mai-turntext">${esc(q.answer)}</span>
+          </div></div>` : ''}
+        <div class="mai-reply-box">
+          <textarea class="sf-input mai-reply-input" rows="2" maxlength="500"
+            placeholder="${q.answer ? '改写回答(回车提交,Shift+回车换行)' : '写下回答(500 字内,回车提交,回答即公开)'}">${q.answer ? esc(q.answer) : ''}</textarea>
+          <button class="op save" onclick="qAnswerInline(${q.id}, this)">💬 提交回答</button>
+        </div>
+        <div class="ops" style="margin-top:8px">
+          ${q.shown !== 1 ? `<button class="op save" onclick="qMod(${q.id},'show')">✅ 公开</button>` : ''}
+          ${q.shown === 1 ? `<button class="op" onclick="qMod(${q.id},'hide')">🙈 隐藏</button>` : ''}
+          ${q.shown === 2 ? `<button class="op" onclick="qMod(${q.id},'pending')">↩️ 移回待答</button>` : ''}
+          <button class="op del" onclick="qDel(${q.id})">🗑️ 删除</button>
+        </div>
+      </div>`).join('');
+
+    // 回车提交(Shift+回车换行)
+    list.querySelectorAll('.mai-reply-input').forEach(ta => {
+      ta.addEventListener('keydown', ev => {
+        if (ev.key === 'Enter' && !ev.shiftKey) {
+          ev.preventDefault();
+          qAnswerInline(Number(ta.closest('.msg-admin-item').dataset.id), ta);
+        }
+      });
+    });
+  } catch (e) {
+    console.error('loadQuestions', e);
+  }
+}
+
+async function qAnswerInline(id, btn) {
+  const box = btn.closest('.mai-reply-box');
+  const ta = box.querySelector('.mai-reply-input');
+  const txt = (ta.value || '').trim();
+  if (!txt) { ta.focus(); return; }
+  btn.disabled = true;
+  try {
+    const d = await api('POST', `/api/questions/${id}/mod`,
+      { action: 'answer', answer: txt });
+    toast('已回答并公开 ✅ 前台刷新可见');
+    loadQuestions();
+  } catch (e) {
+    toast('提交失败:' + e.message);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function qMod(id, action) {
+  try {
+    await api('POST', `/api/questions/${id}/mod`, { action });
+    loadQuestions();
+  } catch (e) { toast('操作失败:' + e.message); }
+}
+
+async function qDel(id) {
+  if (!confirm('删掉这条提问?(连同回答一起删)')) return;
+  qMod(id, 'delete');
+}
+
+/* ==================== v3.1.0:涂鸦墙管理 ==================== */
+
+async function loadDoodles() {
+  try {
+    const d = await api('GET', '/api/doodles/admin');
+    const c = d.counts || {};
+    document.getElementById('dooPending').textContent = c.pending ?? 0;
+    document.getElementById('dooShownN').textContent = c.shown ?? 0;
+    document.getElementById('dooTotalN').textContent = c.total ?? 0;
+    const cnt = document.getElementById('cnt-doodles');
+    if (cnt) cnt.textContent = c.pending ? `待审${c.pending}` : c.total;
+
+    const list = document.getElementById('dooAdminList');
+    if (!d.doodles.length) {
+      list.innerHTML = '<p class="hint">还没收到涂鸦,去前台画板画一张试试~</p>';
+      return;
+    }
+    list.innerHTML = d.doodles.map(x => `
+      <div class="doo-admin-item" data-id="${x.id}">
+        <a href="${x.url}" target="_blank" rel="noopener" class="doo-thumb">
+          <img src="${x.url}" loading="lazy" alt="涂鸦 ${x.id}" /></a>
+        <div class="doo-meta">
+          <span class="badge ${MSG_STATE_CLS[x.shown]}">${MSG_STATE[x.shown]}</span>
+          <span class="hint">${fmtMsgTime(x.ts)} · ${esc(x.ip || '未知IP')} · ${x.width}×${x.height}</span>
+          <div class="ops" style="margin-top:8px">
+            ${x.shown !== 1 ? `<button class="op save" onclick="dooMod(${x.id},'show')">✅ 展示</button>` : ''}
+            ${x.shown === 1 ? `<button class="op" onclick="dooMod(${x.id},'hide')">🙈 隐藏</button>` : ''}
+            <button class="op del" onclick="dooMod(${x.id},'delete')">🗑️ 删除(连文件)</button>
+          </div>
+        </div>
+      </div>`).join('');
+  } catch (e) {
+    console.error('loadDoodles', e);
+  }
+}
+
+async function dooMod(id, action) {
+  if (action === 'delete' && !confirm('删掉这张涂鸦?图片文件会一起删除')) return;
+  try {
+    await api('POST', `/api/doodles/${id}/mod`, { action });
+    loadDoodles();
+  } catch (e) { toast('操作失败:' + e.message); }
+}

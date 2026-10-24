@@ -1,5 +1,5 @@
 /* ============================================================
-   v1.9.0 互动包:留言墙 + 点赞 + 点击粒子 + 标签页标题彩蛋
+   v1.9.0 互动包:留言墙 + 点赞 + 点击粒子 + 标签页标题彩蛋 + 页脚豆芽彩蛋
    零依赖;每个功能独立小模块,互相不影响
    ============================================================ */
 
@@ -310,12 +310,150 @@
     load();
   }
 
+  /* ===================== 匿名提问箱(v2.8.0) ===================== */
+  function initAskbox() {
+    var box = document.getElementById('askbox');
+    var bodyIn = document.getElementById('askBody');
+    var countEl = document.getElementById('askCount');
+    var sendBtn = document.getElementById('askSend');
+    var tipEl = document.getElementById('askTip');
+    var listEl = document.getElementById('qaList');
+    if (!box || !bodyIn || !sendBtn) return;
+
+    function tip(msg, warn) {
+      tipEl.textContent = msg || '';
+      tipEl.classList.toggle('warn', !!warn);
+    }
+
+    function fmtDate(ts) {
+      try {
+        var d = new Date(ts * 1000);
+        return d.getFullYear() + '.' + ('0' + (d.getMonth() + 1)).slice(-2) + '.' +
+               ('0' + d.getDate()).slice(-2);
+      } catch (e) { return ''; }
+    }
+
+    function load() {
+      fetch('/api/questions').then(function (r) { return r.json(); })
+        .then(function (d) { render(d.questions || []); })
+        .catch(function () { });
+    }
+
+    function render(list) {
+      if (!listEl) return;
+      if (!list.length) {
+        listEl.innerHTML = '<p class="hint" style="text-align:center">还没有被翻牌的问题,来投第一个~</p>';
+        return;
+      }
+      listEl.innerHTML = list.map(function (q) {
+        return '<div class="qa-card card">' +
+          '<div class="qa-q"><span class="qa-who">🫥 问</span><span class="qa-text">' + esc(q.body) + '</span></div>' +
+          '<div class="qa-a"><span class="qa-who qa-me">🐳 答</span><span class="qa-text">' + esc(q.answer) + '</span></div>' +
+          '<span class="qa-date">' + fmtDate(q.answered_ts) + '</span>' +
+          '</div>';
+      }).join('');
+    }
+
+    bodyIn.addEventListener('input', function () {
+      countEl.textContent = bodyIn.value.length + ' / 200';
+    });
+
+    sendBtn.addEventListener('click', function () {
+      var body = (bodyIn.value || '').trim();
+      if (!body) { tip('先写点什么呀~ (期待脸)', true); bodyIn.focus(); return; }
+      sendBtn.disabled = true;
+      sendBtn.textContent = '投递中…';
+      fetch('/api/questions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ body: body })
+      }).then(function (r) { return r.json().then(function (d) { return { s: r.status, d: d }; }); })
+        .then(function (r) {
+          if (r.s === 200 && r.d.ok) {
+            tip('投进去啦!被翻牌回答后会贴在下面 💌');
+            bodyIn.value = '';
+            countEl.textContent = '0 / 200';
+          } else {
+            tip(r.d.error || '投递失败,待会儿再试试', true);
+          }
+        })
+        .catch(function () { tip('网络开小差了,再试一次?', true); })
+        .finally(function () {
+          sendBtn.disabled = false;
+          sendBtn.textContent = '📮 投进提问箱';
+        });
+      setTimeout(function () { tip(''); }, 6000);
+    });
+
+    load();
+  }
+
+  /* ===================== 小彩蛋:浇灌页脚的 🌱 ===================== */
+  // 连点 5 次(间隔超 1.6 秒清零)唤醒小鲸鱼;立绘首次触发才加载,平时零开销
+  function initSproutEgg() {
+    var sprout = document.querySelector('footer .sprout');
+    var overlay = document.getElementById('eggOverlay');
+    var closeBtn = document.getElementById('eggClose');
+    if (!sprout || !overlay || !closeBtn) return;
+
+    var clicks = 0, last = 0;
+
+    sprout.addEventListener('click', function () {
+      var now = Date.now();
+      clicks = (now - last > 1600) ? 1 : clicks + 1;
+      last = now;
+      // 每次点都更用力地长一下
+      sprout.style.setProperty('--pop', (1.3 + clicks * 0.3).toFixed(2));
+      sprout.classList.remove('charged');
+      void sprout.offsetWidth;               // 重置动画
+      sprout.classList.add('charged');
+      if (clicks < 5) return;
+      clicks = 0;
+      var img = document.getElementById('eggImg');
+      if (img && !img.getAttribute('src')) img.src = '/assets/easter-whale.png';
+      overlay.classList.add('open');
+      eggBubbles();
+    });
+
+    sprout.addEventListener('animationend', function () {
+      sprout.classList.remove('charged');
+    });
+
+    function close() { overlay.classList.remove('open'); }
+    closeBtn.addEventListener('click', close);
+    overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') close();
+    });
+
+    // 气泡从页面底部往上飘(尊重「动效总开关」)
+    function eggBubbles() {
+      if (document.documentElement.getAttribute('data-fx-off') === '1') return;
+      for (var i = 0; i < 14; i++) {
+        (function (i) {
+          setTimeout(function () {
+            var b = document.createElement('span');
+            b.className = 'egg-bubble';
+            b.textContent = Math.random() < 0.65 ? '🫧' : '✨';
+            b.style.left = (5 + Math.random() * 90) + 'vw';
+            b.style.fontSize = (13 + Math.random() * 17).toFixed(0) + 'px';
+            b.style.animationDuration = (2.4 + Math.random() * 1.8).toFixed(2) + 's';
+            document.body.appendChild(b);
+            setTimeout(function () { b.remove(); }, 4400);
+          }, i * 90);
+        })(i);
+      }
+    }
+  }
+
   /* ===================== 启动 ===================== */
   function boot() {
     initTitleEgg();
     initClickFx();
     initLikes();
     initMsgwall();
+    initAskbox();
+    initSproutEgg();
   }
 
   if (document.readyState === 'loading') {

@@ -182,3 +182,6 @@ deploy/_smoke_*.py
 deploy/_probe*
 deploy/_server_*.conf
 *.local
+
+# AI 工具本地会话计划(不入库)
+.zcode/

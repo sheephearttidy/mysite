@@ -1,5 +1,6 @@
 /* ============================================================
-   后台 · admin-alert:新留言/新追问 实时提醒(v2.7.1)
+   后台 · admin-alert:新留言/新追问/新提问/新涂鸦 实时提醒
+   - v2.7.1 留言+追问;v3.1.0 加提问箱+涂鸦墙
    - 轮询 /api/admin/alerts(轻量,只返计数+摘要)
    - 只在「待审数量变多」时弹窗,首次加载只建基线不打扰
    - 页面隐藏时暂停轮询,回到前台立刻补一次
@@ -14,6 +15,7 @@ let _alertTimer = null;
 let _alertHideTimer = null;
 
 /* ---------- 弹窗 DOM(懒创建,避免改动 admin.html 结构) ---------- */
+let _alertGoPanel = 'messages';     // 「去看看」跳去哪个面板
 function _alertEl() {
   let box = document.getElementById('adminAlert');
   if (box) return box;
@@ -29,7 +31,7 @@ function _alertEl() {
   box.querySelector('.aa-close').addEventListener('click', hideAdminAlert);
   box.querySelector('.aa-go').addEventListener('click', () => {
     hideAdminAlert();
-    if (typeof showPanel === 'function') showPanel('messages');
+    if (typeof showPanel === 'function') showPanel(_alertGoPanel);
   });
   return box;
 }
@@ -60,23 +62,32 @@ async function pollAlerts() {
   }
   const pm = d.pending_messages || 0;
   const pt = d.pending_threads || 0;
+  const pq = d.pending_questions || 0;
+  const pd = d.pending_doodles || 0;
 
   // 首次:只记基线,不弹
   if (_alertBase === null) {
-    _alertBase = { pm, pt };
+    _alertBase = { pm, pt, pq, pd };
     syncMsgBadge(pm + pt);
+    syncQBadge(pq);
+    syncDooBadge(pd);
     return;
   }
 
   const newMsg = pm > _alertBase.pm;
   const newThr = pt > _alertBase.pt;
-  _alertBase = { pm, pt };
+  const newQ = pq > _alertBase.pq;
+  const newD = pd > _alertBase.pd;
+  _alertBase = { pm, pt, pq, pd };
   syncMsgBadge(pm + pt);
+  syncQBadge(pq);
+  syncDooBadge(pd);
 
-  if (!newMsg && !newThr) return;
+  if (!newMsg && !newThr && !newQ && !newD) return;
 
   const lines = [];
   let title = '🔔 新消息';
+  _alertGoPanel = 'messages';
   if (newMsg) {
     const m = d.latest_message;
     title = '💌 收到新留言';
@@ -92,11 +103,32 @@ async function pollAlerts() {
       (t.body.length > 60 ? '…' : '') + '」' : ''));
     if (pt > 1) lines.push('还有 ' + (pt - 1) + ' 条待审追问');
   }
+  if (newQ) {
+    const q = d.latest_question;
+    if (!newMsg && !newThr) { title = '❓ 收到新提问'; _alertGoPanel = 'questions'; }
+    lines.push('匿名提问:' + (q && q.body ? '「' + esc(q.body.slice(0, 60)) +
+      (q.body.length > 60 ? '…' : '') + '」' : ''));
+    if (pq > 1) lines.push('还有 ' + (pq - 1) + ' 条待答提问');
+  }
+  if (newD) {
+    if (!newMsg && !newThr && !newQ) { title = '🎨 收到新涂鸦'; _alertGoPanel = 'doodles'; }
+    lines.push('访客交了一张涂鸦,去审核');
+    if (pd > 1) lines.push('还有 ' + (pd - 1) + ' 张待审涂鸦');
+  }
   showAdminAlert(title, lines);
 
-  // 顺手刷新留言面板(如果正开着)
+  // 顺手刷新正开着的对应面板
+  const qp = document.getElementById('panel-questions');
+  if (newQ && qp && qp.classList.contains('active') && typeof loadQuestions === 'function') {
+    loadQuestions();
+  }
+  const dp = document.getElementById('panel-doodles');
+  if (newD && dp && dp.classList.contains('active') && typeof loadDoodles === 'function') {
+    loadDoodles();
+  }
   const panel = document.getElementById('panel-messages');
-  if (panel && panel.classList.contains('active') && typeof loadMessages === 'function') {
+  if ((newMsg || newThr) && panel && panel.classList.contains('active') &&
+      typeof loadMessages === 'function') {
     loadMessages();
   }
 }
@@ -104,6 +136,18 @@ async function pollAlerts() {
 /* 侧边栏角标:待审总数 */
 function syncMsgBadge(n) {
   const cnt = document.getElementById('cnt-messages');
+  if (cnt) cnt.textContent = n || '0';
+  cnt && cnt.classList.toggle('has-new', n > 0);
+}
+
+function syncQBadge(n) {
+  const cnt = document.getElementById('cnt-questions');
+  if (cnt) cnt.textContent = n || '0';
+  cnt && cnt.classList.toggle('has-new', n > 0);
+}
+
+function syncDooBadge(n) {
+  const cnt = document.getElementById('cnt-doodles');
   if (cnt) cnt.textContent = n || '0';
   cnt && cnt.classList.toggle('has-new', n > 0);
 }

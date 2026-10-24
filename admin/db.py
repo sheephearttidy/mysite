@@ -208,7 +208,7 @@ CREATE TABLE IF NOT EXISTS friendlinks (
 );
 
 -- v2.4 音乐(关于我页「最近在听」,官方外链 iframe 播放器)
--- 官方播放器只认数字 songid:https://i.y.qq.com/n2/m/outchain/player/index.html?songid=<id>
+-- 官方播放器只认数字 songid:https://i.y.qq.com/n2/m/outchain/player/index.html?songid=<数字id>
 -- 后台允许贴分享链接(mid),app.py 会自动换成数字 id 再存这里。
 CREATE TABLE IF NOT EXISTS songs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -219,6 +219,30 @@ CREATE TABLE IF NOT EXISTS songs (
     note TEXT DEFAULT '',              -- 一句话安利(可空)
     sort INTEGER NOT NULL DEFAULT 0
 );
+
+-- v3.1.0 提问箱(访客匿名提问,站主回答后才公开)
+CREATE TABLE IF NOT EXISTS questions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    body TEXT NOT NULL,                -- 问题(不超 200 字)
+    ts INTEGER NOT NULL,               -- 提问时间戳
+    ip TEXT DEFAULT '',                -- 仅后台可见(风控用)
+    shown INTEGER NOT NULL DEFAULT 0,  -- 0=待回答 1=已公开 2=已隐藏
+    answer TEXT DEFAULT '',            -- 站主回答(不超 500 字,空=未答)
+    answered_ts INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_questions_ts ON questions(ts);
+
+-- v3.1.0 涂鸦墙(canvas 画完上传,默认待审核;文件在 assets/uploads/ 下)
+CREATE TABLE IF NOT EXISTS doodles (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    file TEXT NOT NULL,                -- 文件名(assets/uploads/ 下)
+    ts INTEGER NOT NULL,               -- 上传时间戳
+    ip TEXT DEFAULT '',                -- 仅后台可见
+    shown INTEGER NOT NULL DEFAULT 0,  -- 0=待审核 1=展示中 2=已隐藏
+    width INTEGER DEFAULT 0,
+    height INTEGER DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_doodles_ts ON doodles(ts);
 """
 
 # 首次建库时灌入的初始数据(与 v1.0.0 静态页一致)
@@ -553,6 +577,7 @@ FX_DEFAULTS = {
     "fx_holiday_mode": "auto",   # auto=按日期自动 / manual=手动指定 / off=全关
     "fx_holiday_key": "",        # manual 模式下生效:节日 key
     "fx_effects": "1",           # 前台动效总开关(1 开 / 0 关)
+    "pet_mode": "on",            # v3.1.0 小鲸鱼桌宠(on 开 / off 关)
 }
 
 HOLIDAY_KEYS = ("national-day", "valentine", "memorial", "new-year",
@@ -1070,6 +1095,213 @@ def delete_song(sid):
         return cur.rowcount > 0
 
 
+# ---------------- v3.1.0 提问箱 ----------------
+
+QUESTION_MAX_BODY = 200
+QUESTION_MAX_ANSWER = 500
+
+
+def add_question(body: str, ip: str = "") -> dict:
+    """公开匿名提问:默认待回答池(不对访客展示)"""
+    import time as _t
+    body = _as_text(body).strip()[:QUESTION_MAX_BODY]
+    if not body:
+        return {"ok": False, "error": "问题不能为空"}
+    with get_db() as c:
+        c.execute("INSERT INTO questions(body,ts,ip,shown) VALUES(?,?,?,0)",
+                  (body, int(_t.time()), (ip or "")[:64]))
+        qid = c.execute("SELECT last_insert_rowid() id").fetchone()["id"]
+    return {"ok": True, "id": qid}
+
+
+def list_questions_public(limit: int = 60) -> list:
+    """前台:只有已回答且公开的,新回答在前(不吐 IP)"""
+    with get_db() as c:
+        rows = c.execute(
+            """SELECT id,body,answer,ts,answered_ts FROM questions
+               WHERE shown=1 AND answer!='' ORDER BY answered_ts DESC LIMIT ?""",
+            (limit,)).fetchall()
+    return [dict(r) for r in rows]
+
+
+def list_questions_admin() -> list:
+    """后台:全部状态(待回答的排前面),含 IP"""
+    with get_db() as c:
+        rows = c.execute(
+            """SELECT id,body,answer,ts,ip,shown,answered_ts FROM questions
+               ORDER BY shown ASC, answered_ts DESC, ts DESC LIMIT 500""").fetchall()
+    return [dict(r) for r in rows]
+
+
+def answer_question(qid: int, answer: str) -> dict:
+    """站主回答:写入答案、盖上回答时间,并把状态切到公开"""
+    answer = _as_text(answer).strip()[:QUESTION_MAX_ANSWER]
+    if not answer:
+        return {"ok": False, "error": "回答不能为空"}
+    import time as _t
+    with get_db() as c:
+        row = c.execute("SELECT id FROM questions WHERE id=?", (qid,)).fetchone()
+        if not row:
+            return {"ok": False, "error": "问题不存在"}
+        c.execute("UPDATE questions SET answer=?,answered_ts=?,shown=1 WHERE id=?",
+                  (answer, int(_t.time()), qid))
+        out = c.execute("SELECT id,body,answer,ts,shown,answered_ts FROM questions WHERE id=?",
+                        (qid,)).fetchone()
+    return {"ok": True, "question": dict(out)}
+
+
+def set_question_shown(qid: int, shown: int) -> bool:
+    if shown not in (0, 1, 2):
+        return False
+    with get_db() as c:
+        cur = c.execute("UPDATE questions SET shown=? WHERE id=?", (shown, qid))
+        return cur.rowcount > 0
+
+
+def delete_question(qid: int) -> bool:
+    with get_db() as c:
+        cur = c.execute("DELETE FROM questions WHERE id=?", (qid,))
+        return cur.rowcount > 0
+
+
+def question_counts() -> dict:
+    with get_db() as c:
+        pending = c.execute("SELECT COUNT(*) n FROM questions WHERE shown=0").fetchone()["n"]
+        shown = c.execute("SELECT COUNT(*) n FROM questions WHERE shown=1").fetchone()["n"]
+        total = c.execute("SELECT COUNT(*) n FROM questions").fetchone()["n"]
+    return {"pending": pending, "shown": shown, "total": total}
+
+
+def get_questions_for_export() -> list:
+    """备份用:全部问题(含待答/隐藏)"""
+    with get_db() as c:
+        rows = c.execute(
+            """SELECT id,body,ts,ip,shown,answer,answered_ts
+               FROM questions ORDER BY id ASC""").fetchall()
+    return [dict(r) for r in rows]
+
+
+# ---------------- v3.1.0 涂鸦墙 ----------------
+
+
+def get_doodles_for_export() -> list:
+    """v3.1.1 补:备份用涂鸦列表。
+
+    之前 export 只带了 questions 没带 doodles,换服务器恢复后涂鸦墙会全空。
+    涂鸦的图片文件本身在 assets/uploads/ 下,这里只备份元数据。
+    """
+    with get_db() as c:
+        rows = c.execute(
+            """SELECT id,file,ts,ip,shown,width,height
+               FROM doodles ORDER BY id ASC""").fetchall()
+    return [dict(r) for r in rows]
+
+
+def _doodle_row(r) -> dict:
+    d = dict(r)
+    d["url"] = f"/assets/uploads/{d['file']}"
+    return d
+
+
+def add_doodle(file: str, ip: str = "", width: int = 0, height: int = 0) -> dict:
+    """访客涂鸦上传后登记(文件已由 app.py 校验并落盘),默认待审核"""
+    import time as _t
+    file = _as_text(file).strip()
+    if not file or "/" in file or "\\" in file or file.startswith("."):
+        return {"ok": False, "error": "文件名不合法"}
+    try:
+        width = max(0, min(20000, int(width or 0)))
+        height = max(0, min(20000, int(height or 0)))
+    except (TypeError, ValueError):
+        width = height = 0
+    with get_db() as c:
+        c.execute("INSERT INTO doodles(file,ts,ip,shown,width,height) VALUES(?,?,?,0,?,?)",
+                  (file, int(_t.time()), (ip or "")[:64], width, height))
+        did = c.execute("SELECT last_insert_rowid() id").fetchone()["id"]
+    return {"ok": True, "id": did}
+
+
+def list_doodles_public(limit: int = 36) -> list:
+    """前台:展示中的涂鸦,新的在前(不吐 IP)"""
+    with get_db() as c:
+        rows = c.execute(
+            """SELECT id,file,width,height,ts FROM doodles
+               WHERE shown=1 ORDER BY ts DESC LIMIT ?""", (limit,)).fetchall()
+    return [_doodle_row(r) for r in rows]
+
+
+def list_doodles_admin() -> list:
+    """后台:全部涂鸦(待审核排前面),含 IP"""
+    with get_db() as c:
+        rows = c.execute(
+            """SELECT id,file,ts,ip,shown,width,height FROM doodles
+               ORDER BY shown ASC, ts DESC LIMIT 500""").fetchall()
+    return [_doodle_row(r) for r in rows]
+
+
+def set_doodle_shown(did: int, shown: int) -> bool:
+    if shown not in (0, 1, 2):
+        return False
+    with get_db() as c:
+        cur = c.execute("UPDATE doodles SET shown=? WHERE id=?", (shown, did))
+        return cur.rowcount > 0
+
+
+def delete_doodle(did: int) -> dict:
+    """删记录并返回文件名,由调用方决定是否连文件删"""
+    with get_db() as c:
+        row = c.execute("SELECT file FROM doodles WHERE id=?", (did,)).fetchone()
+        if not row:
+            return {"ok": False, "error": "涂鸦不存在"}
+        c.execute("DELETE FROM doodles WHERE id=?", (did,))
+    return {"ok": True, "file": row["file"]}
+
+
+def doodle_counts() -> dict:
+    with get_db() as c:
+        pending = c.execute("SELECT COUNT(*) n FROM doodles WHERE shown=0").fetchone()["n"]
+        shown = c.execute("SELECT COUNT(*) n FROM doodles WHERE shown=1").fetchone()["n"]
+        total = c.execute("SELECT COUNT(*) n FROM doodles").fetchone()["n"]
+    return {"pending": pending, "shown": shown, "total": total}
+
+
+# ---------------- v3.1.0 那年今日(首页回看卡片) ----------------
+
+
+def get_onthisday() -> dict:
+    """往年同月日的随手记 + 相册照片。今年内的不要(回看才有意思),没数据返回空列表。
+
+    timeline.time_label 是 "2026.09" 这类人读文本,没法可靠解析日期,所以不参与。
+    """
+    import time as _t
+    now = time.localtime(_t.time())
+    if now.tm_mon == 2 and now.tm_mday == 29:      # 闰日没有"往年同一天",直接空
+        return {"notes": [], "photos": []}
+    md = f"{now.tm_mon:02d}-{now.tm_mday:02d}"
+    year = now.tm_year
+    notes, photos = [], []
+    with get_db() as c:
+        # notes.ts 是 unix 时间戳:sqlite 的 strftime 按本地时区?否,unixepoch 是 UTC,
+        # 站点按北京时间运营,直接在 SQL 里算会差 8 小时,拿回 Python 里比
+        rows = c.execute(
+            """SELECT id,emoji,text,mood,ts FROM notes
+               WHERE ts>0 ORDER BY ts DESC LIMIT 2000""").fetchall()
+        for r in rows:
+            lt = _t.localtime(r["ts"])
+            if lt.tm_year < year and (lt.tm_mon, lt.tm_mday) == (now.tm_mon, now.tm_mday):
+                notes.append(dict(r))
+                if len(notes) >= 5:
+                    break
+        # photos.shot_at 是 YYYY-MM-DD 文本,可以直接字符串比较
+        prows = c.execute(
+            f"""SELECT id,file,title,shot_at,width,height FROM photos
+                WHERE shown=1 AND length(shot_at)=10 AND substr(shot_at,6,5)=?
+                  AND substr(shot_at,1,4)+0 < ?
+                ORDER BY shot_at DESC LIMIT 3""", (md, year)).fetchall()
+        photos = [_photo_row(r) for r in prows]
+    return {"notes": notes, "photos": photos}
+
+
 # ---------------- 备份导入 ----------------
 
 IMPORT_FIELDS = {
@@ -1082,6 +1314,7 @@ IMPORT_FIELDS = {
     "notes": ("emoji", "text", "mood", "ts", "sort"),
     "friendlinks": ("name", "url", "emoji", "desc", "sort"),
     "songs": ("title", "artist", "emoji", "song_id", "note", "sort"),
+    "questions": ("body", "ts", "shown", "answer", "answered_ts"),
 }
 
 
@@ -1111,11 +1344,14 @@ IMPORT_TEXT_LIMITS = {
     "color": 20, "pill": 40, "link": 500, "url": 500, "level": 20,
     "time_label": 60, "mood": 20, "text": 500, "artist": 100,
     "song_id": 40, "cover": 40, "kind": 20, "unit": 20, "year": 20,
+    "body": 200, "answer": 500,
 }
 IMPORT_NUM_RANGES = {
     "percent": (0, 100),
     "sort": (-100000, 100000),
     "ts": (0, 4102444800),      # 到 2100 年
+    "answered_ts": (0, 4102444800),
+    "shown": (0, 2),
 }
 IMPORT_ENUMS = {
     "category": ("serious", "passive"),
@@ -1251,6 +1487,69 @@ def import_payload(payload: dict, replace: bool = False) -> dict:
                            VALUES(?,?,?,?,?,?)""", vals[1:])
                 n += 1
             counts["message_threads"] = n
+
+        # v3.1.1 补:提问箱与涂鸦墙也要能恢复,否则换服务器后这两块全空。
+        if replace:
+            c.execute("DELETE FROM questions")
+            c.execute("DELETE FROM doodles")
+
+        q_rows = payload.get("questions")
+        if isinstance(q_rows, list):
+            n = 0
+            for row in q_rows:
+                if not isinstance(row, dict) or not row.get("body"):
+                    continue
+                fields = ("id", "body", "ts", "ip", "shown", "answer", "answered_ts")
+                vals = tuple(row.get(f) for f in fields)
+                vals = (vals[0], _as_text(vals[1])[:300], vals[2] or 0,
+                        vals[3] or "", vals[4] if vals[4] is not None else 0,
+                        _as_text(vals[5])[:500], vals[6] or 0)
+                rid = vals[0]
+                exists = (rid is not None and c.execute(
+                    "SELECT 1 FROM questions WHERE id=?", (rid,)).fetchone())
+                if exists:
+                    sets = ",".join(f"{f}=?" for f in fields[1:])
+                    c.execute(f"UPDATE questions SET {sets} WHERE id=?", vals[1:] + (rid,))
+                elif rid is not None:
+                    cols = ",".join(fields)
+                    marks = ",".join("?" * len(fields))
+                    c.execute(f"INSERT INTO questions({cols}) VALUES({marks})", vals)
+                else:
+                    c.execute(
+                        """INSERT INTO questions(body,ts,ip,shown,answer,answered_ts)
+                           VALUES(?,?,?,?,?,?)""", vals[1:])
+                n += 1
+            counts["questions"] = n
+
+        d_rows = payload.get("doodles")
+        if isinstance(d_rows, list):
+            n = 0
+            for row in d_rows:
+                if not isinstance(row, dict) or not row.get("file"):
+                    continue
+                fields = ("id", "file", "ts", "ip", "shown", "width", "height")
+                vals = tuple(row.get(f) for f in fields)
+                vals = (vals[0], _as_text(vals[1]).strip()[:120], vals[2] or 0,
+                        vals[3] or "", vals[4] if vals[4] is not None else 0,
+                        vals[5] or 0, vals[6] or 0)
+                if "/" in vals[1] or "\\" in vals[1] or vals[1].startswith("."):
+                    continue
+                rid = vals[0]
+                exists = (rid is not None and c.execute(
+                    "SELECT 1 FROM doodles WHERE id=?", (rid,)).fetchone())
+                if exists:
+                    sets = ",".join(f"{f}=?" for f in fields[1:])
+                    c.execute(f"UPDATE doodles SET {sets} WHERE id=?", vals[1:] + (rid,))
+                elif rid is not None:
+                    cols = ",".join(fields)
+                    marks = ",".join("?" * len(fields))
+                    c.execute(f"INSERT INTO doodles({cols}) VALUES({marks})", vals)
+                else:
+                    c.execute(
+                        """INSERT INTO doodles(file,ts,ip,shown,width,height)
+                           VALUES(?,?,?,?,?,?)""", vals[1:])
+                n += 1
+            counts["doodles"] = n
     # site is exported as a key/value object, not a table-shaped list.
     # Restore only whitelisted fields through the same validation/default path
     # as the site settings editor.
@@ -1518,7 +1817,8 @@ def list_messages_admin() -> list:
 
 
 def alert_snapshot() -> dict:
-    """v2.7.1 后台实时提醒:待审留言/追问计数 + 最新一条摘要(不含 IP)"""
+    """v2.7.1 后台实时提醒:待审留言/追问计数 + 最新一条摘要(不含 IP)
+    v3.1.0 追加:待答提问 / 待审涂鸦"""
     with get_db() as c:
         mp = c.execute("SELECT COUNT(*) n FROM messages WHERE shown=0").fetchone()["n"]
         tp = c.execute(
@@ -1534,12 +1834,21 @@ def alert_snapshot() -> dict:
                ORDER BY t.ts DESC LIMIT 1""").fetchone()
         newest_ts = c.execute(
             "SELECT COALESCE(MAX(ts),0) t FROM messages").fetchone()["t"]
+        # v3.1.0 提问箱 / 涂鸦墙
+        qp = c.execute("SELECT COUNT(*) n FROM questions WHERE shown=0").fetchone()["n"]
+        dp = c.execute("SELECT COUNT(*) n FROM doodles WHERE shown=0").fetchone()["n"]
+        latest_q = c.execute(
+            """SELECT id,body,ts FROM questions WHERE shown=0
+               ORDER BY ts DESC LIMIT 1""").fetchone()
     return {
         "pending_messages": mp,
         "pending_threads": tp,
         "newest_ts": newest_ts,
         "latest_message": dict(latest_msg) if latest_msg else None,
         "latest_thread": dict(latest_thr) if latest_thr else None,
+        "pending_questions": qp,
+        "pending_doodles": dp,
+        "latest_question": dict(latest_q) if latest_q else None,
     }
 
 

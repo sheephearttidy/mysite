@@ -181,6 +181,30 @@ async function loadDynamicContent() {
   // ---- v2.5 站点信息(每页都套用) ----
   if (data.site) applySite(data.site);
 
+  // ---- v2.8.0 那年今日(首页;往年同月日的随手记/照片,没数据保持隐藏) ----
+  if (data.onthisday) {
+    const box = document.getElementById('onthisday');
+    const items = document.getElementById('otdItems');
+    if (box && items) {
+      const ot = data.onthisday;
+      const parts = [];
+      (ot.notes || []).forEach(n => {
+        const year = new Date(n.ts * 1000).getFullYear();
+        parts.push(`<div class="otd-item"><span class="otd-emoji">${esc(n.emoji || '✏️')}</span>
+          <span class="otd-text"><b>${year} 年的今天</b>写过:${esc(n.text)}</span></div>`);
+      });
+      (ot.photos || []).forEach(p => {
+        parts.push(`<a class="otd-item otd-photo" href="/gallery.html" title="${escAttr(p.title || '那年今日的照片')}">
+          <img src="${escAttr(p.url)}" alt="${escAttr(p.title || '那年今日的照片')}" loading="lazy" />
+          <span class="otd-text"><b>${escAttr((p.shot_at || '').slice(0, 4))} 年的今天</b>拍的照片 → 去相册看</span></a>`);
+      });
+      if (parts.length) {
+        items.innerHTML = parts.join('');
+        box.hidden = false;
+      }
+    }
+  }
+
   // ---- 技能树 ----
   if (Array.isArray(data.skills) && data.skills.length) {
     const colA = document.querySelector('.skills-cols .col-a');

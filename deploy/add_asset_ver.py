@@ -11,8 +11,10 @@ import sys
 sys.stdout.reconfigure(encoding="utf-8")
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# 引用了本地 js/css 的模板都要列进来(v3.1.0:contact.html 带 doodle.js)
 PAGES = [os.path.join("templates", "front", "base.html"),
-         os.path.join("templates", "front", "map.html")]
+         os.path.join("templates", "front", "map.html"),
+         os.path.join("templates", "front", "contact.html")]
 
 # 先算每个资源文件的内容哈希(8 位)
 hashes = {}

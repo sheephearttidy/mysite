@@ -12,11 +12,13 @@ const PANELS = {
   'friendlinks':   { title:'🔗 友情链接管理',  crumb:'内容管理 / 友情链接' },
   'songs':         { title:'🎵 音乐管理',      crumb:'内容管理 / 音乐' },
   'messages':      { title:'✉️ 留言板',        crumb:'内容管理 / 留言板' },
+  'questions':     { title:'💬 提问箱',        crumb:'内容管理 / 提问箱' },
   'profile-about': { title:'✍️ 自我介绍段落',  crumb:'个人信息 / 自我介绍' },
   'profile-info':  { title:'🪪 信息卡片',      crumb:'个人信息 / 信息卡片' },
   'site-info':     { title:'🏷️ 站点信息',      crumb:'个人信息 / 站点信息' },
   'uploads':       { title:'🖼️ 图片库',        crumb:'媒体资源 / 图片库' },
   'gallery':       { title:'📷 相册',          crumb:'媒体资源 / 相册' },
+  'doodles':       { title:'🎨 涂鸦墙',        crumb:'媒体资源 / 涂鸦墙' },
   'dashboard':     { title:'📊 数据看板',      crumb:'站点维护 / 数据看板' },
   'fx':            { title:'🎉 前台特效',      crumb:'站点维护 / 前台特效' },
   'backup':        { title:'💾 数据备份',      crumb:'站点维护 / 数据备份' },
@@ -134,6 +136,8 @@ function showPanel(name) {
 
   // 留言板 / 点赞:按需刷新
   if (name === 'messages') loadMessages();
+  if (name === 'questions' && typeof loadQuestions === 'function') loadQuestions();
+  if (name === 'doodles' && typeof loadDoodles === 'function') loadDoodles();
   if (name === 'likes') loadLikes();
   if (name === 'notices') loadNotices();
   if (name === 'countdown') loadCountdowns();
@@ -242,6 +246,7 @@ async function loadFxSettings() {
     document.getElementById('fxMode').value = mode;
     document.getElementById('fxKey').value = s.fx_holiday_key || '';
     document.getElementById('fxEffects').checked = s.fx_effects !== '0';
+    document.getElementById('fxPet').checked = (s.pet_mode || 'on') !== 'off';
     updateFxKeyDisabled();
   } catch (e) { toast('特效设置加载失败:' + e.message); }
 }
@@ -261,6 +266,7 @@ async function saveFxSettings() {
     fx_holiday_mode: mode,
     fx_holiday_key: mode === 'manual' ? document.getElementById('fxKey').value : '',
     fx_effects: document.getElementById('fxEffects').checked ? '1' : '0',
+    pet_mode: document.getElementById('fxPet').checked ? 'on' : 'off',
   };
   try {
     await api('POST', '/api/security/fx', body);

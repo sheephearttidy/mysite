@@ -96,8 +96,8 @@ def verify_write_origin():
 
 @app.before_request
 def limit_json_body():
-    """除图片上传外,请求体一律不得超过 64KB(防内存放大)"""
-    if request.path == "/api/upload":
+    """除图片上传(后台)与涂鸦上传(访客)外,请求体一律不得超过 64KB(防内存放大)"""
+    if request.path in ("/api/upload", "/api/doodles"):
         return None
     if request.content_length and request.content_length > JSON_MAX_BYTES:
         return jsonify(error="请求体太大了"), 413
@@ -201,6 +201,13 @@ def frontend_page(page: str):
     if page not in FRONT_PAGES:
         abort(404)
     return render_template(f"front/{page}.html")
+
+
+# v3.1.1:/docs/ 下的静态文档(v3.1.0 加的 API 文档页)。
+# v2.6 起所有页面请求都代理到 Flask,纯静态文件不加路由会 404。
+@app.get("/docs/<path:filename>")
+def frontend_docs(filename: str):
+    return send_from_directory(os.path.join(PROJECT_ROOT, "docs"), filename)
 
 
 # ---------------- 错误页(v2.7.6) ----------------
@@ -400,7 +407,7 @@ def api_content():
 # 每个页面需要的数据:拆分多页后,各页只拉自己那部分
 # v2.5:site(站点信息)每页都要,统一带上
 PAGE_FIELDS = {
-    "index": ("site", "stats"),
+    "index": ("site", "stats", "onthisday"),
     "about": ("site", "profile", "honors", "songs"),
     "skills": ("site", "skills"),
     "works": ("site", "works"),
@@ -549,6 +556,37 @@ def api_messages_post():
 
 # 进程内防刷表(ip -> 上次发留言时间)
 _MSG_LAST = {}
+
+# v3.1.0 提问箱(ip -> 上次提问时间),与 _MSG_LAST 同款轻防刷
+_Q_LAST = {}
+
+
+@app.get("/api/questions")
+def api_questions_public():
+    """前台提问箱:只返回已回答且公开的,新的在前(不带 IP)"""
+    return jsonify(questions=db.list_questions_public(60))
+
+
+@app.post("/api/questions")
+def api_questions_post():
+    """匿名提问:公开写,同 IP 60 秒一条,默认待回答(不对访客展示)"""
+    body = request.get_json(silent=True) or {}
+    ip = request.headers.get("X-Forwarded-For", "").split(",")[0].strip() \
+        or request.remote_addr or ""
+    import time as _t
+    now = _t.time()
+    last = _Q_LAST.get(ip, 0)
+    if now - last < 60:
+        wait = int(60 - (now - last))
+        return jsonify(ok=False, error=f"问太快啦,休息 {wait} 秒再问~"), 429
+    _Q_LAST[ip] = now
+
+    r = db.add_question(body=body.get("body") or "", ip=ip)
+    if not r.get("ok"):
+        return jsonify(r), 400
+    db.add_audit("question_new", ip, f"提问 id={r['id']}",
+                 request.headers.get("User-Agent", "")[:200])
+    return jsonify(ok=True, id=r["id"])
 
 
 @app.post("/api/messages/<int:mid>/follow")
@@ -938,11 +976,12 @@ def save_sec_settings():
 
 @app.get("/api/fx")
 def api_fx():
-    """公开:前台读取当前特效配置(节日模式/指定节日/动效总开关)"""
+    """公开:前台读取当前特效配置(节日模式/指定节日/动效总开关/桌宠)"""
     return jsonify(
         mode=db.get_fx("fx_holiday_mode"),
         key=db.get_fx("fx_holiday_key"),
         effects=db.get_fx("fx_effects"),
+        pet=db.get_fx("pet_mode"),
     )
 
 
@@ -981,6 +1020,13 @@ def save_fx_settings():
             return jsonify(error="动效开关只能是 0 或 1"), 400
         db.set_fx("fx_effects", eff)
         changed.append("fx_effects")
+
+    if "pet_mode" in body:
+        pet = str(body["pet_mode"])
+        if pet not in ("on", "off"):
+            return jsonify(error="桌宠开关只能是 on 或 off"), 400
+        db.set_fx("pet_mode", pet)
+        changed.append("pet_mode")
 
     if not changed:
         return jsonify(error="没有要保存的项"), 400
@@ -1713,6 +1759,154 @@ def upload_image():
                    size=len(raw), name=name, width=w, height=h)
 
 
+# ---------------- 涂鸦墙(v3.1.0) ----------------
+
+# 访客涂鸦上限比后台上传严得多:PNG 单张 300KB、边长 1000px
+DOODLE_MAX_BYTES = 300 * 1024
+DOODLE_MAX_SIDE = 1000
+
+# 进程内防刷表(ip -> 上次交涂鸦时间)
+_DOODLE_LAST = {}
+
+
+@app.get("/api/doodles")
+def api_doodles_public():
+    """前台涂鸦墙:只返回展示中的缩略清单"""
+    return jsonify(doodles=db.list_doodles_public(36))
+
+
+@app.post("/api/doodles")
+def api_doodles_post():
+    """访客交涂鸦:multipart PNG,同 IP 120 秒一张,默认待审核。
+
+    与 /api/upload 的区别:公开(无登录)、只收 PNG(前端 canvas 生成)、
+    尺寸/体积上限更紧。路径已在 limit_json_body 里豁免 64KB 限制。
+    """
+    ip = request.headers.get("X-Forwarded-For", "").split(",")[0].strip() \
+        or request.remote_addr or ""
+    import time as _t
+    now = _t.time()
+    last = _DOODLE_LAST.get(ip, 0)
+    if now - last < 120:
+        wait = int(120 - (now - last))
+        return jsonify(ok=False, error=f"画太快啦,歇 {wait} 秒再交~"), 429
+    _DOODLE_LAST[ip] = now
+
+    f = request.files.get("file")
+    if not f or not f.filename:
+        return jsonify(ok=False, error="没有收到画"), 400
+
+    raw = f.read(DOODLE_MAX_BYTES + 1)
+    if len(raw) > DOODLE_MAX_BYTES:
+        return jsonify(ok=False, error="这张画太大了,画布清空一点试试"), 400
+    if sniff_image(raw[:16]) != "png":
+        return jsonify(ok=False, error="只收画板导出的 PNG 哦"), 400
+
+    w, h = image_size(raw, "png")
+    if max(w, h) > DOODLE_MAX_SIDE:
+        return jsonify(ok=False, error="这张画尺寸不对,刷新页面重画试试"), 400
+
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    name = f"doodle-{datetime.now().strftime('%Y%m%d')}-{uuid.uuid4().hex[:12]}.png"
+    path = os.path.join(UPLOAD_DIR, name)
+    with open(path, "wb") as out:
+        out.write(raw)
+    os.chmod(path, 0o644)
+
+    r = db.add_doodle(name, ip=ip, width=w, height=h)
+    if not r.get("ok"):
+        os.remove(path)          # 登记失败(基本不会发生),不留孤儿文件
+        return jsonify(r), 400
+    db.add_audit("doodle_new", ip, f"涂鸦 {name}({len(raw)} 字节)",
+                 request.headers.get("User-Agent", "")[:200])
+    return jsonify(ok=True, id=r["id"])
+
+
+# ---- 涂鸦墙 / 提问箱:后台管理 ----
+
+
+@app.get("/api/questions/admin")
+@login_required
+def api_questions_admin():
+    """后台:全部问题 + 计数"""
+    return jsonify(questions=db.list_questions_admin(),
+                   counts=db.question_counts())
+
+
+@app.post("/api/questions/<int:qid>/mod")
+@login_required
+def api_question_mod(qid):
+    """处理问题。action = answer(回答并公开)| show | hide | pending | delete"""
+    body = request.get_json(silent=True) or {}
+    act = body.get("action")
+    ok, detail = False, ""
+
+    if act == "answer":
+        r = db.answer_question(qid, body.get("answer") or "")
+        ok = bool(r.get("ok"))
+        detail = "回答并公开" if ok else (r.get("error") or "失败")
+    elif act == "show":
+        ok = db.set_question_shown(qid, 1)
+        detail = "公开问题"
+    elif act == "hide":
+        ok = db.set_question_shown(qid, 2)
+        detail = "隐藏问题"
+    elif act == "pending":
+        ok = db.set_question_shown(qid, 0)
+        detail = "移回待答"
+    elif act == "delete":
+        ok = db.delete_question(qid)
+        detail = "删除问题"
+    else:
+        return jsonify(error="不认识的操作"), 400
+
+    db.add_audit("question_mod", client_ip(), f"{detail} id={qid}",
+                 request.headers.get("User-Agent", ""))
+    return (jsonify(ok=True), 200) if ok else (jsonify(error=detail or "not found"), 404)
+
+
+@app.get("/api/doodles/admin")
+@login_required
+def api_doodles_admin():
+    """后台:全部涂鸦 + 计数"""
+    return jsonify(doodles=db.list_doodles_admin(),
+                   counts=db.doodle_counts())
+
+
+@app.post("/api/doodles/<int:did>/mod")
+@login_required
+def api_doodle_mod(did):
+    """审核涂鸦。action = show | hide | delete(delete 连文件一起删)"""
+    body = request.get_json(silent=True) or {}
+    act = body.get("action")
+    ok, detail = False, ""
+
+    if act == "show":
+        ok = db.set_doodle_shown(did, 1)
+        detail = "展示涂鸦"
+    elif act == "hide":
+        ok = db.set_doodle_shown(did, 2)
+        detail = "隐藏涂鸦"
+    elif act == "delete":
+        r = db.delete_doodle(did)
+        ok = bool(r.get("ok"))
+        detail = "删除涂鸦"
+        if ok and r.get("file") and not db.photo_in_album(r["file"]):
+            # 文件被相册引用时保留,只在确属涂鸦文件时物理删
+            p = os.path.join(UPLOAD_DIR, r["file"])
+            if os.path.isfile(p) and r["file"].startswith("doodle-"):
+                try:
+                    os.remove(p)
+                except OSError:
+                    pass
+    else:
+        return jsonify(error="不认识的操作"), 400
+
+    db.add_audit("doodle_mod", client_ip(), f"{detail} id={did}",
+                 request.headers.get("User-Agent", ""))
+    return (jsonify(ok=True), 200) if ok else (jsonify(error="not found"), 404)
+
+
 # ---------------- 相册(v3.0.0) ----------------
 
 @app.get("/api/gallery")
@@ -1847,6 +2041,8 @@ def export_data():
         "songs": db.get_songs(),
         "messages": db.get_messages_for_export(),
         "message_threads": db.get_threads_for_export(),
+        "questions": db.get_questions_for_export(),
+        "doodles": db.get_doodles_for_export(),
         "site": db.get_site(),
     }
     body = json.dumps(payload, ensure_ascii=False, indent=2)
@@ -1868,7 +2064,9 @@ def import_data():
 
     # 修:v2.7.3 之前这里只列了 5 张表,漏掉 honors/notes/friendlinks/songs,
     # 导致只含这几类的备份被误判成「没有可恢复的数据」。直接用 db 的字段表做白名单。
-    kinds = tuple(db.IMPORT_FIELDS.keys())
+    # v3.1.1:再补上非 IMPORT_FIELDS 结构的几张(留言/对话/提问/涂鸦)。
+    kinds = tuple(db.IMPORT_FIELDS.keys()) + (
+        "messages", "message_threads", "questions", "doodles")
     site_data = payload.get("site")
     has_site = isinstance(site_data, dict) and any(
         key in db.SITE_FIELDS and isinstance(value, str)

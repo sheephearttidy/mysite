@@ -5,10 +5,20 @@ footer {
   color: var(--text-3); font-size: 14px; font-weight: 700;
   background: var(--cream);
 }
-footer .sprout { display: inline-block; animation: grow 2.4s ease-in-out infinite; }
+footer .sprout {
+  display: inline-block; animation: grow 2.4s ease-in-out infinite;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
 @keyframes grow {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.25) rotate(-6deg); }
+}
+/* 小彩蛋:连点豆芽时越点越嗨(--pop 由 JS 按点击次数递增) */
+footer .sprout.charged { animation: sprout-pop .5s cubic-bezier(.34, 1.56, .64, 1); }
+@keyframes sprout-pop {
+  0% { transform: scale(1); }
+  45% { transform: scale(var(--pop, 1.6)) rotate(8deg); }
+  100% { transform: scale(1); }
 }
 
 /* ================= 动画 & 返回顶部 ================= */
@@ -66,6 +76,20 @@ footer .sprout { display: inline-block; animation: grow 2.4s ease-in-out infinit
   transition: transform .2s ease;
 }
 .qr-close:hover { transform: rotate(90deg); }
+
+/* ================= 页脚豆芽彩蛋 ================= */
+/* 立绘自带整块黑底,不要二维码图片那种纸色缓冲,圆角稍大更像贴纸 */
+.qr-box img.egg-art { background: transparent; border-radius: 14px; }
+[data-theme="dark"] .qr-box img.egg-art { background: transparent; padding: 0; }
+/* 唤醒时的气泡,从屏幕底部往上飘 */
+.egg-bubble {
+  position: fixed; bottom: -34px; z-index: 210;
+  pointer-events: none; user-select: none;
+  animation: egg-rise linear forwards;
+}
+@keyframes egg-rise {
+  to { transform: translateY(-108vh) scale(1.4); opacity: 0; }
+}
 
 /* ================= 技能背包 ================= */
 .stack-card { padding: 26px 30px 24px; margin-top: 30px; transform: rotate(.4deg); }
@@ -548,4 +572,132 @@ body.lb-open { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) {
   .gal-item { transition: none; opacity: 1; transform: none; }
   .gal-item:hover .gal-imgwrap img { transform: none; }
+}
+
+/* ================= v3.1.0 匿名提问箱 ================= */
+.ask-form { padding: 20px; max-width: 720px; margin: 0 auto 34px; }
+.ask-form .sf-input { width: 100%; resize: vertical; min-height: 84px; }
+.ask-foot { display: flex; align-items: center; gap: 14px; margin-top: 12px; flex-wrap: wrap; }
+.ask-foot .btn { margin-left: auto; }
+.hint.warn { color: var(--pink); }
+.qa-grid { columns: 320px; column-gap: 16px; max-width: 1040px; margin: 0 auto; }
+.qa-card { position: relative; padding: 18px 18px 26px; margin: 0 0 16px; break-inside: avoid; }
+.qa-q, .qa-a { display: flex; gap: 10px; align-items: flex-start; }
+.qa-q { font-weight: 800; }
+.qa-a { margin-top: 10px; padding-top: 10px; border-top: 2px dashed var(--line); }
+.qa-who {
+  flex: 0 0 auto; font-size: 12px; font-weight: 800;
+  background: var(--teal-bg); color: var(--teal);
+  border: 2px solid var(--line); border-radius: 999px; padding: 2px 10px;
+}
+.qa-a .qa-who { background: var(--pink-bg); color: var(--pink); }
+.qa-text { flex: 1; line-height: 1.75; word-break: break-word; }
+.qa-date {
+  position: absolute; right: 14px; bottom: 8px;
+  font-size: 11px; font-weight: 700; color: var(--text-3);
+}
+
+/* ================= v3.1.0 涂鸦墙 ================= */
+.doodle-pad { padding: 18px; max-width: 720px; margin: 0 auto 34px; }
+#doodleCanvas {
+  display: block; width: 100%; height: auto;
+  background: #fff; border: 3px solid var(--line); border-radius: 14px;
+  cursor: crosshair; touch-action: none;
+}
+.doodle-tools { display: flex; align-items: center; gap: 14px; margin-top: 14px; flex-wrap: wrap; }
+.doo-colors, .doo-sizes { display: flex; gap: 8px; align-items: center; }
+.doo-c {
+  width: 26px; height: 26px; border-radius: 50%;
+  border: 3px solid var(--line); cursor: pointer; padding: 0;
+  transition: transform .15s ease;
+}
+.doo-c:hover { transform: scale(1.15); }
+.doo-c.active { outline: 3px solid var(--teal); outline-offset: 2px; }
+.doo-s {
+  width: 34px; height: 34px; border-radius: 10px; cursor: pointer; padding: 0;
+  background: var(--paper); border: 3px solid var(--line);
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.doo-s i { display: block; border-radius: 50%; background: var(--ink); }
+.doo-s.active { border-color: var(--teal); background: var(--teal-bg); }
+.doo-acts { margin-left: auto; display: flex; gap: 10px; flex-wrap: wrap; }
+.doodle-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 14px; max-width: 1040px; margin: 0 auto;
+}
+.doodle-cell {
+  padding: 0; border: 3px solid var(--line); border-radius: 14px;
+  background: #fff; cursor: zoom-in; overflow: hidden;
+  box-shadow: 4px 4px 0 var(--shadow);
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+.doodle-cell:hover { transform: translate(-2px, -2px); box-shadow: 6px 7px 0 var(--shadow); }
+.doodle-cell img { display: block; width: 100%; height: 108px; object-fit: contain; }
+
+/* ================= v3.1.0 那年今日 ================= */
+#onthisday { padding-top: 34px; }
+.onthisday-card { padding: 16px 22px; display: flex; gap: 16px; align-items: flex-start; }
+.otd-tag {
+  flex: 0 0 auto; font-size: 13px; font-weight: 800; letter-spacing: 1px;
+  background: var(--yellow); color: var(--on-accent);
+  border: 2px solid var(--line); border-radius: 999px; padding: 3px 12px;
+  margin-top: 2px;
+}
+.otd-items { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.otd-item { display: flex; gap: 10px; align-items: center; min-width: 0; }
+.otd-item.otd-photo { text-decoration: none; color: inherit; }
+.otd-item.otd-photo:hover .otd-text { text-decoration: underline; }
+.otd-emoji { font-size: 18px; }
+.otd-photo img {
+  width: 52px; height: 40px; object-fit: cover;
+  border: 2px solid var(--line); border-radius: 8px;
+}
+.otd-text { font-size: 14px; font-weight: 700; line-height: 1.6; word-break: break-word; }
+
+/* ================= v3.1.0 小鲸鱼桌宠 ================= */
+.pet-whale {
+  position: fixed; left: 14px; bottom: -150px; z-index: 95;
+  width: 92px; cursor: pointer; user-select: none;
+  transition: bottom .6s cubic-bezier(.34, 1.3, .5, 1);
+  -webkit-tap-highlight-color: transparent;
+}
+.pet-whale.show { bottom: 12px; }
+.pet-whale img {
+  display: block; width: 100%; height: auto;
+  border: 3px solid var(--line); border-radius: 16px 16px 12px 12px;
+  box-shadow: 5px 5px 0 var(--shadow);
+  animation: pet-bob 2.6s ease-in-out infinite;
+}
+.pet-whale:not(.show) .pet-bubble { display: none; }
+.pet-bubble {
+  position: absolute; left: 4px; bottom: calc(100% + 8px);
+  min-width: 96px; max-width: 180px;
+  background: var(--paper); border: 3px solid var(--line); border-radius: 14px;
+  box-shadow: 4px 4px 0 var(--shadow);
+  padding: 8px 12px; font-size: 13px; font-weight: 800; line-height: 1.5;
+  animation: pet-pop-in .35s cubic-bezier(.34, 1.56, .64, 1);
+}
+.pet-bubble::after {
+  content: ""; position: absolute; left: 18px; bottom: -10px;
+  width: 12px; height: 12px; background: var(--paper);
+  border-right: 3px solid var(--line); border-bottom: 3px solid var(--line);
+  transform: rotate(45deg);
+}
+@keyframes pet-bob {
+  0%, 100% { transform: translateY(0) rotate(-1deg); }
+  50% { transform: translateY(-7px) rotate(1.5deg); }
+}
+@keyframes pet-pop-in {
+  0% { opacity: 0; transform: translateY(6px) scale(.8); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* 小屏:桌宠和画板收一收 */
+@media (max-width: 640px) {
+  .pet-whale { width: 68px; left: 8px; }
+  .pet-whale.show { bottom: 8px; }
+  .qa-grid { columns: 1; }
+  .doodle-grid { grid-template-columns: repeat(2, 1fr); }
+  .doo-acts { margin-left: 0; }
+  .onthisday-card { flex-direction: column; }
 }

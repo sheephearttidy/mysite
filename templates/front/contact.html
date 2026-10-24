@@ -44,6 +44,54 @@
   </div>
 </section>
 
+<!-- ================= 匿名提问箱(v3.1.0) ================= -->
+<section class="sec-pink" id="askbox">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="tag">ASK ME</span>
+      <h2>匿名提问箱 💌</h2>
+      <div class="wave-line"></div>
+      <p class="section-sub">什么都能问,不用留名字;我挑着答,答了就贴在下面</p>
+    </div>
+    <div class="ask-form card reveal">
+      <textarea id="askBody" class="sf-input" rows="3" maxlength="200"
+        placeholder="想问什么?(200 字以内,发出去我就能看到)"></textarea>
+      <div class="ask-foot">
+        <span class="hint" id="askCount">0 / 200</span>
+        <span class="hint" id="askTip"></span>
+        <button class="btn btn-pink" id="askSend" type="button">📮 投进提问箱</button>
+      </div>
+    </div>
+    <div class="qa-grid" id="qaList"></div>
+  </div>
+</section>
+
+<!-- ================= 涂鸦墙(v3.1.0) ================= -->
+<section class="sec-teal" id="doodle">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="tag">DOODLE</span>
+      <h2>涂鸦墙 🎨</h2>
+      <div class="wave-line"></div>
+      <p class="section-sub">画一笔留下印记,审核通过就会贴上墙</p>
+    </div>
+    <div class="doodle-pad card reveal">
+      <canvas id="doodleCanvas" width="640" height="400"></canvas>
+      <div class="doodle-tools">
+        <div class="doo-colors" id="dooColors"></div>
+        <div class="doo-sizes" id="dooSizes"></div>
+        <div class="doo-acts">
+          <button class="btn btn-white" id="dooUndo" type="button">↩️ 撤销</button>
+          <button class="btn btn-white" id="dooClear" type="button">🧹 清空</button>
+          <button class="btn btn-teal" id="dooSend" type="button">📮 交涂鸦</button>
+        </div>
+      </div>
+      <p class="hint" id="dooTip"></p>
+    </div>
+    <div class="doodle-grid" id="doodleGrid"></div>
+  </div>
+</section>
+
 <!-- ================= 点赞 ================= -->
 <section class="sec-cream" id="likebar">
   <div class="container" style="text-align:center">
@@ -53,4 +101,7 @@
     <p class="hint" style="margin-top:10px">喜欢这页就点个赞吧,每人每页只能点一次~</p>
   </div>
 </section>
+{% endblock %}
+{% block page_scripts %}
+<script src="/js/doodle.js?v=f8f70790"></script>
 {% endblock %}
