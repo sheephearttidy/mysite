@@ -25,7 +25,13 @@
 {% if page_id == 'index' %}<meta property="og:image:width" content="1200" /><meta property="og:image:height" content="630" /><meta property="og:image:alt" content="至尊杰的小窝 —— learning and building" />{% endif %}
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet" />
+{# v2.7.4 性能:字体改成「非阻塞」加载。原写法是阻塞渲染的 <link rel=stylesheet>,
+   国内访问 fonts.googleapis.com 常要 1~3 秒,期间整页白屏。
+   改成 media=print + onload 切换,首屏先用系统字体立刻渲染,
+   字体到位后再替换,视觉上只是字形切换,不会白屏。 #}
+<link rel="stylesheet" media="print" onload="this.media='all'"
+      href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&family=Baloo+2:wght@500;700;800&display=swap" />
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&family=Baloo+2:wght@500;700;800&display=swap" /></noscript>
 <link rel="stylesheet" href="/css/base.css?v=9c1a3c75" />
 <link rel="stylesheet" href="/css/home.css?v=4db91ab2" />
 <link rel="stylesheet" href="/css/widgets.css?v=eedacff7" />
@@ -36,7 +42,7 @@
 <script nonce="{{ csp_nonce }}">
 (function(){try{var t=localStorage.getItem('theme');if(!t)t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';if(t==='dark')document.documentElement.setAttribute('data-theme','dark');document.documentElement.setAttribute('data-theme-source',localStorage.getItem('theme')?'manual':'system')}catch(e){}})();
 </script>
-<script src="/js/holiday.js?v=15712256"></script>
+<script src="/js/holiday.js?v=21226f6c"></script>
 <link rel="manifest" href="/manifest.json" />
 <meta name="theme-color" content="#ff6b9d" />
 </head>

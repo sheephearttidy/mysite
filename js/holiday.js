@@ -40,41 +40,54 @@
     return '';
   }
 
-  // ---- 2. 同步读后台配置(失败就返回 null,走自动) ----
-  // 注意:同步 XHR 不能设 timeout —— 浏览器会抛 InvalidAccessError
-  // (规范:Timeouts cannot be set for synchronous requests)。
-  // 所以这里不设 timeout,靠「同步请求本身很快 + 失败即回退」保证不卡页面。
-  function readConfig() {
+  // ---- 2. 读后台配置 ----
+  // v2.7.4 性能:原来是同步 XHR(false),会阻塞 HTML 解析直到 /api/fx 返回,
+  // 网络慢时首屏要干等。现在改成「先用日期本地判断立即上色,再异步校正」:
+  //   1) 立即按日期打标记(0 网络,不闪白)
+  //   2) 异步拉 /api/fx,若后台配了手动/关闭,再改标记
+  // 后台配置通常和日期判断一致,所以视觉上几乎不会跳。
+  function readConfigAsync(cb) {
     try {
       var xhr = new XMLHttpRequest();
-      xhr.open('GET', '/api/fx', false);   // false = 同步
+      xhr.open('GET', '/api/fx', true);   // true = 异步,不阻塞
+      xhr.timeout = 1200;
+      xhr.onload = function () {
+        if (xhr.status !== 200) return cb(null);
+        try { cb(JSON.parse(xhr.responseText) || null); } catch (e) { cb(null); }
+      };
+      xhr.onerror = xhr.ontimeout = function () { cb(null); };
       xhr.send(null);
-      if (xhr.status !== 200) return null;
-      var d = JSON.parse(xhr.responseText);
-      return (d && typeof d === 'object') ? d : null;
-    } catch (e) {
-      return null;
-    }
+    } catch (e) { cb(null); }
   }
 
-  try {
-    var cfg = readConfig();
-    var key = '';
-    var effectsOff = !!(cfg && String(cfg.effects) === '0');
-
-    if (effectsOff) {
-      key = '';                       // 动效总开关关掉:任何节日特效都不出现
-    } else if (cfg && cfg.mode === 'off') {
-      key = '';
-    } else if (cfg && cfg.mode === 'manual') {
-      key = LABELS[cfg.key] ? cfg.key : '';
-    } else {
-      key = detectByDate();   // auto 或读不到配置
-    }
-
+  function applyKey(key) {
     if (key) {
       document.documentElement.setAttribute('data-holiday', key);
       document.documentElement.setAttribute('data-holiday-label', LABELS[key] || key);
+    } else {
+      document.documentElement.removeAttribute('data-holiday');
+      document.documentElement.removeAttribute('data-holiday-label');
     }
-  } catch (e) { /* 任何异常都不过节,不影响页面 */ }
+  }
+
+  // 第一步:先按日期立刻上标记(不等待网络)
+  try { applyKey(detectByDate()); } catch (e) { }
+
+  // 第二步:异步读后台配置,有差异再覆盖
+  readConfigAsync(function (cfg) {
+    try {
+      var key = '';
+      var effectsOff = !!(cfg && String(cfg.effects) === '0');
+      if (effectsOff) {
+        key = '';
+      } else if (cfg && cfg.mode === 'off') {
+        key = '';
+      } else if (cfg && cfg.mode === 'manual') {
+        key = LABELS[cfg.key] ? cfg.key : '';
+      } else {
+        key = detectByDate();   // auto 或读不到配置
+      }
+      applyKey(key);
+    } catch (e) { /* 任何异常都不过节,不影响页面 */ }
+  });
 })();
