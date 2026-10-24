@@ -202,6 +202,35 @@ def frontend_page(page: str):
     return render_template(f"front/{page}.html")
 
 
+# ---------------- 错误页(v2.7.6) ----------------
+
+@app.errorhandler(404)
+def handle_404(e):
+    """页面请求给可爱的 404 页;接口请求仍返回 JSON,别把 HTML 塞给 fetch"""
+    if request.path.startswith("/api/"):
+        return jsonify(error="not found"), 404
+    return render_template("front/404.html"), 404
+
+
+@app.errorhandler(403)
+def handle_403(e):
+    if request.path.startswith("/api/"):
+        return jsonify(error="forbidden"), 403
+    return render_template("front/404.html",
+                           err_title="没有权限看这个",
+                           err_desc="这个页面不是给你看的哦~"), 403
+
+
+@app.errorhandler(500)
+def handle_500(e):
+    """兜底:出错时不要给用户看 Python 堆栈"""
+    if request.path.startswith("/api/"):
+        return jsonify(error="server error"), 500
+    return render_template("front/404.html",
+                           err_title="我这边出了点小状况",
+                           err_desc="刷新一下试试,还不行就是真坏了。"), 500
+
+
 @app.get("/css/<path:filename>")
 def frontend_css(filename: str):
     return send_from_directory(os.path.join(PROJECT_ROOT, "css"), filename)

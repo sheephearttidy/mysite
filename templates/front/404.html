@@ -1,0 +1,52 @@
+{% extends 'front/base.html' %}
+{% set page_id = '404' %}
+{% set description = '这个页面走丢了 —— 可能链接打错了,或者它被搬走了。回首页看看吧。' %}
+{% set og_title = '页面走丢了 · 至尊杰的小窝' %}
+{% set og_description = '这个页面走丢了 —— 可能链接打错了,或者它被搬走了。' %}
+{% set canonical_url = 'https://imyxj.xyz/404.html' %}
+{% set og_type = 'website' %}
+{% block title %}页面走丢了 · 至尊杰的小窝{% endblock %}
+{% block head_extra %}
+<meta name="robots" content="noindex, follow" />
+{% endblock %}
+{% block content %}
+<section class="sec-cream page-head err-page">
+  <div class="container">
+    <div class="err-card reveal">
+      <div class="err-code" aria-hidden="true">
+        <span class="err-digit">4</span>
+        <span class="err-zero">🍩</span>
+        <span class="err-digit">4</span>
+      </div>
+      <h2>{{ err_title or '这个页面走丢了' }}<span class="wave-hand"> 🧭</span></h2>
+      <p class="err-text">
+        {% if err_desc %}
+        {{ err_desc }}
+        {% else %}
+        你要找的页面好像不在这儿 —— 可能是链接打错了,<br />
+        也可能它被我搬走或者删掉了。
+        {% endif %}
+      </p>
+      <p class="err-sub">要不,从下面这些地方重新出发?</p>
+      <div class="err-actions">
+        <a class="btn" href="/">🏠 回首页</a>
+        <a class="btn btn-teal" href="/works.html">🛠️ 看项目</a>
+        <a class="btn btn-yellow" href="/contact.html">📬 来找我</a>
+      </div>
+      <div class="err-links">
+        <a href="/about.html">关于我</a>
+        <span>·</span>
+        <a href="/skills.html">技能树</a>
+        <span>·</span>
+        <a href="/campus.html">校园日常</a>
+        <span>·</span>
+        <a href="/map.html">来访地图</a>
+      </div>
+      <p class="err-tip">
+        如果你确定这个链接本来是好的,可以在
+        <a href="/contact.html">来找我玩</a> 那边说一声,我看看是不是真坏了。
+      </p>
+    </div>
+  </div>
+</section>
+{% endblock %}
