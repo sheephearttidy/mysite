@@ -10,6 +10,9 @@ const esc = s => { const d = document.createElement('div'); d.textContent = s ??
 // 放进 HTML 属性(双引号包裹)时用这个:额外转义引号,防属性逃逸
 const escAttr = s => esc(s).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
+// ===== v3.2.1:禁用右键菜单(前台访客侧;后台不加载 core.js 不受影响) =====
+document.addEventListener('contextmenu', e => e.preventDefault());
+
 // ===== 移动端汉堡菜单 =====
 const navToggle = document.getElementById('navToggle');
 const navLinks = document.getElementById('navLinks');

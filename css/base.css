@@ -58,6 +58,17 @@ body {
   line-height: 1.8;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
+  /* v3.2.1:整站禁选中(右键菜单在 core.js 里拦)。
+     表单控件必须放开,不然留言墙/提问箱没法编辑文字 */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+input, textarea, select {
+  user-select: text;
+  -webkit-user-select: text;
+  -webkit-touch-callout: default;
+}
 }
 
 ::selection { background: var(--yellow); color: var(--ink); }
