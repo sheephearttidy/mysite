@@ -22,8 +22,14 @@
     var isDark = mode === 'dark';
     var root = document.documentElement;
 
+    var wasDark = root.getAttribute('data-theme') === 'dark';
     if (isDark) root.setAttribute('data-theme', 'dark');
     else root.removeAttribute('data-theme');
+
+    // v3.2.1:明暗实际变化时广播事件(ambience.js 换肤要跟着换暗色版色值)
+    if (wasDark !== isDark) {
+      document.dispatchEvent(new CustomEvent('themechange', { detail: { dark: isDark } }));
+    }
 
     var manual = stored();
     root.setAttribute('data-theme-source', manual ? 'manual' : 'system');

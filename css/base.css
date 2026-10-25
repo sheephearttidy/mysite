@@ -35,8 +35,11 @@
   --invert-fg: #ffd93d;
 
   /* —— 强调色 —— */
-  --pink: #ff6b9d;
-  --pink-bg: #ffe4ef;
+  /* v3.2.1:换肤走 --accent-* 间接层(ambience.js 按明暗写对应值),
+     --pink 桥接过去。之前 ambience 直接内联改写 --pink 本体,暗色下
+     内联的亮色值压过 dark.css 的覆盖,整站粉色系被打回亮色 */
+  --pink: var(--accent-pink, #ff6b9d);
+  --pink-bg: var(--accent-pink-bg, #ffe4ef);
   --orange: #ffa94d;
   --orange-bg: #ffe8d6;
   --yellow: #ffd93d;

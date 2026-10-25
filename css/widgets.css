@@ -701,3 +701,9 @@ body.lb-open { overflow: hidden; }
   .doo-acts { margin-left: 0; }
   .onthisday-card { flex-direction: column; }
 }
+
+/* v3.2.1:「恢复默认」选项,样式区别于色块 */
+.accent-opt.accent-reset {
+  background: var(--paper); color: var(--text-2);
+  font-weight: 800; font-size: 14px; line-height: 1;
+}
