@@ -29,8 +29,6 @@
   --track: #d9d3e0;        /* 开关槽 / 空柱 */
   --track-line: #c9c3d0;
   --img-bg: #ffffff;       /* 缩略图衬底 */
-  --rule: var(--rule);      /* 表格分隔线 */
-  --rule-2: var(--rule-2);    /* 侧栏分隔线 */
 
   /* —— 强调色 —— */
   --pink: #ff6b9d;
@@ -727,6 +725,9 @@ select.sf-input:disabled { opacity: .45; cursor: not-allowed; }
   --overlay: rgba(25, 31, 45, .42);
   --rule: #e8ebf1;
   --rule-2: #e1e5ec;
+  /* v3.1.2:补上 --card 的正式定义。此前 6 处 var(--card, …) 全靠兜底值,
+     其中 .msg-admin-item / .ph-admin-item 两处连兜底都没写(暗色下背景透明) */
+  --card: var(--paper);
   --pink: #e88cab;
   --pink-bg: #fff0f5;
   --yellow: #f0c861;

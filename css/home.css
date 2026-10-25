@@ -207,7 +207,9 @@ section { padding: 84px 0; position: relative; }
 .f-purple { background-color: var(--purple); }
 .f-orange { background-color: var(--orange); }
 .f-blue { background-color: var(--blue); }
-.skillbar .note { font-size: 12px; color: var(--text-4); margin-top: 4px; }
+/* v3.1.2:吐槽小字从 --text-4 提到 --text-3——暗色下 text-4 只有 3.4:1,
+   12px 小字读着费眼;text-3(说明文字)语义也更贴 */
+.skillbar .note { font-size: 12px; color: var(--text-3); margin-top: 4px; }
 
 /* ================= 作品 ================= */
 .works-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 26px; }

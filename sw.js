@@ -6,7 +6,7 @@
    - API(/api/*): 完全不缓存,永远走网络
    版本号 CACHE_NAME 变更即自动清旧缓存
    ============================================================ */
-const CACHE_NAME = 'mysite-v3.1.0';
+const CACHE_NAME = 'mysite-v3.1.1';
 const OFFLINE_URLS = [
   '/',
   '/about.html', '/skills.html', '/works.html',
@@ -50,8 +50,11 @@ self.addEventListener('fetch', e => {
     e.respondWith(
       fetch(e.request)
         .then(res => {
-          const copy = res.clone();
-          caches.open(CACHE_NAME).then(c => c.put(e.request, copy));
+          // 只回缓存 2xx:4xx/5xx 不进缓存也不直接展示(避免半失败状态被长期记住)
+          if (res.ok) {
+            const copy = res.clone();
+            caches.open(CACHE_NAME).then(c => c.put(e.request, copy));
+          }
           return res;
         })
         .catch(() => caches.match(e.request).then(m => m || caches.match('/')))
@@ -62,8 +65,12 @@ self.addEventListener('fetch', e => {
   // 静态资源:cache-first
   e.respondWith(
     caches.match(e.request).then(m => m || fetch(e.request).then(res => {
-      const copy = res.clone();
-      caches.open(CACHE_NAME).then(c => c.put(e.request, copy));
+      // v3.1.1 修复:非 2xx(如 404)绝不入缓存。
+      // 之前 404 也会被 cache-first 记住,文件补上后浏览器还一直拿缓存的 404
+      if (res.ok) {
+        const copy = res.clone();
+        caches.open(CACHE_NAME).then(c => c.put(e.request, copy));
+      }
       return res;
     }))
   );

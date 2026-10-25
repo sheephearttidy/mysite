@@ -410,7 +410,8 @@
       if (clicks < 5) return;
       clicks = 0;
       var img = document.getElementById('eggImg');
-      if (img && !img.getAttribute('src')) img.src = '/assets/easter-whale.png';
+      // ?v= 是立绘的内容哈希:图片换新时重算,防浏览器/HTTP 7 天强缓存拿旧图
+      if (img && !img.getAttribute('src')) img.src = '/assets/easter-whale.png?v=1b0f9cd7';
       overlay.classList.add('open');
       eggBubbles();
     });

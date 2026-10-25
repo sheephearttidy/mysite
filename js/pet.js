@@ -39,7 +39,8 @@
   whale.id = 'petWhale';
   whale.innerHTML =
     '<div class="pet-bubble" id="petBubble"></div>' +
-    '<img src="/assets/easter-whale.png" alt="小鲸鱼" />';
+    // ?v= 是立绘内容哈希(与 interact.js 彩蛋同图同版本),换图时两处一起更新
+    '<img src="/assets/easter-whale.png?v=1b0f9cd7" alt="小鲸鱼" />';
   whale.setAttribute('role', 'button');
   whale.setAttribute('aria-label', '小鲸鱼');
   whale.title = '';
@@ -81,7 +82,7 @@
     var egg = document.getElementById('eggOverlay');
     if (egg && Math.random() < 0.1 && !egg.classList.contains('open')) {
       var img = document.getElementById('eggImg');
-      if (img && !img.getAttribute('src')) img.src = '/assets/easter-whale.png';
+      if (img && !img.getAttribute('src')) img.src = '/assets/easter-whale.png?v=1b0f9cd7';
       egg.classList.add('open');
       hide();
       return;

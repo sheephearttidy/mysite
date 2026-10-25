@@ -13,7 +13,7 @@
   /* —— 文字 —— */
   --ink: #ece7f0;         /* 主文字:暖白,不刺眼 */
   --text-2: #b3acbe;      /* 正文次级 */
-  --text-3: #948da1;      /* 说明文字 */
+  --text-3: #a59db8;      /* 说明文字(v3.1.2 提亮:原 #948da1 在卡上仅 3.4:1) */
   --text-4: #7d7689;      /* 最弱提示 */
   --on-accent: #221f28;   /* 强调色块上用深色字,比白字柔和 */
 
@@ -132,7 +132,7 @@
 /* 便签墙 */
 [data-theme="dark"] .msg-note::before { background: rgba(255,255,255,.12); }
 [data-theme="dark"] .msg-reply { background: rgba(126, 200, 184, .18); }
-[data-theme="dark"] .msg-note { border-color: var(--shadow); color: var(--text); }
+[data-theme="dark"] .msg-note { border-color: var(--shadow); color: var(--ink); }
 
 /* 六色便签:莫兰迪色压暗 */
 [data-theme="dark"] .msg-pink   { background: #4a3340; }
@@ -143,13 +143,13 @@
 [data-theme="dark"] .msg-blue   { background: #2f3c52; }
 
 /* 主题色快捷面板 */
-[data-theme="dark"] .accent-btn { background: #2a2b33; }
+[data-theme="dark"] .accent-btn { background: #2a2b33; color: var(--ink); border-color: var(--line); }
 [data-theme="dark"] .accent-panel { background: #2a2b33; }
 [data-theme="dark"] .accent-opt.on { border-color: #fff; }
 
 /* 公告弹窗 */
 [data-theme="dark"] .notice-pop { background: #2a2b33; }
-[data-theme="dark"] .notice-pop .np-close { background: #2a2b33; color: var(--text); }
+[data-theme="dark"] .notice-pop .np-close { background: #2a2b33; color: var(--ink); }
 
 /* 倒计时挂件 */
 [data-theme="dark"] .cd-widget { background: #2a2b33; }
@@ -162,7 +162,33 @@
 [data-theme="dark"] .note-purple { background: #383452; }
 [data-theme="dark"] .note-blue   { background: #2f3c52; }
 [data-theme="dark"] .note-orange { background: #4a3d2e; }
-[data-theme="dark"] .note-card { color: var(--text); }
+[data-theme="dark"] .note-card { color: var(--ink); }
 /* 荣誉等级徽章微调 */
 [data-theme="dark"] .hl-school .honor-level { color: var(--ink); }
 [data-theme="dark"] .hl-other .honor-level { background: #2a2b33; }
+
+/* ============ v3.1.2 暗色对比度修复 ============ */
+/* 黄底贴纸/标签/按钮:--yellow 在暗色下是暗黄,浅字压上去只有 1.7:1,
+   统一换成 --on-accent(暗色下为深字 #221f28,≈8:1),与 btn-pink/teal 同一套思路 */
+[data-theme="dark"] .c-learn,
+[data-theme="dark"] .work-pill,
+[data-theme="dark"] .btn-yellow,
+[data-theme="dark"] .map-head .sticker,
+[data-theme="dark"] .contact-card .sticker { color: var(--on-accent); }
+
+/* 点赞按钮:原硬编码白底黑字,暗色下一颗突兀的白药丸;
+   换纸色底 + 描边用 --line,已赞态用暗化的粉 */
+[data-theme="dark"] .like-btn {
+  background: var(--paper); border-color: var(--line); color: var(--ink);
+}
+[data-theme="dark"] .like-btn.liked { background: #4a3340; border-color: var(--pink); }
+
+/* v3.1.2:技能背包标签暗色下恢复彩色身份。
+   六个 -bg 底色在暗色下全是近似的深泥色,JavaScript(粉)/Java(黄)完全分不出颜色;
+   改成彩色描边 + 彩色文字(粉/紫在强调色基础上略提亮以保住 4.5:1) */
+[data-theme="dark"] .c-pink   { color: #e39db8; border-color: var(--pink); }
+[data-theme="dark"] .c-teal   { color: var(--teal);   border-color: var(--teal); }
+[data-theme="dark"] .c-yellow { color: var(--yellow); border-color: var(--yellow); }
+[data-theme="dark"] .c-purple { color: #b1a5d6; border-color: var(--purple); }
+[data-theme="dark"] .c-blue   { color: var(--blue);   border-color: var(--blue); }
+[data-theme="dark"] .c-orange { color: var(--orange); border-color: var(--orange); }

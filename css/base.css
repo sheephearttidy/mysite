@@ -87,6 +87,9 @@ h1, h2, h3, .logo, .btn { font-family: "ZCOOL KuaiLe", "Baloo 2", "PingFang SC",
   box-shadow: 5px 5px 0 var(--shadow);
   transition: all .15s ease;
   color: var(--ink);
+  /* 基础款自带纸色底:v3.1.2 之前没写 background,裸 .btn(如留言墙提交钮)
+     会露出浏览器默认浅灰底,暗色主题下浅底+浅字直接看不清 */
+  background: var(--paper);
 }
 .btn:hover { transform: translate(-2px, -2px); box-shadow: 8px 8px 0 var(--shadow); }
 .btn:active { transform: translate(3px, 3px); box-shadow: 1px 1px 0 var(--shadow); }
