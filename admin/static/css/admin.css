@@ -749,10 +749,13 @@ body { background: var(--cream); color: var(--ink); }
 .sb-brand .sb-title { font-size: 19px; letter-spacing: -.3px; }
 .sb-brand .sb-tagline { letter-spacing: 1.5px; font-size: 10px; }
 .sb-nav { padding: 14px 12px 20px; }
-.sb-group { margin-bottom: 8px; }
-.sb-group-btn { border: 0; color: var(--text-3); font-size: 12px; letter-spacing: .3px; padding: 8px 10px; }
-.sb-group-btn:hover { background: transparent; border-color: transparent; color: var(--ink); }
-.sb-sub { border-left: 0; margin: 2px 0 8px; padding: 0; }
+.sb-group { margin-bottom: 10px; }
+.sb-group-btn { border: 0; color: var(--text-3); font-size: 12px; font-weight: 800; letter-spacing: .3px; padding: 9px 10px 9px 12px; border-radius: 8px; }
+.sb-group-btn:hover { background: var(--cream); color: var(--ink); }
+/* v3.2.0:层级感回归——v2.6 整理时把子项导引线删了、箭头淡到看不出能折叠,
+   侧栏读起来像一坨平铺列表;加回缩进+导引线+清晰箭头,组的归属一眼可辨 */
+.sb-group-btn .caret { font-size: 11px; opacity: 1; color: var(--text-3); transition: transform .2s ease; }
+.sb-sub { border-left: 2px solid var(--rule); margin: 3px 0 6px 16px; padding-left: 2px; }
 .sb-link { padding: 8px 11px; margin: 2px 0; font-size: 13px; color: var(--text-2); border: 0; }
 .sb-link:hover { background: var(--cream); border: 0; color: var(--ink); }
 .sb-link.active { background: var(--teal-bg); color: #28766e; border: 0; box-shadow: none; font-weight: 800; }

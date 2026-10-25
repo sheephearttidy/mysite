@@ -712,387 +712,210 @@ def init_db(path):
             c.execute("INSERT INTO settings(key,value) VALUES('must_change_pass','1')")
 
 
-# ---------------- skills ----------------
-
-def get_skills():
-    with get_db() as c:
-        rows = c.execute("SELECT * FROM skills ORDER BY category, sort, id").fetchall()
-        return [dict(r) for r in rows]
-
-
-def insert_skill(item):
-    with get_db() as c:
-        cur = c.execute(
-            "INSERT INTO skills(name,percent,note,category,color,sort) VALUES(?,?,?,?,?,?)",
-            (item.get("name", ""), int(item.get("percent", 50)), item.get("note", ""),
-             item.get("category", "serious"), item.get("color", "teal"),
-             int(item.get("sort", 99))))
-        row = c.execute("SELECT * FROM skills WHERE id=?", (cur.lastrowid,)).fetchone()
-        return dict(row)
-
-
-def update_skill(sid, item):
-    with get_db() as c:
-        row = c.execute("SELECT * FROM skills WHERE id=?", (sid,)).fetchone()
-        if not row:
-            return None
-        merged = dict(row)
-        merged.update({k: item[k] for k in
-                       ("name", "note", "category", "color") if k in item})
-        if "percent" in item:
-            merged["percent"] = int(item["percent"])
-        if "sort" in item:
-            merged["sort"] = int(item["sort"])
-        c.execute(
-            "UPDATE skills SET name=?,percent=?,note=?,category=?,color=?,sort=? WHERE id=?",
-            (merged["name"], merged["percent"], merged["note"], merged["category"],
-             merged["color"], merged["sort"], sid))
-        return merged
-
-
-def delete_skill(sid):
-    with get_db() as c:
-        cur = c.execute("DELETE FROM skills WHERE id=?", (sid,))
-        return cur.rowcount > 0
-
-
-# ---------------- timeline ----------------
-
-def get_timeline():
-    with get_db() as c:
-        rows = c.execute("SELECT * FROM timeline ORDER BY sort, id").fetchall()
-        return [dict(r) for r in rows]
-
-
-def insert_timeline(item):
-    with get_db() as c:
-        cur = c.execute(
-            "INSERT INTO timeline(emoji,time_label,title,content,sort) VALUES(?,?,?,?,?)",
-            (item.get("emoji", "🚀"), item.get("time_label", ""), item.get("title", ""),
-             item.get("content", ""), int(item.get("sort", 99))))
-        row = c.execute("SELECT * FROM timeline WHERE id=?", (cur.lastrowid,)).fetchone()
-        return dict(row)
-
-
-def update_timeline(eid, item):
-    with get_db() as c:
-        row = c.execute("SELECT * FROM timeline WHERE id=?", (eid,)).fetchone()
-        if not row:
-            return None
-        merged = dict(row)
-        merged.update({k: item[k] for k in
-                       ("emoji", "time_label", "title", "content") if k in item})
-        if "sort" in item:
-            merged["sort"] = int(item["sort"])
-        c.execute(
-            "UPDATE timeline SET emoji=?,time_label=?,title=?,content=?,sort=? WHERE id=?",
-            (merged["emoji"], merged["time_label"], merged["title"], merged["content"],
-             merged["sort"], eid))
-        return merged
-
-
-def delete_timeline(eid):
-    with get_db() as c:
-        cur = c.execute("DELETE FROM timeline WHERE id=?", (eid,))
-        return cur.rowcount > 0
-
-
-# ---------------- stats ----------------
-
-def get_stats():
-    with get_db() as c:
-        rows = c.execute("SELECT * FROM stats ORDER BY sort, id").fetchall()
-        return [dict(r) for r in rows]
-
-
-def insert_stat(item):
-    with get_db() as c:
-        cur = c.execute(
-            "INSERT INTO stats(emoji,number,unit,label,sort) VALUES(?,?,?,?,?)",
-            (item.get("emoji", "😄"), int(item.get("number", 0)), item.get("unit", ""),
-             item.get("label", ""), int(item.get("sort", 99))))
-        row = c.execute("SELECT * FROM stats WHERE id=?", (cur.lastrowid,)).fetchone()
-        return dict(row)
-
-
-def update_stat(sid, item):
-    with get_db() as c:
-        row = c.execute("SELECT * FROM stats WHERE id=?", (sid,)).fetchone()
-        if not row:
-            return None
-        merged = dict(row)
-        merged.update({k: item[k] for k in ("emoji", "unit", "label") if k in item})
-        if "number" in item:
-            merged["number"] = int(item["number"])
-        if "sort" in item:
-            merged["sort"] = int(item["sort"])
-        c.execute("UPDATE stats SET emoji=?,number=?,unit=?,label=?,sort=? WHERE id=?",
-                  (merged["emoji"], merged["number"], merged["unit"], merged["label"],
-                   merged["sort"], sid))
-        return merged
-
-
-def delete_stat(sid):
-    with get_db() as c:
-        cur = c.execute("DELETE FROM stats WHERE id=?", (sid,))
-        return cur.rowcount > 0
-
-
-# ---------------- works(项目墙) ----------------
-
-def get_works():
-    with get_db() as c:
-        rows = c.execute("SELECT * FROM works ORDER BY sort, id").fetchall()
-        return [dict(r) for r in rows]
-
-
-def insert_work(item):
-    with get_db() as c:
-        cur = c.execute(
-            "INSERT INTO works(emoji,cover,title,desc,pill,link,sort) VALUES(?,?,?,?,?,?,?)",
-            (item.get("emoji", "🛠️"), item.get("cover", "pink"), item.get("title", ""),
-             item.get("desc", ""), item.get("pill", "进行中"), item.get("link", ""),
-             int(item.get("sort", 99))))
-        row = c.execute("SELECT * FROM works WHERE id=?", (cur.lastrowid,)).fetchone()
-        return dict(row)
-
-
-def update_work(wid, item):
-    with get_db() as c:
-        row = c.execute("SELECT * FROM works WHERE id=?", (wid,)).fetchone()
-        if not row:
-            return None
-        merged = dict(row)
-        merged.update({k: item[k] for k in
-                       ("emoji", "cover", "title", "desc", "pill", "link") if k in item})
-        if "sort" in item:
-            merged["sort"] = int(item["sort"])
-        c.execute(
-            "UPDATE works SET emoji=?,cover=?,title=?,desc=?,pill=?,link=?,sort=? WHERE id=?",
-            (merged["emoji"], merged["cover"], merged["title"], merged["desc"],
-             merged["pill"], merged["link"], merged["sort"], wid))
-        return merged
-
-
-def delete_work(wid):
-    with get_db() as c:
-        cur = c.execute("DELETE FROM works WHERE id=?", (wid,))
-        return cur.rowcount > 0
-
-
-# ---------------- profile(关于我 / 信息卡片) ----------------
-
-def get_profile():
-    with get_db() as c:
-        rows = c.execute("SELECT * FROM profile ORDER BY kind, sort, id").fetchall()
-        return [dict(r) for r in rows]
-
-
-def insert_profile(item):
-    with get_db() as c:
-        cur = c.execute(
-            "INSERT INTO profile(kind,emoji,label,value,sort) VALUES(?,?,?,?,?)",
-            (item.get("kind", "info"), item.get("emoji", ""), item.get("label", ""),
-             item.get("value", ""), int(item.get("sort", 99))))
-        row = c.execute("SELECT * FROM profile WHERE id=?", (cur.lastrowid,)).fetchone()
-        return dict(row)
-
-
-def update_profile(pid, item):
-    with get_db() as c:
-        row = c.execute("SELECT * FROM profile WHERE id=?", (pid,)).fetchone()
-        if not row:
-            return None
-        merged = dict(row)
-        merged.update({k: item[k] for k in ("kind", "emoji", "label", "value") if k in item})
-        if "sort" in item:
-            merged["sort"] = int(item["sort"])
-        c.execute("UPDATE profile SET kind=?,emoji=?,label=?,value=?,sort=? WHERE id=?",
-                  (merged["kind"], merged["emoji"], merged["label"], merged["value"],
-                   merged["sort"], pid))
-        return merged
-
-
-def delete_profile(pid):
-    with get_db() as c:
-        cur = c.execute("DELETE FROM profile WHERE id=?", (pid,))
-        return cur.rowcount > 0
-
-
-# ---------------- v2.2 荣誉墙 ----------------
+# ---------------- 内容表 CRUD 工厂(v3.2.0) ----------------
+# 9 类纯内容表(技能/时间线/统计/项目/关于我/荣誉/随手记/友链/音乐)共用
+# 一套四件套语义。v3.2 之前是同一段代码复制 9 遍,现在每类只注册一份规格:
+#   insert:item.get(字段, 默认);枚举非法回退默认;数字 int() 强转
+#   update :只覆盖出现的字段;枚举非法忽略(保留原值);数字强转
+#   get    :按 order 排序;delete:rowcount>0
+# 特例都在规格里:notes 的 ts 缺省=现在(传 0/None 也取现在,旧行为)、
+# 按 ts 倒序;honors/notes 有枚举校验,其余类不校验(skills 传啥存啥)。
+# songs 的 QQ 链接解析在 app.py 路由层,这里就是普通四件套。
+# 行为基线:tests/test_db.py(工厂化前后同一套必须全绿)。
 
 HONOR_LEVELS = {"national": "国家级", "provincial": "省级", "school": "校级", "other": "其他"}
-
-
-def get_honors():
-    with get_db() as c:
-        rows = c.execute("SELECT * FROM honors ORDER BY sort, id").fetchall()
-        return [dict(r) for r in rows]
-
-
-def insert_honor(item):
-    with get_db() as c:
-        level = item.get("level", "school")
-        cur = c.execute(
-            "INSERT INTO honors(emoji,year,title,desc,level,sort) VALUES(?,?,?,?,?,?)",
-            (item.get("emoji", "🏆"), item.get("year", ""), item.get("title", ""),
-             item.get("desc", ""), level if level in HONOR_LEVELS else "school",
-             int(item.get("sort", 99))))
-        row = c.execute("SELECT * FROM honors WHERE id=?", (cur.lastrowid,)).fetchone()
-        return dict(row)
-
-
-def update_honor(hid, item):
-    with get_db() as c:
-        row = c.execute("SELECT * FROM honors WHERE id=?", (hid,)).fetchone()
-        if not row:
-            return None
-        merged = dict(row)
-        merged.update({k: item[k] for k in ("emoji", "year", "title", "desc") if k in item})
-        if "level" in item and item["level"] in HONOR_LEVELS:
-            merged["level"] = item["level"]
-        if "sort" in item:
-            merged["sort"] = int(item["sort"])
-        c.execute("UPDATE honors SET emoji=?,year=?,title=?,desc=?,level=?,sort=? WHERE id=?",
-                  (merged["emoji"], merged["year"], merged["title"], merged["desc"],
-                   merged["level"], merged["sort"], hid))
-        return merged
-
-
-def delete_honor(hid):
-    with get_db() as c:
-        cur = c.execute("DELETE FROM honors WHERE id=?", (hid,))
-        return cur.rowcount > 0
-
-
-# ---------------- v2.2 随手记 ----------------
-
 NOTE_MOODS = ("teal", "pink", "yellow", "purple", "blue", "orange")
 
 
-def get_notes():
+def _now_ts():
+    return int(time.time())
+
+
+TABLE_SPECS = {
+    "skills": {
+        "fields": ("name", "percent", "note", "category", "color", "sort"),
+        "defaults": {"name": "", "percent": 50, "note": "",
+                     "category": "serious", "color": "teal", "sort": 99},
+        "ints": ("percent", "sort"),
+        "order": "category, sort, id",
+    },
+    "timeline": {
+        "fields": ("emoji", "time_label", "title", "content", "sort"),
+        "defaults": {"emoji": "🚀", "time_label": "", "title": "",
+                     "content": "", "sort": 99},
+        "ints": ("sort",),
+        "order": "sort, id",
+    },
+    "stats": {
+        "fields": ("emoji", "number", "unit", "label", "sort"),
+        "defaults": {"emoji": "😄", "number": 0, "unit": "",
+                     "label": "", "sort": 99},
+        "ints": ("number", "sort"),
+        "order": "sort, id",
+    },
+    "works": {
+        "fields": ("emoji", "cover", "title", "desc", "pill", "link", "sort"),
+        "defaults": {"emoji": "🛠️", "cover": "pink", "title": "", "desc": "",
+                     "pill": "进行中", "link": "", "sort": 99},
+        "ints": ("sort",),
+        "order": "sort, id",
+    },
+    "profile": {
+        "fields": ("kind", "emoji", "label", "value", "sort"),
+        "defaults": {"kind": "info", "emoji": "", "label": "",
+                     "value": "", "sort": 99},
+        "ints": ("sort",),
+        "order": "kind, sort, id",
+    },
+    "honors": {
+        "fields": ("emoji", "year", "title", "desc", "level", "sort"),
+        "defaults": {"emoji": "🏆", "year": "", "title": "", "desc": "",
+                     "level": "school", "sort": 99},
+        "enums": {"level": HONOR_LEVELS},
+        "ints": ("sort",),
+        "order": "sort, id",
+    },
+    "notes": {
+        "fields": ("emoji", "text", "mood", "ts", "sort"),
+        "defaults": {"emoji": "✏️", "text": "", "mood": "teal",
+                     "ts": _now_ts, "sort": 0},
+        "enums": {"mood": NOTE_MOODS},
+        "ints": ("ts", "sort"),
+        "now_falsy": ("ts",),      # 显式传 0/None 也取当前时间(旧实现 or 语义)
+        "order": "ts DESC, id DESC",
+    },
+    "friendlinks": {
+        "fields": ("name", "url", "emoji", "desc", "sort"),
+        "defaults": {"name": "", "url": "", "emoji": "🔗",
+                     "desc": "", "sort": 99},
+        "ints": ("sort",),
+        "order": "sort, id",
+    },
+    "songs": {
+        "fields": ("title", "artist", "emoji", "song_id", "note", "sort"),
+        "defaults": {"title": "", "artist": "", "emoji": "🎵",
+                     "song_id": "", "note": "", "sort": 99},
+        "ints": ("sort",),
+        "order": "sort, id",
+    },
+}
+
+
+def crud_get(kind):
+    """全部行,按规格排序"""
     with get_db() as c:
-        rows = c.execute("SELECT * FROM notes ORDER BY ts DESC, id DESC").fetchall()
+        rows = c.execute(
+            f"SELECT * FROM {kind} ORDER BY {TABLE_SPECS[kind]['order']}").fetchall()
         return [dict(r) for r in rows]
 
 
-def insert_note(item):
+def crud_insert(kind, item):
+    spec = TABLE_SPECS[kind]
+    enums = spec.get("enums", {})
+    now_falsy = spec.get("now_falsy", ())
+    vals = []
+    for f in spec["fields"]:
+        default = spec["defaults"][f]
+        dv = default() if callable(default) else default
+        if f in now_falsy:
+            v = item.get(f) or dv
+        elif f in item:
+            v = item[f]
+        else:
+            v = dv
+        if f in enums and v not in enums[f]:
+            v = dv
+        if f in spec["ints"]:
+            v = int(v)
+        vals.append(v)
+    cols = ",".join(spec["fields"])
+    marks = ",".join("?" * len(vals))
     with get_db() as c:
-        mood = item.get("mood", "teal")
-        cur = c.execute(
-            "INSERT INTO notes(emoji,text,mood,ts,sort) VALUES(?,?,?,?,?)",
-            (item.get("emoji", "✏️"), item.get("text", ""),
-             mood if mood in NOTE_MOODS else "teal",
-             int(item.get("ts") or time.time()), int(item.get("sort", 0))))
-        row = c.execute("SELECT * FROM notes WHERE id=?", (cur.lastrowid,)).fetchone()
+        cur = c.execute(f"INSERT INTO {kind}({cols}) VALUES({marks})", vals)
+        row = c.execute(f"SELECT * FROM {kind} WHERE id=?",
+                        (cur.lastrowid,)).fetchone()
         return dict(row)
 
 
-def update_note(nid, item):
+def crud_update(kind, rid, item):
+    """只覆盖 item 里出现的字段;枚举非法忽略(保留原值);数字强转"""
+    spec = TABLE_SPECS[kind]
+    enums = spec.get("enums", {})
     with get_db() as c:
-        row = c.execute("SELECT * FROM notes WHERE id=?", (nid,)).fetchone()
+        row = c.execute(f"SELECT * FROM {kind} WHERE id=?", (rid,)).fetchone()
         if not row:
             return None
         merged = dict(row)
-        merged.update({k: item[k] for k in ("emoji", "text") if k in item})
-        if "mood" in item and item["mood"] in NOTE_MOODS:
-            merged["mood"] = item["mood"]
-        if "ts" in item:
-            merged["ts"] = int(item["ts"])
-        if "sort" in item:
-            merged["sort"] = int(item["sort"])
-        c.execute("UPDATE notes SET emoji=?,text=?,mood=?,ts=?,sort=? WHERE id=?",
-                  (merged["emoji"], merged["text"], merged["mood"], merged["ts"],
-                   merged["sort"], nid))
+        for f in spec["fields"]:
+            if f not in item:
+                continue
+            v = item[f]
+            if f in enums:
+                if v in enums[f]:
+                    merged[f] = v
+            elif f in spec["ints"]:
+                merged[f] = int(v)
+            else:
+                merged[f] = v
+        sets = ",".join(f"{f}=?" for f in spec["fields"])
+        c.execute(f"UPDATE {kind} SET {sets} WHERE id=?",
+                  [merged[f] for f in spec["fields"]] + [rid])
         return merged
 
 
-def delete_note(nid):
+def crud_delete(kind, rid):
     with get_db() as c:
-        cur = c.execute("DELETE FROM notes WHERE id=?", (nid,))
+        cur = c.execute(f"DELETE FROM {kind} WHERE id=?", (rid,))
         return cur.rowcount > 0
 
 
-# ---------------- v2.2 友情链接 ----------------
+# ---- 兼容薄壳:保留 v1.0 以来的函数名(app.py 路由 / PAGE_FIELDS 的
+# getattr / 导出 / 历史脚本都按这些名字调用),每个只是一行委托。 ----
 
+def get_skills(): return crud_get("skills")
+def insert_skill(item): return crud_insert("skills", item)
+def update_skill(sid, item): return crud_update("skills", sid, item)
+def delete_skill(sid): return crud_delete("skills", sid)
 
-def get_friendlinks():
-    with get_db() as c:
-        rows = c.execute("SELECT * FROM friendlinks ORDER BY sort, id").fetchall()
-        return [dict(r) for r in rows]
+def get_timeline(): return crud_get("timeline")
+def insert_timeline(item): return crud_insert("timeline", item)
+def update_timeline(eid, item): return crud_update("timeline", eid, item)
+def delete_timeline(eid): return crud_delete("timeline", eid)
 
+def get_stats(): return crud_get("stats")
+def insert_stat(item): return crud_insert("stats", item)
+def update_stat(sid, item): return crud_update("stats", sid, item)
+def delete_stat(sid): return crud_delete("stats", sid)
 
-def insert_friendlink(item):
-    with get_db() as c:
-        cur = c.execute(
-            "INSERT INTO friendlinks(name,url,emoji,desc,sort) VALUES(?,?,?,?,?)",
-            (item.get("name", ""), item.get("url", ""), item.get("emoji", "🔗"),
-             item.get("desc", ""), int(item.get("sort", 99))))
-        row = c.execute("SELECT * FROM friendlinks WHERE id=?", (cur.lastrowid,)).fetchone()
-        return dict(row)
+def get_works(): return crud_get("works")
+def insert_work(item): return crud_insert("works", item)
+def update_work(wid, item): return crud_update("works", wid, item)
+def delete_work(wid): return crud_delete("works", wid)
 
+def get_profile(): return crud_get("profile")
+def insert_profile(item): return crud_insert("profile", item)
+def update_profile(pid, item): return crud_update("profile", pid, item)
+def delete_profile(pid): return crud_delete("profile", pid)
 
-def update_friendlink(fid, item):
-    with get_db() as c:
-        row = c.execute("SELECT * FROM friendlinks WHERE id=?", (fid,)).fetchone()
-        if not row:
-            return None
-        merged = dict(row)
-        merged.update({k: item[k] for k in ("name", "url", "emoji", "desc") if k in item})
-        if "sort" in item:
-            merged["sort"] = int(item["sort"])
-        c.execute("UPDATE friendlinks SET name=?,url=?,emoji=?,desc=?,sort=? WHERE id=?",
-                  (merged["name"], merged["url"], merged["emoji"], merged["desc"],
-                   merged["sort"], fid))
-        return merged
+def get_honors(): return crud_get("honors")
+def insert_honor(item): return crud_insert("honors", item)
+def update_honor(hid, item): return crud_update("honors", hid, item)
+def delete_honor(hid): return crud_delete("honors", hid)
 
+def get_notes(): return crud_get("notes")
+def insert_note(item): return crud_insert("notes", item)
+def update_note(nid, item): return crud_update("notes", nid, item)
+def delete_note(nid): return crud_delete("notes", nid)
 
-def delete_friendlink(fid):
-    with get_db() as c:
-        cur = c.execute("DELETE FROM friendlinks WHERE id=?", (fid,))
-        return cur.rowcount > 0
+def get_friendlinks(): return crud_get("friendlinks")
+def insert_friendlink(item): return crud_insert("friendlinks", item)
+def update_friendlink(fid, item): return crud_update("friendlinks", fid, item)
+def delete_friendlink(fid): return crud_delete("friendlinks", fid)
 
-
-# ---------------- v2.4 音乐(QQ 音乐外链播放器) ----------------
-
-
-def get_songs():
-    with get_db() as c:
-        rows = c.execute("SELECT * FROM songs ORDER BY sort, id").fetchall()
-        return [dict(r) for r in rows]
-
-
-def insert_song(item):
-    with get_db() as c:
-        cur = c.execute(
-            "INSERT INTO songs(title,artist,emoji,song_id,note,sort) VALUES(?,?,?,?,?,?)",
-            (item.get("title", ""), item.get("artist", ""), item.get("emoji", "🎵"),
-             item.get("song_id", ""), item.get("note", ""),
-             int(item.get("sort", 99))))
-        row = c.execute("SELECT * FROM songs WHERE id=?", (cur.lastrowid,)).fetchone()
-        return dict(row)
-
-
-def update_song(sid, item):
-    with get_db() as c:
-        row = c.execute("SELECT * FROM songs WHERE id=?", (sid,)).fetchone()
-        if not row:
-            return None
-        merged = dict(row)
-        merged.update({k: item[k] for k in ("title", "artist", "emoji", "song_id", "note")
-                       if k in item})
-        if "sort" in item:
-            merged["sort"] = int(item["sort"])
-        c.execute("UPDATE songs SET title=?,artist=?,emoji=?,song_id=?,note=?,sort=? WHERE id=?",
-                  (merged["title"], merged["artist"], merged["emoji"],
-                   merged["song_id"], merged["note"], merged["sort"], sid))
-        return merged
-
-
-def delete_song(sid):
-    with get_db() as c:
-        cur = c.execute("DELETE FROM songs WHERE id=?", (sid,))
-        return cur.rowcount > 0
+def get_songs(): return crud_get("songs")
+def insert_song(item): return crud_insert("songs", item)
+def update_song(sid, item): return crud_update("songs", sid, item)
+def delete_song(sid): return crud_delete("songs", sid)
 
 
 # ---------------- v3.1.0 提问箱 ----------------
@@ -1314,7 +1137,9 @@ IMPORT_FIELDS = {
     "notes": ("emoji", "text", "mood", "ts", "sort"),
     "friendlinks": ("name", "url", "emoji", "desc", "sort"),
     "songs": ("title", "artist", "emoji", "song_id", "note", "sort"),
-    "questions": ("body", "ts", "shown", "answer", "answered_ts"),
+    # questions / doodles / messages / message_threads 走 import_payload 里的
+    # 特殊分支(要保留 id、带凭证),不能登记在这里——否则通用循环先插一遍、
+    # 特殊分支再插一遍,恢复一次备份每条提问翻倍(v3.2.0 测试套件抓到)。
 }
 
 

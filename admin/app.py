@@ -1307,213 +1307,67 @@ def revoke_all_api():
     return jsonify(ok=True, revoked=n)
 
 
-# ---------------- 后台 CRUD API(需登录) ----------------
+# ---------------- 内容 CRUD 路由工厂(v3.2.0) ----------------
+# 8 类内容共用同一套路由语义:POST 201 返回整行 / PUT 200 返回更新行 /
+# DELETE 204 / 不存在 404 {"error":"not found"}。
+# friendlinks 的 POST 多一道必填校验(名称和链接都要填);
+# songs 有 QQ 链接解析(resolve_song_id),保持手写(见下一节)。
 
-@app.post("/api/skills")
-@login_required
-def add_skill():
-    item = request.get_json(force=True, silent=True) or {}
-    row = db.insert_skill(item)
-    return jsonify(row), 201
-
-
-@app.put("/api/skills/<int:sid>")
-@login_required
-def update_skill(sid):
-    item = request.get_json(force=True, silent=True) or {}
-    row = db.update_skill(sid, item)
-    if not row:
-        return jsonify(error="not found"), 404
-    return jsonify(row)
-
-
-@app.delete("/api/skills/<int:sid>")
-@login_required
-def delete_skill(sid):
-    ok = db.delete_skill(sid)
-    return ("", 204) if ok else (jsonify(error="not found"), 404)
-
-
-@app.post("/api/timeline")
-@login_required
-def add_event():
-    item = request.get_json(force=True, silent=True) or {}
-    row = db.insert_timeline(item)
-    return jsonify(row), 201
-
-
-@app.put("/api/timeline/<int:eid>")
-@login_required
-def update_event(eid):
-    item = request.get_json(force=True, silent=True) or {}
-    row = db.update_timeline(eid, item)
-    if not row:
-        return jsonify(error="not found"), 404
-    return jsonify(row)
-
-
-@app.delete("/api/timeline/<int:eid>")
-@login_required
-def delete_event(eid):
-    ok = db.delete_timeline(eid)
-    return ("", 204) if ok else (jsonify(error="not found"), 404)
-
-
-@app.post("/api/stats")
-@login_required
-def add_stat():
-    item = request.get_json(force=True, silent=True) or {}
-    row = db.insert_stat(item)
-    return jsonify(row), 201
-
-
-@app.put("/api/stats/<int:sid>")
-@login_required
-def update_stat(sid):
-    item = request.get_json(force=True, silent=True) or {}
-    row = db.update_stat(sid, item)
-    if not row:
-        return jsonify(error="not found"), 404
-    return jsonify(row)
-
-
-@app.delete("/api/stats/<int:sid>")
-@login_required
-def delete_stat(sid):
-    ok = db.delete_stat(sid)
-    return ("", 204) if ok else (jsonify(error="not found"), 404)
-
-
-# ---------------- works(项目墙) ----------------
-
-@app.post("/api/works")
-@login_required
-def add_work():
-    item = request.get_json(force=True, silent=True) or {}
-    return jsonify(db.insert_work(item)), 201
-
-
-@app.put("/api/works/<int:wid>")
-@login_required
-def update_work(wid):
-    item = request.get_json(force=True, silent=True) or {}
-    row = db.update_work(wid, item)
-    if not row:
-        return jsonify(error="not found"), 404
-    return jsonify(row)
-
-
-@app.delete("/api/works/<int:wid>")
-@login_required
-def delete_work(wid):
-    ok = db.delete_work(wid)
-    return ("", 204) if ok else (jsonify(error="not found"), 404)
-
-
-# ---------------- profile(关于我 / 信息卡片) ----------------
-
-@app.post("/api/profile")
-@login_required
-def add_profile():
-    item = request.get_json(force=True, silent=True) or {}
-    return jsonify(db.insert_profile(item)), 201
-
-
-@app.put("/api/profile/<int:pid>")
-@login_required
-def update_profile(pid):
-    item = request.get_json(force=True, silent=True) or {}
-    row = db.update_profile(pid, item)
-    if not row:
-        return jsonify(error="not found"), 404
-    return jsonify(row)
-
-
-@app.delete("/api/profile/<int:pid>")
-@login_required
-def delete_profile(pid):
-    ok = db.delete_profile(pid)
-    return ("", 204) if ok else (jsonify(error="not found"), 404)
-
-
-# ---------------- v2.2 荣誉墙 CRUD ----------------
-
-@app.post("/api/honors")
-@login_required
-def add_honor():
-    item = request.get_json(force=True, silent=True) or {}
-    return jsonify(db.insert_honor(item)), 201
-
-
-@app.put("/api/honors/<int:hid>")
-@login_required
-def update_honor(hid):
-    item = request.get_json(force=True, silent=True) or {}
-    row = db.update_honor(hid, item)
-    if not row:
-        return jsonify(error="not found"), 404
-    return jsonify(row)
-
-
-@app.delete("/api/honors/<int:hid>")
-@login_required
-def delete_honor(hid):
-    ok = db.delete_honor(hid)
-    return ("", 204) if ok else (jsonify(error="not found"), 404)
-
-
-# ---------------- v2.2 随手记 CRUD ----------------
-
-@app.post("/api/notes")
-@login_required
-def add_note():
-    item = request.get_json(force=True, silent=True) or {}
-    return jsonify(db.insert_note(item)), 201
-
-
-@app.put("/api/notes/<int:nid>")
-@login_required
-def update_note(nid):
-    item = request.get_json(force=True, silent=True) or {}
-    row = db.update_note(nid, item)
-    if not row:
-        return jsonify(error="not found"), 404
-    return jsonify(row)
-
-
-@app.delete("/api/notes/<int:nid>")
-@login_required
-def delete_note(nid):
-    ok = db.delete_note(nid)
-    return ("", 204) if ok else (jsonify(error="not found"), 404)
-
-
-# ---------------- v2.2 友情链接 CRUD ----------------
-
-@app.post("/api/friendlinks")
-@login_required
-def add_friendlink():
-    item = request.get_json(force=True, silent=True) or {}
+def _require_friendlink_fields(item):
     if not item.get("name") or not item.get("url"):
-        return jsonify(error="名称和链接都要填"), 400
-    return jsonify(db.insert_friendlink(item)), 201
+        return "名称和链接都要填"
+    return None
 
 
-@app.put("/api/friendlinks/<int:fid>")
-@login_required
-def update_friendlink(fid):
-    item = request.get_json(force=True, silent=True) or {}
-    row = db.update_friendlink(fid, item)
-    if not row:
-        return jsonify(error="not found"), 404
-    return jsonify(row)
+CONTENT_ROUTES = {
+    "skills": None,
+    "timeline": None,
+    "stats": None,
+    "works": None,
+    "profile": None,
+    "honors": None,
+    "notes": None,
+    "friendlinks": _require_friendlink_fields,
+}
 
 
-@app.delete("/api/friendlinks/<int:fid>")
-@login_required
-def delete_friendlink(fid):
-    ok = db.delete_friendlink(fid)
-    return ("", 204) if ok else (jsonify(error="not found"), 404)
+def _register_content_routes(kind, validate=None):
+    """为一种内容注册 POST/PUT/DELETE 三条路由(URL 对外不变)。"""
+
+    def add_item():
+        item = request.get_json(force=True, silent=True) or {}
+        if validate:
+            why = validate(item)
+            if why:
+                return jsonify(error=why), 400
+        return jsonify(db.crud_insert(kind, item)), 201
+
+    def update_item(item_id):
+        item = request.get_json(force=True, silent=True) or {}
+        row = db.crud_update(kind, item_id, item)
+        if not row:
+            return jsonify(error="not found"), 404
+        return jsonify(row)
+
+    def delete_item(item_id):
+        ok = db.crud_delete(kind, item_id)
+        return ("", 204) if ok else (jsonify(error="not found"), 404)
+
+    # Flask 端点名按函数名取,循环里必须给唯一名字(对外不可见)
+    add_item.__name__ = f"add_{kind}"
+    update_item.__name__ = f"update_{kind}"
+    delete_item.__name__ = f"delete_{kind}"
+    app.add_url_rule(f"/api/{kind}", f"add_{kind}",
+                     login_required(add_item), methods=["POST"])
+    app.add_url_rule(f"/api/{kind}/<int:item_id>", f"update_{kind}",
+                     login_required(update_item), methods=["PUT"])
+    app.add_url_rule(f"/api/{kind}/<int:item_id>", f"delete_{kind}",
+                     login_required(delete_item), methods=["DELETE"])
+
+
+for _kind, _validate in CONTENT_ROUTES.items():
+    _register_content_routes(_kind, _validate)
+
 
 
 # ---------------- v2.4 音乐 CRUD(QQ 音乐官方外链播放器) ----------------
