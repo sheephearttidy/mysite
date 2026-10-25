@@ -18,15 +18,17 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: 语法检查(app.py / db.py / geo.py / 所有测试脚本)
-        run: |
-          python -m py_compile admin/app.py admin/db.py admin/geo.py admin/captcha.py
-          for f in deploy/test_*.py deploy/verify_*.py; do
-            python -m py_compile "$f" || echo "::warning::$f 编译失败"
-          done
+      - name: 语法检查(核心模块)
+        run: python -m py_compile admin/app.py admin/db.py admin/geo.py admin/captcha.py
 
-      - name: 前端资源一致性检查(7 页导航一致 + 资源引用存在)
+      - name: 单元测试 + Web 冒烟(tests/,临时库,零第三方依赖)
+        run: python -m unittest discover -s tests -v
+
+      - name: 前端资源一致性检查(页面/导航/资源哈希)
         run: python deploy/ci_front_check.py
+
+      - name: 后台面板映射检查(侧边栏/PANELS/容器对齐)
+        run: python deploy/check_panel_map.py
 
       - name: 上传检查结果
         if: always()
