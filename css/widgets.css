@@ -781,3 +781,81 @@ body.lb-open { overflow: hidden; }
   background: var(--pink, #ff6b9d); color: #fff; font-weight: 700;
 }
 .admin-react-main { flex: 1; padding: 24px 28px; }
+
+/* ============================================================
+   v4.1.0 全站背景:Lightfall 光带
+   - 固定在视口底层,不参与滚动,不影响布局
+   - 内容层用 z-index 叠在上面;区块背景改为半透明,让光带透出来
+   ============================================================ */
+.site-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;   /* 不拦截鼠标,交互仍归内容层 */
+  background: #1b1922;    /* 光带底色,避免首帧白闪 */
+}
+
+.site-content {
+  position: relative;
+  z-index: 1;
+}
+
+/* 让内容区块透出背景光带:原来的实色底改成半透明 */
+.site-content .sec-cream,
+.site-content .sec-yellow,
+.site-content .sec-white {
+  background: rgba(255, 248, 238, .82);
+  backdrop-filter: blur(2px);
+}
+[data-theme="dark"] .site-content .sec-cream,
+[data-theme="dark"] .site-content .sec-yellow,
+[data-theme="dark"] .site-content .sec-white {
+  background: rgba(27, 25, 34, .78);
+}
+
+/* 导航与页脚也做半透明,整体更连贯 */
+.site-content .nav {
+  background: rgba(255, 248, 238, .9);
+  backdrop-filter: blur(10px);
+}
+[data-theme="dark"] .site-content .nav {
+  background: rgba(27, 25, 34, .85);
+}
+.site-content footer {
+  background: rgba(255, 248, 238, .88);
+  backdrop-filter: blur(6px);
+}
+[data-theme="dark"] .site-content footer {
+  background: rgba(27, 25, 34, .82);
+}
+
+/* 卡片保持实色,保证文字可读性 */
+.site-content .card,
+.site-content .msg-note,
+.site-content .work-card,
+.site-content .gal-item,
+.site-content .err-card {
+  background-color: #fff;
+}
+[data-theme="dark"] .site-content .card,
+[data-theme="dark"] .site-content .msg-note,
+[data-theme="dark"] .site-content .work-card,
+[data-theme="dark"] .site-content .gal-item,
+[data-theme="dark"] .site-content .err-card {
+  background-color: var(--card, #24222b);
+}
+
+/* 移动端降级:半透明更实一点,避免文字对比度不足 */
+@media (max-width: 720px) {
+  .site-content .sec-cream,
+  .site-content .sec-yellow,
+  .site-content .sec-white { background: rgba(255, 248, 238, .93); }
+  [data-theme="dark"] .site-content .sec-cream,
+  [data-theme="dark"] .site-content .sec-yellow,
+  [data-theme="dark"] .site-content .sec-white { background: rgba(27, 25, 34, .9); }
+}
+
+/* 系统开启「减少动态效果」时,背景只留静态渐变,省 GPU */
+@media (prefers-reduced-motion: reduce) {
+  .site-backdrop { background: radial-gradient(ellipse at 50% 0%, #2b2733 0%, #1b1922 70%); }
+}
