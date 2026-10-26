@@ -1,27 +1,34 @@
 {
-  "_client-DhEz86-d.js": {
-    "file": "assets/client-DhEz86-d.js",
-    "name": "client"
+  "_BranchedMenu-!~{003}~.js": {
+    "file": "assets/BranchedMenu-BRJT0wN_.css",
+    "src": "_BranchedMenu-!~{003}~.js"
   },
-  "src/admin-main.jsx": {
-    "file": "assets/admin-Dr3ZYCmm.js",
-    "name": "admin",
-    "src": "src/admin-main.jsx",
+  "_BranchedMenu-Dgbp7iZ1.js": {
+    "file": "assets/BranchedMenu-Dgbp7iZ1.js",
+    "name": "BranchedMenu",
+    "css": [
+      "assets/BranchedMenu-BRJT0wN_.css"
+    ]
+  },
+  "src/admin-sidebar.jsx": {
+    "file": "assets/admin-sidebar-DPu51UTa.js",
+    "name": "admin-sidebar",
+    "src": "src/admin-sidebar.jsx",
     "isEntry": true,
     "imports": [
-      "_client-DhEz86-d.js"
+      "_BranchedMenu-Dgbp7iZ1.js"
     ]
   },
   "src/main.jsx": {
-    "file": "assets/front-DO0uKCed.js",
+    "file": "assets/front-CA2mChmY.js",
     "name": "front",
     "src": "src/main.jsx",
     "isEntry": true,
     "imports": [
-      "_client-DhEz86-d.js"
+      "_BranchedMenu-Dgbp7iZ1.js"
     ],
     "css": [
-      "assets/front-PEk3DN8u.css"
+      "assets/front-VSWfhUCF.css"
     ]
   }
 }

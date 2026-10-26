@@ -29,106 +29,8 @@
 
   <!-- ================= 左侧边栏:多级导航 ================= -->
   <aside class="sidebar" id="sidebar">
-    <div class="sb-brand">
-      <div class="sb-title">🏠 我的小窝<br><span>后台管理</span></div>
-      <div class="sb-tagline">SITE ADMIN</div>
-    </div>
-
-    <nav class="sb-nav">
-      <!-- 组:内容管理 -->
-      <div class="sb-group" data-group="content">
-        <button class="sb-group-btn" onclick="toggleGroup(this)">
-          📝 内容管理 <span class="caret">▾</span>
-        </button>
-        <ul class="sb-sub">
-          <li><a class="sb-link" data-panel="skills" href="#skills">
-            🎯 技能树 <span class="sb-count" id="cnt-skills">0</span></a></li>
-          <li><a class="sb-link" data-panel="timeline" href="#timeline">
-            🗺️ 校园日常 <span class="sb-count" id="cnt-timeline">0</span></a></li>
-          <li><a class="sb-link" data-panel="stats" href="#stats">
-            🧮 趣味统计 <span class="sb-count" id="cnt-stats">0</span></a></li>
-          <li><a class="sb-link" data-panel="works" href="#works">
-            🛠️ 项目墙 <span class="sb-count" id="cnt-works">0</span></a></li>
-          <li><a class="sb-link" data-panel="honors" href="#honors">
-            🏆 荣誉墙 <span class="sb-count" id="cnt-honors">0</span></a></li>
-          <li><a class="sb-link" data-panel="notes" href="#notes">
-            📝 随手记 <span class="sb-count" id="cnt-notes">0</span></a></li>
-          <li><a class="sb-link" data-panel="friendlinks" href="#friendlinks">
-            🔗 友情链接 <span class="sb-count" id="cnt-friendlinks">0</span></a></li>
-          <li><a class="sb-link" data-panel="songs" href="#songs">
-            🎵 音乐 <span class="sb-count" id="cnt-songs">0</span></a></li>
-          <li><a class="sb-link" data-panel="messages" href="#messages">
-            ✉️ 留言板 <span class="sb-count" id="cnt-messages">0</span></a></li>
-          <li><a class="sb-link" data-panel="questions" href="#questions">
-            💬 提问箱 <span class="sb-count" id="cnt-questions">0</span></a></li>
-        </ul>
-      </div>
-
-      <!-- 组:个人信息 -->
-      <div class="sb-group" data-group="profile">
-        <button class="sb-group-btn" onclick="toggleGroup(this)">
-          🧍 个人信息 <span class="caret">▾</span>
-        </button>
-        <ul class="sb-sub">
-          <li><a class="sb-link" data-panel="site-info" href="#site-info">
-            🏷️ 站点信息</a></li>
-          <li><a class="sb-link" data-panel="profile-about" href="#profile-about">
-            ✍️ 自我介绍 <span class="sb-count" id="cnt-about">0</span></a></li>
-          <li><a class="sb-link" data-panel="profile-info" href="#profile-info">
-            🪪 信息卡片 <span class="sb-count" id="cnt-info">0</span></a></li>
-        </ul>
-      </div>
-
-      <!-- 组:媒体 -->
-      <div class="sb-group" data-group="media">
-        <button class="sb-group-btn" onclick="toggleGroup(this)">
-          🖼️ 媒体资源 <span class="caret">▾</span>
-        </button>
-        <ul class="sb-sub">
-          <li><a class="sb-link" data-panel="uploads" href="#uploads">
-            🖼️ 图片库 <span class="sb-count" id="cnt-uploads">0</span></a></li>
-          <li><a class="sb-link" data-panel="gallery" href="#gallery">
-            📷 相册 <span class="sb-count" id="cnt-gallery">0</span></a></li>
-          <li><a class="sb-link" data-panel="doodles" href="#doodles">
-            🎨 涂鸦墙 <span class="sb-count" id="cnt-doodles">0</span></a></li>
-        </ul>
-      </div>
-
-      <!-- 组:站点维护 -->
-      <div class="sb-group" data-group="system">
-        <button class="sb-group-btn" onclick="toggleGroup(this)">
-          ⚙️ 站点维护 <span class="caret">▾</span>
-        </button>
-        <ul class="sb-sub">
-          <li><a class="sb-link" data-panel="dashboard" href="#dashboard">📊 数据看板</a></li>
-          <li><a class="sb-link" data-panel="fx" href="#fx">🎉 前台特效</a></li>
-          <li><a class="sb-link" data-panel="notices" href="#notices">📢 站点公告</a></li>
-          <li><a class="sb-link" data-panel="countdown" href="#countdown">⏳ 倒计时</a></li>
-          <li><a class="sb-link" data-panel="backup" href="#backup">💾 数据备份</a></li>
-          <li><a class="sb-link" data-panel="likes" href="#likes">❤️ 点赞统计</a></li>
-        </ul>
-      </div>
-
-      <!-- 组:安全中心(多级菜单) -->
-      <div class="sb-group" data-group="security">
-        <button class="sb-group-btn" onclick="toggleGroup(this)">
-          🔐 安全中心 <span class="caret">▾</span>
-        </button>
-        <ul class="sb-sub">
-          <li><a class="sb-link" data-panel="sec-pass" href="#sec-pass">🔑 后台密码</a></li>
-          <li><a class="sb-link" data-panel="sec-login" href="#sec-login">🛡️ 登录防护</a></li>
-          <li><a class="sb-link" data-panel="sec-blocked" href="#sec-blocked">⛔ 封锁名单</a></li>
-          <li><a class="sb-link" data-panel="sec-sessions" href="#sec-sessions">💻 登录中的设备</a></li>
-          <li><a class="sb-link" data-panel="sec-audit" href="#sec-audit">📜 操作记录</a></li>
-          <li><a class="sb-link" data-panel="sec-status" href="#sec-status">🛡️ 防护状态</a></li>
-        </ul>
-      </div>
-    </nav>
-
-    <div class="sb-foot">
-      <a class="a-btn yellow" href="/" target="_blank" rel="noopener">👀 看看主页</a>
-      <a class="a-btn" href="/admin/logout">🚪 退出登录</a>
-    </div>
+    {# v4.2.0:侧边栏多级菜单改由 React(BranchedMenu)渲染 #}
+    <div id="admin-sidebar-root" data-panel="{{ initial_panel or 'skills' }}"></div>
   </aside>
 
   <div class="sb-scrim" id="sbScrim"></div>
@@ -887,6 +789,10 @@
 window.__ADMIN_DATA__ = {{ data | tojson }};
 window.__ADMIN_MUST_CHANGE__ = {{ 'true' if must_change else 'false' }};
 </script>
+{# v4.2.0:后台侧边栏由 React(BranchedMenu)渲染 #}
+{% for href in admin_react_css %}<link rel="stylesheet" href="{{ href }}" />{% endfor %}
+{% for src in admin_react_js %}<script type="module" nonce="{{ csp_nonce }}" src="{{ src }}"></script>{% endfor %}
+<script nonce="{{ csp_nonce }}">
 <script nonce="{{ csp_nonce }}" src="{{ url_for('static', filename='js/theme.js') }}?v={{ asset_ver }}"></script>
 <script nonce="{{ csp_nonce }}" src="{{ url_for('static', filename='js/qrcode.min.js') }}?v={{ asset_ver }}"></script>
 <!-- v2.1 拆分:核心工具 → 导航面板 → 内容管理 → 媒体 → 运营 → 收尾(保序即等价) -->

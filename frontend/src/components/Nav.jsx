@@ -12,9 +12,12 @@ import {
   MapsLocation01Icon,
   Mail01Icon,
   Menu01Icon,
+  Settings02Icon,
+  PaintBoardIcon,
+  BookOpen01Icon,
 } from '@hugeicons/core-free-icons';
 
-/* 桌面端顶部导航的分组(供移动端抽屉复用) */
+/* 页面 → 图标 */
 const MENU_ICONS = {
   index: Home01Icon,
   about: UserIcon,
@@ -26,8 +29,14 @@ const MENU_ICONS = {
   contact: Mail01Icon,
 };
 
-/* 移动端抽屉:分「浏览」和「了解我」两组 */
-const DRAWER_ITEMS = [
+/**
+ * 全站多级导航(v4.2.0)
+ *
+ * 桌面端:左侧常驻的分支式菜单(BranchedMenu),多级分组 + 折叠。
+ * 移动端:同一份菜单收进抽屉,点汉堡展开。
+ * 两端共用 MENU_ITEMS,不重复维护。
+ */
+const MENU_ITEMS = [
   {
     label: '浏览',
     children: [
@@ -46,7 +55,20 @@ const DRAWER_ITEMS = [
       { value: 'contact', label: '来找我玩', icon: MENU_ICONS.contact },
     ],
   },
+  {
+    label: '更多',
+    children: [
+      { value: 'docs', label: 'API 文档', icon: BookOpen01Icon },
+      { value: 'admin', label: '后台管理', icon: Settings02Icon },
+    ],
+  },
 ];
+
+/* 不属于 PAGES 的额外跳转目标 */
+const EXTRA_ROUTES = {
+  docs: '/docs/api.html',
+  admin: '/admin/',
+};
 
 export default function Nav({ pageId }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -54,13 +76,11 @@ export default function Nav({ pageId }) {
     () => document.documentElement.getAttribute('data-theme') || 'light'
   );
 
-  // 抽屉打开时锁定滚动
   useEffect(() => {
     document.body.style.overflow = drawerOpen ? 'hidden' : '';
     return () => { document.body.style.overflow = ''; };
   }, [drawerOpen]);
 
-  // Esc 关闭抽屉
   useEffect(() => {
     if (!drawerOpen) return;
     const onKey = (e) => { if (e.key === 'Escape') setDrawerOpen(false); };
@@ -76,61 +96,70 @@ export default function Nav({ pageId }) {
     try { localStorage.setItem('theme', next); } catch { /* 隐私模式 */ }
   };
 
-  const go = (path) => {
+  const handleSelect = (value) => {
     setDrawerOpen(false);
-    navigate(path);
+    if (EXTRA_ROUTES[value]) {
+      window.location.href = EXTRA_ROUTES[value];
+      return;
+    }
+    const p = PAGES.find((x) => x.id === value);
+    if (p) navigate(p.path);
+  };
+
+  const menuCommon = {
+    items: MENU_ITEMS,
+    defaultOpen: [0, 1],
+    defaultActive: pageId,
+    onSelect: handleSelect,
+    width: 210,
+    rowHeight: 36,
+    indent: 38,
+    trunk: 12,
+    radius: 9,
+    lineWidth: 1.5,
+    fontSize: 13.5,
+    drawDuration: 380,
+    foldDuration: 280,
   };
 
   return (
     <>
-      <nav className="nav">
+      {/* 顶栏:logo + 桌面端菜单按钮 + 主题切换 */}
+      <header className="nav">
         <div className="container nav-inner">
           <a
             href="/"
             className="logo"
-            onClick={(e) => { e.preventDefault(); go('/'); }}
+            onClick={(e) => { e.preventDefault(); handleSelect('index'); }}
           >
             <span className="dot" />
             <span data-site="site_name">至尊杰的小窝</span>
           </a>
 
-          <button
-            className="nav-toggle"
-            aria-label="打开菜单"
-            aria-expanded={drawerOpen}
-            onClick={() => setDrawerOpen(true)}
-          >
-            <HugeiconsIcon icon={Menu01Icon} size={22} strokeWidth={2.4} />
-          </button>
-
-          <ul className="nav-links">
-            {PAGES.map((p) => (
-              <li key={p.id}>
-                <a
-                  href={p.path}
-                  className={pageId === p.id ? 'active' : ''}
-                  onClick={(e) => { e.preventDefault(); go(p.path); }}
-                >
-                  {p.label}
-                </a>
-              </li>
-            ))}
-            <li>
-              <button
-                className="theme-toggle"
-                onClick={toggleTheme}
-                aria-label="切换深色模式"
-                title="切换深色模式"
-              >
-                <span className="ti-sun">☀️</span>
-                <span className="ti-moon">🌙</span>
-              </button>
-            </li>
-          </ul>
+          <div className="nav-actions">
+            <button
+              className="nav-menu-btn"
+              aria-label="打开导航菜单"
+              aria-expanded={drawerOpen}
+              onClick={() => setDrawerOpen(true)}
+            >
+              <HugeiconsIcon icon={Menu01Icon} size={20} strokeWidth={2.4} />
+              <span>菜单</span>
+            </button>
+            <button
+              className="theme-toggle"
+              onClick={toggleTheme}
+              aria-label="切换深色模式"
+              title="切换深色模式"
+            >
+              <span className="ti-sun">☀️</span>
+              <span className="ti-moon">🌙</span>
+            </button>
+          </div>
         </div>
-      </nav>
+      </header>
 
-      {/* 移动端抽屉:用 BranchedMenu 做分支式导航 */}
+      {/* 抽屉:桌面端从左侧滑出,移动端从右侧。共用 BranchedMenu */}
       {drawerOpen && (
         <div
           className="drawer-scrim"
@@ -141,6 +170,7 @@ export default function Nav({ pageId }) {
       <aside
         className={`drawer${drawerOpen ? ' open' : ''}`}
         aria-hidden={!drawerOpen}
+        aria-label="站点导航"
       >
         <div className="drawer-head">
           <span className="drawer-title">导航</span>
@@ -154,26 +184,11 @@ export default function Nav({ pageId }) {
         </div>
         <div className="drawer-body">
           <BranchedMenu
-            items={DRAWER_ITEMS}
-            defaultOpen={[0, 1]}
-            defaultActive={pageId}
-            onSelect={(value) => {
-              const p = PAGES.find((x) => x.id === value);
-              if (p) go(p.path);
-            }}
+            {...menuCommon}
             key={pageId}
             color="var(--ink, #2d2a32)"
             accentColor="var(--pink, #ff6b9d)"
             lineColor="rgba(0,0,0,.22)"
-            width={230}
-            rowHeight={38}
-            indent={38}
-            trunk={12}
-            radius={9}
-            lineWidth={1.5}
-            fontSize={14}
-            drawDuration={360}
-            foldDuration={260}
           />
         </div>
       </aside>

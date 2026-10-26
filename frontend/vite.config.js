@@ -8,7 +8,7 @@ import { resolve } from 'path';
  * 设计要点:
  * 1. 产物直接输出到 ../static-react/,由 Flask 的 send_from_directory 托管,
  *    不依赖 nginx 改配置(现有 location / 已反代给 Flask)。
- * 2. 多入口:front(前台)+ admin(后台),各自独立打包,避免后台代码拖累前台首屏。
+ * 2. 多入口:front(前台)+ admin-sidebar(后台侧边栏菜单),各自独立打包。
  * 3. 不生成 sourcemap(生产不需要,还省体积)。
  * 4. 资源文件名带内容哈希,配合长缓存。
  */
@@ -23,7 +23,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         front: resolve(__dirname, 'src/main.jsx'),
-        admin: resolve(__dirname, 'src/admin-main.jsx'),
+        'admin-sidebar': resolve(__dirname, 'src/admin-sidebar.jsx'),
       },
       output: {
         entryFileNames: 'assets/[name]-[hash].js',
@@ -34,7 +34,6 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    // 开发时把 API 请求转发到本地 Flask
     proxy: {
       '/api': 'http://127.0.0.1:5100',
     },

@@ -859,3 +859,73 @@ body.lb-open { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) {
   .site-backdrop { background: radial-gradient(ellipse at 50% 0%, #2b2733 0%, #1b1922 70%); }
 }
+
+/* ============================================================
+   v4.2.0 导航改造:桌面端也用 BranchedMenu
+   ============================================================ */
+.nav-actions { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+
+.nav-menu-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: inherit; font-size: 13.5px; font-weight: 700;
+  padding: 7px 14px; cursor: pointer;
+  color: var(--ink, #2d2a32);
+  background: #fff;
+  border: 2px solid var(--shadow, #2d2a32); border-radius: 999px;
+  box-shadow: 2px 2px 0 var(--shadow, #2d2a32);
+  transition: transform .12s ease, box-shadow .15s ease;
+}
+.nav-menu-btn:hover { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--shadow, #2d2a32); }
+.nav-menu-btn:active { transform: translate(1px, 1px); box-shadow: 1px 1px 0 var(--shadow, #2d2a32); }
+[data-theme="dark"] .nav-menu-btn { background: var(--card, #24222b); color: var(--text, #eee); }
+
+/* 抽屉改为桌面/移动通用:桌面从左侧滑出 */
+@media (min-width: 721px) {
+  .drawer {
+    left: 0; right: auto;
+    border-left: 0; border-right: 3px solid var(--shadow, #2d2a32);
+    transform: translateX(-100%);
+    box-shadow: 8px 0 32px rgba(20, 18, 26, .18);
+  }
+  .drawer.open { transform: translateX(0); }
+}
+
+/* 旧版 .nav-links 横向导航已不再使用,保留样式避免其它页面报错 */
+.nav-links { display: none !important; }
+
+/* ---- 后台侧边栏适配 BranchedMenu ---- */
+.admin-react-sidebar {
+  display: flex; flex-direction: column;
+  padding: 18px 14px 16px;
+  overflow-y: auto;
+}
+.admin-react-brand {
+  font-weight: 800; font-size: 15px; margin-bottom: 18px;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.admin-react-sub { font-size: 11.5px; font-weight: 600; color: var(--text-3, #8a8494); }
+.admin-react-sidebar .branched-menu { margin-bottom: 16px; }
+.admin-react-foot {
+  margin-top: auto; padding-top: 16px;
+  border-top: 2px dashed rgba(0, 0, 0, .12);
+  display: flex; flex-direction: column; gap: 8px;
+}
+[data-theme="dark"] .admin-react-foot { border-top-color: rgba(255, 255, 255, .14); }
+.admin-react-theme, .admin-react-link-out {
+  font-family: inherit; font-size: 12.5px; font-weight: 700;
+  text-align: left; padding: 7px 10px; border-radius: 8px;
+  background: transparent; border: 1px solid rgba(0, 0, 0, .12);
+  color: var(--text-2, #55505e); cursor: pointer; text-decoration: none;
+  transition: background .15s ease;
+}
+.admin-react-theme:hover, .admin-react-link-out:hover { background: rgba(0, 0, 0, .05); }
+[data-theme="dark"] .admin-react-theme,
+[data-theme="dark"] .admin-react-link-out { border-color: rgba(255, 255, 255, .16); color: var(--text-2, #ccc); }
+[data-theme="dark"] .admin-react-theme:hover,
+[data-theme="dark"] .admin-react-link-out:hover { background: rgba(255, 255, 255, .08); }
+.admin-react-title { font-size: 21px; margin-bottom: 10px; }
+
+@media (max-width: 720px) {
+  .nav-menu-btn span { display: none; }
+  .nav-menu-btn { padding: 7px 9px; }
+}

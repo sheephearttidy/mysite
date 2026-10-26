@@ -853,8 +853,13 @@ def admin():
                         for k, v in db.SITE_FIELDS.items()],
     }
     # 初始密码还没改过 → 前端弹窗提示修改
+    # v4.2.0:侧边栏多级菜单由 React(BranchedMenu)渲染,这里注入它的入口资源
+    admin_assets = react_assets("src/admin-sidebar.jsx")
     return render_template("admin.html", data=data,
-                           must_change=db.must_change_password())
+                           must_change=db.must_change_password(),
+                           admin_react_js=admin_assets["js"],
+                           admin_react_css=admin_assets["css"],
+                           initial_panel=request.args.get("panel", "skills"))
 
 
 # ---------------- 改密码 ----------------
