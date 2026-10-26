@@ -185,3 +185,9 @@ deploy/_server_*.conf
 
 # AI 工具本地会话计划(不入库)
 .zcode/
+
+# React 构建产物(v4.0.0):由 frontend/ 构建生成,服务器直接从仓库取用,故入库
+# 如需改为 CI 构建,把下面两行取消注释
+# static-react/
+# frontend/node_modules/
+

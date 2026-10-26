@@ -1,0 +1,27 @@
+{
+  "_client-DhEz86-d.js": {
+    "file": "assets/client-DhEz86-d.js",
+    "name": "client"
+  },
+  "src/admin-main.jsx": {
+    "file": "assets/admin-Dr3ZYCmm.js",
+    "name": "admin",
+    "src": "src/admin-main.jsx",
+    "isEntry": true,
+    "imports": [
+      "_client-DhEz86-d.js"
+    ]
+  },
+  "src/main.jsx": {
+    "file": "assets/front-DWx-Aon4.js",
+    "name": "front",
+    "src": "src/main.jsx",
+    "isEntry": true,
+    "imports": [
+      "_client-DhEz86-d.js"
+    ],
+    "css": [
+      "assets/front-BRJT0wN_.css"
+    ]
+  }
+}

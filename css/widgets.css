@@ -707,3 +707,77 @@ body.lb-open { overflow: hidden; }
   background: var(--paper); color: var(--text-2);
   font-weight: 800; font-size: 14px; line-height: 1;
 }
+
+/* ============================================================
+   v4.0.0 React 化新增样式:移动端抽屉 + 后台外壳
+   ============================================================ */
+
+/* ---- 移动端抽屉(BranchedMenu 容器) ---- */
+.drawer-scrim {
+  position: fixed; inset: 0; z-index: 9500;
+  background: rgba(20, 18, 26, .45);
+  animation: drawer-fade .2s ease;
+}
+@keyframes drawer-fade { from { opacity: 0; } to { opacity: 1; } }
+
+.drawer {
+  position: fixed; top: 0; right: 0; bottom: 0; z-index: 9501;
+  width: min(300px, 84vw);
+  background: var(--cream, #fff8ee);
+  border-left: 3px solid var(--shadow, #2d2a32);
+  box-shadow: -8px 0 32px rgba(20, 18, 26, .18);
+  transform: translateX(100%);
+  transition: transform .28s cubic-bezier(.22, .9, .3, 1.05);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.drawer.open { transform: translateX(0); }
+.drawer-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 18px; border-bottom: 2px dashed rgba(0, 0, 0, .12);
+  flex: 0 0 auto;
+}
+.drawer-title { font-size: 15px; font-weight: 800; color: var(--ink, #2d2a32); }
+.drawer-close {
+  background: transparent; border: none; cursor: pointer;
+  font-size: 17px; color: var(--text-3, #8a8494);
+  padding: 4px 6px; line-height: 1; font-family: inherit;
+}
+.drawer-close:hover { color: var(--ink, #2d2a32); }
+.drawer-body {
+  flex: 1; overflow-y: auto; padding: 18px 12px 28px;
+  -webkit-overflow-scrolling: touch;
+}
+[data-theme="dark"] .drawer { background: var(--card, #24222b); }
+[data-theme="dark"] .drawer-head { border-bottom-color: rgba(255, 255, 255, .14); }
+@media (prefers-reduced-motion: reduce) {
+  .drawer { transition: none; }
+}
+
+/* ---- 后台 React 外壳(迁移期) ---- */
+.admin-react-shell { display: flex; min-height: 100vh; }
+.admin-react-sidebar {
+  width: 210px; flex: 0 0 auto;
+  border-right: 2px solid var(--line, #2d2a32);
+  padding: 16px 12px; background: var(--paper, #fff);
+}
+.admin-react-brand { font-weight: 800; font-size: 15px; margin-bottom: 16px; }
+.admin-react-group { margin-bottom: 12px; }
+.admin-react-group-btn {
+  width: 100%; text-align: left; background: none; border: 0;
+  font: inherit; font-size: 12.5px; font-weight: 700;
+  color: var(--text-3, #8a8494); cursor: pointer; padding: 6px 4px;
+  font-family: inherit;
+}
+.admin-react-list { list-style: none; margin: 0; padding: 0 0 0 8px; }
+.admin-react-link {
+  width: 100%; text-align: left; background: none; border: 0;
+  font: inherit; font-size: 13px; color: var(--text-2, #55505e);
+  cursor: pointer; padding: 6px 8px; border-radius: 7px;
+  font-family: inherit;
+}
+.admin-react-link:hover { background: rgba(0, 0, 0, .05); }
+.admin-react-link.active {
+  background: var(--pink, #ff6b9d); color: #fff; font-weight: 700;
+}
+.admin-react-main { flex: 1; padding: 24px 28px; }

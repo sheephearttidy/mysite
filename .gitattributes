@@ -1,0 +1,13 @@
+# 构建产物与二进制文件:禁止行尾转换,否则会破坏文件
+static-react/** -text
+frontend/package-lock.json -text
+
+# 图片等二进制
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.woff binary
+*.woff2 binary

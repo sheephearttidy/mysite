@@ -126,8 +126,12 @@ def inject_asset_ver():
     """给静态资源加版本号,改了 CSS/JS 后浏览器能立刻拿到新的。
 
     取 app.py + 静态文件的最大 mtime,任何一次部署都会让版本号变化。
+    v4.0.0:同时注入 React 入口的 JS/CSS 列表(从 Vite manifest 读)。
     """
-    return {"asset_ver": ASSET_VER}
+    assets = react_assets("src/main.jsx")
+    return {"asset_ver": ASSET_VER,
+            "react_js": assets["js"],
+            "react_css": assets["css"]}
 
 
 def _compute_asset_ver() -> str:
@@ -208,6 +212,55 @@ def frontend_page(page: str):
 @app.get("/docs/<path:filename>")
 def frontend_docs(filename: str):
     return send_from_directory(os.path.join(PROJECT_ROOT, "docs"), filename)
+
+
+# ---------------- v4.0.0:React 前端产物 ----------------
+# Vite 构建输出到 /var/www/mysite/static-react/,由这里托管。
+# nginx 的 location / 反代给 Flask,所以不需要改 nginx 配置。
+REACT_DIST = os.path.join(PROJECT_ROOT, "static-react")
+_react_manifest_cache = {"mtime": 0, "data": {}}
+
+
+def react_manifest():
+    """读取 Vite manifest(带 mtime 缓存,部署后自动失效)"""
+    p = os.path.join(REACT_DIST, "manifest.json")
+    try:
+        mt = os.path.getmtime(p)
+    except OSError:
+        return {}
+    if mt != _react_manifest_cache["mtime"]:
+        try:
+            with open(p, encoding="utf-8") as f:
+                _react_manifest_cache["data"] = json.load(f)
+            _react_manifest_cache["mtime"] = mt
+        except (OSError, ValueError):
+            return {}
+    return _react_manifest_cache["data"]
+
+
+def react_assets(entry: str) -> dict:
+    """取某个入口的 JS/CSS 路径(含依赖 chunk)"""
+    mf = react_manifest()
+    item = mf.get(entry) or {}
+    js, css = [], []
+    # 先收集依赖 chunk(client 等共享运行时),再放入口自身
+    for imp in item.get("imports", []) or []:
+        dep = mf.get(imp) or {}
+        if dep.get("file"):
+            js.append("/static-react/" + dep["file"])
+    if item.get("file"):
+        js.append("/static-react/" + item["file"])
+    for c in item.get("css", []) or []:
+        css.append("/static-react/" + c)
+    return {"js": js, "css": css}
+
+
+@app.get("/static-react/<path:filename>")
+def react_static(filename: str):
+    """React 构建产物。带 hash 文件名,可长缓存"""
+    resp = send_from_directory(REACT_DIST, filename)
+    resp.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+    return resp
 
 
 # ---------------- 错误页(v2.7.6) ----------------

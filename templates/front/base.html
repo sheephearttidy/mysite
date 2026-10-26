@@ -32,33 +32,35 @@
 <link rel="stylesheet" media="print" onload="this.media='all'"
       href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&family=Baloo+2:wght@500;700;800&display=swap" />
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&family=Baloo+2:wght@500;700;800&display=swap" /></noscript>
-<link rel="stylesheet" href="/css/base.css?v=f2130b49" />
-<link rel="stylesheet" href="/css/home.css?v=9ccbce26" />
-<link rel="stylesheet" href="/css/widgets.css?v=ed66f6c1" />
-<link rel="stylesheet" href="/css/dark.css?v=71f4bdf4" />
-<link rel="stylesheet" href="/css/holidays.css?v=f8ce91f5" />
-<link rel="stylesheet" href="/css/responsive.css?v=33168979" />
+
+{# 站点样式:React 组件复用同一套 CSS 变量与类名,视觉保持一致 #}
+<link rel="stylesheet" href="/css/base.css?v={{ asset_ver }}" />
+<link rel="stylesheet" href="/css/home.css?v={{ asset_ver }}" />
+<link rel="stylesheet" href="/css/widgets.css?v={{ asset_ver }}" />
+<link rel="stylesheet" href="/css/dark.css?v={{ asset_ver }}" />
+<link rel="stylesheet" href="/css/holidays.css?v={{ asset_ver }}" />
+<link rel="stylesheet" href="/css/responsive.css?v={{ asset_ver }}" />
+
+{# v4.0.0:React 入口样式(Vite 产物,文件名带 hash) #}
+{% for href in react_css %}<link rel="stylesheet" href="{{ href }}" />{% endfor %}
+
 {% block head_extra %}{% endblock %}
 <script nonce="{{ csp_nonce }}">
 (function(){try{var t=localStorage.getItem('theme');if(!t)t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';if(t==='dark')document.documentElement.setAttribute('data-theme','dark');document.documentElement.setAttribute('data-theme-source',localStorage.getItem('theme')?'manual':'system')}catch(e){}})();
 </script>
-<script src="/js/holiday.js?v=21226f6c"></script>
+<script src="/js/holiday.js?v={{ asset_ver }}"></script>
 <link rel="manifest" href="/manifest.json" />
 <meta name="theme-color" content="#ff6b9d" />
 </head>
 <body data-page="{{ page_id }}">
-{% include 'front/_nav.html' %}
-{% block content %}{% endblock %}
-{% include 'front/_footer.html' %}
-<script src="/js/theme.js?v=87dc9b0e"></script>
-<script src="/js/core.js?v=5c5f13e9"></script>
-<script src="/js/ambience.js?v=94ffbf62"></script>
-<script src="/js/site-extra.js?v=2a9678a9"></script>
-{% block page_scripts %}{% endblock %}
-<script src="/js/main.js?v=77ad8ff8"></script>
-<script src="/js/interact.js?v=5e33008d"></script>
-<script src="/js/holiday-fx.js?v=8d1010f5"></script>
-<script src="/js/pet.js?v=27c9b966"></script>
+
+{# React 挂载点。首屏 HTML 由 React 渲染,服务端只负责 head 里的 SEO 信息。 #}
+<div id="react-root" data-page="{{ page_id }}"></div>
+
+{# v4.0.0:React 入口(module 类型,由 Vite 打包,已含依赖) #}
+{% for src in react_js %}<script type="module" nonce="{{ csp_nonce }}" src="{{ src }}"></script>{% endfor %}
+
+<script src="/js/holiday-fx.js?v={{ asset_ver }}"></script>
 <script nonce="{{ csp_nonce }}">
 if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js').catch(function(){});});}
 </script>
