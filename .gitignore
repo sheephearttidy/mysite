@@ -193,3 +193,4 @@ deploy/_server_*.conf
 
 # AI 工具本地会话计划(不入库)
 .zcode/
+*.tsbuildinfo
