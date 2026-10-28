@@ -13,7 +13,16 @@ import time
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
+from fastapi import (
+    APIRouter,
+    Body,
+    Depends,
+    File,
+    HTTPException,
+    Request,
+    UploadFile,
+    status,
+)
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -199,8 +208,8 @@ def export_data(request: Request, db: Session = Depends(get_db)) -> dict[str, An
 
 @router.post("/backup/import", tags=["后台"], dependencies=[Depends(require_admin)])
 def import_data(
-    payload: dict[str, Any],
     request: Request,
+    payload: dict[str, Any] = Body(...),
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
     """从 JSON 恢复:先清空再写入,单事务。"""
@@ -247,7 +256,11 @@ def get_fx(db: Session = Depends(get_db)) -> dict[str, str]:
 
 
 @router.put("/fx", tags=["后台"], dependencies=[Depends(require_admin)])
-def set_fx(payload: dict[str, Any], request: Request, db: Session = Depends(get_db)) -> dict[str, str]:
+def set_fx(
+    request: Request,
+    payload: dict[str, Any] = Body(...),
+    db: Session = Depends(get_db),
+) -> dict[str, str]:
     for key in FX_KEYS:
         if key in payload:
             site_svc.set_setting(db, key, str(payload[key])[:20])

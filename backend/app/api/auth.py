@@ -11,7 +11,7 @@ import secrets
 import time
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -338,58 +338,93 @@ def unblock(request: Request, ip: str, db: Session = Depends(get_db)) -> dict[st
 
 # ---------------- 安全设置 ----------------
 
+# 对外字段名(前端用) -> (settings 键, 最小值, 最大值)
+# 必须显式映射:GET 返回短名,POST 若直接拿短名去查 settings 会永远匹配不上,
+# 接口返回 200 但一个字段都没写进去。
+SEC_NUMERIC_FIELDS: dict[str, tuple[str, int, int]] = {
+    "captcha_len": (K.KEY_CAPTCHA_LEN, 3, 6),
+    "fail_threshold": (K.KEY_FAIL_THRESHOLD, 1, 50),
+    "block_minutes": (K.KEY_BLOCK_MINUTES, 1, 1440),
+    "session_hours": (K.KEY_SESSION_HOURS, 1, 720),
+    "idle_minutes": (K.KEY_IDLE_MINUTES, 0, 1440),
+    "audit_keep": (K.KEY_AUDIT_KEEP, 50, 5000),
+    "pass_minlen": (K.KEY_PASS_MINLEN, 6, 64),
+    "pass_classes": (K.KEY_PASS_CLASSES, 1, 4),
+}
+
+# 开关型字段:短名 -> settings 键
+SEC_BOOL_FIELDS: dict[str, str] = {
+    "captcha": K.KEY_CAPTCHA_ON,
+    "bind_ip": K.KEY_BIND_IP,
+}
+
+
+def _read_security(db: Session) -> dict[str, Any]:
+    """读出全部安全设置,键名用前端短名。"""
+    out: dict[str, Any] = {
+        name: site_svc.get_setting(db, key, str(default))
+        for name, (key, default) in {
+            "captcha_len": (K.KEY_CAPTCHA_LEN, 4),
+            "fail_threshold": (K.KEY_FAIL_THRESHOLD, 5),
+            "block_minutes": (K.KEY_BLOCK_MINUTES, 15),
+            "session_hours": (K.KEY_SESSION_HOURS, 168),
+            "idle_minutes": (K.KEY_IDLE_MINUTES, 60),
+            "audit_keep": (K.KEY_AUDIT_KEEP, 500),
+            "pass_minlen": (K.KEY_PASS_MINLEN, 8),
+            "pass_classes": (K.KEY_PASS_CLASSES, 2),
+        }.items()
+    }
+    out["captcha"] = site_svc.get_setting(db, K.KEY_CAPTCHA_ON, "1")
+    out["bind_ip"] = site_svc.get_setting(db, K.KEY_BIND_IP, "0")
+    return out
+
 
 @router.get("/security/settings", tags=["后台"], dependencies=[Depends(require_admin)])
 def security_settings(db: Session = Depends(get_db)) -> dict[str, Any]:
     """安全设置一览(后台面板用)。"""
-    return {
-        "captcha": site_svc.get_setting(db, K.KEY_CAPTCHA_ON, "1"),
-        "captcha_len": site_svc.get_setting(db, K.KEY_CAPTCHA_LEN, "4"),
-        "fail_threshold": site_svc.get_setting(db, K.KEY_FAIL_THRESHOLD, "5"),
-        "block_minutes": site_svc.get_setting(db, K.KEY_BLOCK_MINUTES, "15"),
-        "session_hours": site_svc.get_setting(db, K.KEY_SESSION_HOURS, "168"),
-        "idle_minutes": site_svc.get_setting(db, K.KEY_IDLE_MINUTES, "60"),
-        "audit_keep": site_svc.get_setting(db, K.KEY_AUDIT_KEEP, "500"),
-        "pass_minlen": site_svc.get_setting(db, K.KEY_PASS_MINLEN, "8"),
-        "pass_classes": site_svc.get_setting(db, K.KEY_PASS_CLASSES, "2"),
-        "bind_ip": site_svc.get_setting(db, K.KEY_BIND_IP, "0"),
-    }
+    return _read_security(db)
 
 
 @router.post("/security/settings", tags=["后台"], dependencies=[Depends(require_admin)])
 def update_security_settings(
-    payload: dict[str, Any], request: Request, db: Session = Depends(get_db)
+    request: Request,
+    payload: dict[str, Any] = Body(...),
+    db: Session = Depends(get_db),
 ) -> dict[str, Any]:
-    """更新安全设置,带范围校验。"""
-    bounds = {
-        K.KEY_CAPTCHA_LEN: (3, 6),
-        K.KEY_FAIL_THRESHOLD: (1, 50),
-        K.KEY_BLOCK_MINUTES: (1, 1440),
-        K.KEY_SESSION_HOURS: (1, 720),
-        K.KEY_IDLE_MINUTES: (0, 1440),
-        K.KEY_AUDIT_KEEP: (50, 5000),
-        K.KEY_PASS_MINLEN: (6, 64),
-        K.KEY_PASS_CLASSES: (1, 4),
-    }
-    for key, (lo, hi) in bounds.items():
-        if key not in payload:
+    """更新安全设置,带范围校验。
+
+    只处理 payload 里出现的字段,未提交的保持不变。
+    """
+    changed: list[str] = []
+
+    for name, (key, lo, hi) in SEC_NUMERIC_FIELDS.items():
+        if name not in payload:
             continue
         try:
-            val = int(payload[key])
+            val = int(payload[name])
         except (TypeError, ValueError):
             raise HTTPException(
-                status.HTTP_400_BAD_REQUEST, key + " 必须是数字"
+                status.HTTP_400_BAD_REQUEST, "%s 必须是数字" % name
             )
         if not lo <= val <= hi:
             raise HTTPException(
-                status.HTTP_400_BAD_REQUEST, "%s 必须在 %d~%d 之间" % (key, lo, hi)
+                status.HTTP_400_BAD_REQUEST, "%s 必须在 %d~%d 之间" % (name, lo, hi)
             )
         site_svc.set_setting(db, key, str(val))
+        changed.append(name)
 
-    for key in (K.KEY_CAPTCHA_ON, K.KEY_BIND_IP):
-        if key in payload:
-            on = str(payload[key]) in ("1", "true", "on")
-            site_svc.set_setting(db, key, "1" if on else "0")
+    for name, key in SEC_BOOL_FIELDS.items():
+        if name not in payload:
+            continue
+        raw = payload[name]
+        on = str(raw) in ("1", "true", "True", "on", "yes")
+        site_svc.set_setting(db, key, "1" if on else "0")
+        changed.append(name)
 
-    audit(db, request, "security_settings", "")
-    return security_settings(db)
+    if not changed:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, "没有可更新的字段"
+        )
+
+    audit(db, request, "security_settings", ",".join(changed))
+    return _read_security(db)

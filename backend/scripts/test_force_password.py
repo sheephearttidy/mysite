@@ -34,22 +34,32 @@ def ck(name, cond, extra=""):
 
 
 def solve_captcha(cookie_value, db_path):
+    """从 settings 读出答案哈希后暴力枚举。
+
+    长度从 sec_captcha_len 读取 —— 别硬编码 4,否则后台把位数调成 5 就解不出来。
+    """
     con = sqlite3.connect(db_path)
     row = con.execute(
         "SELECT value FROM settings WHERE key=?", ("cap:" + cookie_value,)
+    ).fetchone()
+    length_row = con.execute(
+        "SELECT value FROM settings WHERE key='sec_captcha_len'"
     ).fetchone()
     con.close()
     if not row:
         return ""
     target = row[0].split("|")[0]
+    length = int(length_row[0]) if length_row else 4
+    length = max(3, min(length, 6))
     alphabet = "ACDEFGHJKLMNPQRTUVWXY34679"
-    for a in alphabet:
-        for b in alphabet:
-            for c in alphabet:
-                for d in alphabet:
-                    code = a + b + c + d
-                    if hashlib.sha256(("cap:" + code).encode()).hexdigest() == target:
-                        return code
+
+    import hashlib
+    import itertools
+
+    for combo in itertools.product(alphabet, repeat=length):
+        code = "".join(combo)
+        if hashlib.sha256(("cap:" + code).encode()).hexdigest() == target:
+            return code
     return ""
 
 
