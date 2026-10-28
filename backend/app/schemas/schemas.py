@@ -1,6 +1,10 @@
-"""请求/响应模型 —— 带类型收敛,畸形输入在入口就挡住。
+"""请求/响应模型。
 
-原 Flask 版踩过的坑:name 传对象而非字符串会 500。Pydantic 天然解决。
+重要设计:**输入严格,输出宽松**。
+- `*In` 用于写入,带完整校验(长度、范围、枚举),脏数据进不来
+- `*Out` 用于读取,只约束类型不约束范围 —— 历史库里可能存着
+  越界值(比如 percent=99999),读取时不能因此 500。
+  这类脏数据由后台改掉即可,不该让整页崩掉。
 """
 
 from __future__ import annotations
@@ -31,8 +35,14 @@ class SkillIn(BaseModel):
     sort: int = 0
 
 
-class SkillOut(ORMModel, SkillIn):
+class SkillOut(ORMModel):
     id: int
+    name: str
+    percent: int
+    note: str = ""
+    category: str = "serious"
+    color: str = "teal"
+    sort: int = 0
 
 
 class TimelineIn(BaseModel):
@@ -43,8 +53,13 @@ class TimelineIn(BaseModel):
     sort: int = 0
 
 
-class TimelineOut(ORMModel, TimelineIn):
+class TimelineOut(ORMModel):
     id: int
+    emoji: str = ""
+    time_label: str = ""
+    title: str = ""
+    content: str = ""
+    sort: int = 0
 
 
 class StatIn(BaseModel):
@@ -55,8 +70,13 @@ class StatIn(BaseModel):
     sort: int = 0
 
 
-class StatOut(ORMModel, StatIn):
+class StatOut(ORMModel):
     id: int
+    emoji: str = ""
+    number: int = 0
+    unit: str = ""
+    label: str = ""
+    sort: int = 0
 
 
 class WorkIn(BaseModel):
@@ -76,8 +96,15 @@ class WorkIn(BaseModel):
         return v
 
 
-class WorkOut(ORMModel, WorkIn):
+class WorkOut(ORMModel):
     id: int
+    emoji: str = ""
+    cover: str = "pink"
+    title: str = ""
+    desc: str = ""
+    pill: str = ""
+    link: str = ""
+    sort: int = 0
 
 
 class ProfileIn(BaseModel):
@@ -88,8 +115,13 @@ class ProfileIn(BaseModel):
     sort: int = 0
 
 
-class ProfileOut(ORMModel, ProfileIn):
+class ProfileOut(ORMModel):
     id: int
+    kind: str = "info"
+    emoji: str = ""
+    label: str = ""
+    value: str = ""
+    sort: int = 0
 
 
 class HonorIn(BaseModel):
@@ -101,8 +133,14 @@ class HonorIn(BaseModel):
     sort: int = 0
 
 
-class HonorOut(ORMModel, HonorIn):
+class HonorOut(ORMModel):
     id: int
+    emoji: str = ""
+    year: str = ""
+    title: str = ""
+    desc: str = ""
+    level: str = "school"
+    sort: int = 0
 
 
 class NoteIn(BaseModel):
@@ -112,9 +150,13 @@ class NoteIn(BaseModel):
     sort: int = 0
 
 
-class NoteOut(ORMModel, NoteIn):
+class NoteOut(ORMModel):
     id: int
-    ts: int
+    emoji: str = ""
+    text: str = ""
+    mood: str = "teal"
+    ts: int = 0
+    sort: int = 0
 
 
 class FriendLinkIn(BaseModel):
@@ -125,8 +167,13 @@ class FriendLinkIn(BaseModel):
     sort: int = 0
 
 
-class FriendLinkOut(ORMModel, FriendLinkIn):
+class FriendLinkOut(ORMModel):
     id: int
+    name: str = ""
+    url: str = ""
+    emoji: str = ""
+    desc: str = ""
+    sort: int = 0
 
 
 class SongIn(BaseModel):
@@ -138,8 +185,14 @@ class SongIn(BaseModel):
     sort: int = 0
 
 
-class SongOut(ORMModel, SongIn):
+class SongOut(ORMModel):
     id: int
+    title: str = ""
+    artist: str = ""
+    emoji: str = ""
+    song_id: str = ""
+    note: str = ""
+    sort: int = 0
 
 
 # ---------------- 相册 ----------------
@@ -157,9 +210,18 @@ class PhotoIn(BaseModel):
     sort: int = 0
 
 
-class PhotoOut(ORMModel, PhotoIn):
+class PhotoOut(ORMModel):
     id: int
-    ts: int
+    file: str = ""
+    title: str = ""
+    desc: str = ""
+    category: str = ""
+    shot_at: str = ""
+    width: int = 0
+    height: int = 0
+    shown: int = 1
+    sort: int = 0
+    ts: int = 0
 
 
 # ---------------- 互动 ----------------
@@ -177,21 +239,21 @@ class MessageIn(BaseModel):
         return v or "匿名"
 
 
-class MessageOut(ORMModel):
-    id: int
-    name: str
-    body: str
-    color: str
-    ts: int
-    reply: str = ""
-    threads: list["ThreadOut"] = []
-
-
 class ThreadOut(ORMModel):
     id: int
-    role: str
-    body: str
-    ts: int
+    role: str = "guest"
+    body: str = ""
+    ts: int = 0
+
+
+class MessageOut(ORMModel):
+    id: int
+    name: str = ""
+    body: str = ""
+    color: str = "pink"
+    ts: int = 0
+    reply: str = ""
+    threads: list[ThreadOut] = []
 
 
 class ThreadIn(BaseModel):
@@ -205,8 +267,8 @@ class QuestionIn(BaseModel):
 
 class QuestionOut(ORMModel):
     id: int
-    body: str
-    ts: int
+    body: str = ""
+    ts: int = 0
     answer: str = ""
     answered_ts: int = 0
 
@@ -248,22 +310,6 @@ class LoginIn(BaseModel):
 class PasswordChangeIn(BaseModel):
     old: str = Field(min_length=1, max_length=200)
     new: str = Field(min_length=6, max_length=200)
-
-
-class PageData(BaseModel):
-    """前台按页拉数据:只返回该页用到的字段。"""
-
-    site: SiteInfo | None = None
-    stats: list[StatOut] | None = None
-    onthisday: list[dict] | None = None
-    profile: list[ProfileOut] | None = None
-    honors: list[HonorOut] | None = None
-    songs: list[SongOut] | None = None
-    skills: list[SkillOut] | None = None
-    works: list[WorkOut] | None = None
-    timeline: list[TimelineOut] | None = None
-    notes: list[NoteOut] | None = None
-    friendlinks: list[FriendLinkOut] | None = None
 
 
 MessageOut.model_rebuild()

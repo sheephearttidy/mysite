@@ -15,7 +15,7 @@ Environment=MYSITE_SITE_ORIGIN=https://imyxj.xyz
 EnvironmentFile=-/etc/mysite-api.env
 ExecStart=/var/www/mysite/backend/.venv/bin/uvicorn app.main:app \
     --host 127.0.0.1 --port 5200 --workers 2 \
-    --access-logfile - --error-logfile -
+    --proxy-headers --forwarded-allow-ips=127.0.0.1
 Restart=always
 RestartSec=3
 
