@@ -60,13 +60,35 @@ npm run dev
 
 访问 <http://127.0.0.1:5173>。Vite 已把 `/api` 代理到 5100,无需额外配置。
 
-### 3. 登录后台
+### 3. 初始化数据库(首次必须)
 
-访问 <http://127.0.0.1:5173/admin.html>。
+```bash
+cd backend
+python seed.py
+```
 
-初始密码是 `admin`,首次登录会强制改密码。本地开发若没有数据库,首次启动会自动建库并灌入示例内容。
+这一步会建表、灌示例内容、并把后台密码设为 `admin`(同时标记「下次登录必须改密」)。
 
-### 4. 生产构建
+常用参数:
+
+```bash
+python seed.py --reset-password    # 忘记密码时重置回 admin
+python seed.py --password 新密码    # 设为指定密码
+python seed.py --no-seed           # 只建表与默认设置,不灌示例内容
+python seed.py --db 路径            # 指定数据库文件
+```
+
+脚本是幂等的:重复执行不会重复插入内容,也不会覆盖已有密码。
+
+### 4. 登录后台
+
+访问 <http://127.0.0.1:5173/admin.html>,初始密码 `admin`。
+
+**首次登录会强制跳到改密页**——新密码至少 8 位、含至少 2 类字符,改完才能进后台。
+这是后端强制的:未改密时所有后台接口返回 `403 MUST_CHANGE_PASSWORD`,
+绕过前端直接调接口也一样被拒。
+
+### 5. 生产构建
 
 ```bash
 cd frontend
@@ -98,13 +120,14 @@ uvicorn app.main:app --host 127.0.0.1 --port 5200 --workers 2
 ```
 backend/
 ├── app/
-│   ├── core/       config · db · security · deps
+│   ├── core/       config · db · security · deps · keys
 │   ├── models/     22 张表的 ORM 模型
 │   ├── schemas/    Pydantic 请求/响应模型
 │   ├── services/   content · site
 │   ├── api/        content · interact · stats · auth · admin
 │   └── main.py     应用入口
 ├── scripts/        冒烟与回归测试
+├── seed.py         建库 / 灌数据 / 重置密码
 └── requirements.txt
 
 frontend/
@@ -132,8 +155,14 @@ deploy/             nginx 与 systemd 配置
 | `SpotlightCard` | Spotlight Card | 光标聚光灯卡片 |
 | `TiltedCard` | Tilted Card | 3D 倾斜卡片 |
 | `Aurora` | Aurora | 首屏柔光背景 |
+| `GradientText` | Gradient Text | 流动渐变文字(站名) |
+| `TextType` | Text Type | 打字机效果(副标题轮播) |
+| `ShinyText` | Shiny Text | 高光扫过文字 |
+| `Particles` | Particles | canvas 漂浮粒子背景 |
+| `GridBackground` | Cursor Grid | 光标聚光网格底纹 |
+| `Meteors` | Meteors | 流星划过背景 |
 
-均为纯 CSS / transform 实现,尊重 `prefers-reduced-motion`。
+均为纯 CSS / canvas 实现,零运行时依赖,全部尊重 `prefers-reduced-motion`。
 
 ## API
 
@@ -182,13 +211,17 @@ deploy/             nginx 与 systemd 配置
 
 ## 设计要点
 
+**强制改密在后端拦截。** 首次登录(或重置密码后)`must_change_pass=1`,此时所有走 `require_admin` 的后台接口返回 `403 {"code":"MUST_CHANGE_PASSWORD"}`。`/api/me` 和 `/api/password` 走 `require_login`,不受拦截——否则用户连改密页都进不去,会把自己锁死。前端跳转只是体验,真正兜底的是接口。
+
+**settings 键名必须与历史库一致。** 密码存 `pass_hash`、改密标记存 `must_change_pass`、验证码开关存 `sec_captcha`。这些键由旧 Flask 版本写入,新代码若改名就会「读不到密码 → 永远登录失败」。所有键集中定义在 `core/keys.py`。
+
 **输入严格,输出宽松。** 写入时 Pydantic 完整校验(长度、范围、枚举),脏数据进不来;读取时只约束类型不约束范围。历史库里存着 `percent=99999` 这类越界值时,页面照常渲染,不会整页 500。
 
 **新增内容类型只需两处注册。** 在 `services/content.py` 的 `REGISTRY` 和 `api/content.py` 的 `SCHEMAS` 各加一行,CRUD 路由自动生效。
 
-**密码哈希格式沿用旧版。** `pbkdf2:iters:salt:hash`,从 Flask 版本迁移过来时站主无需重置密码。
-
 **SPA 深链回退。** nginx `try_files $uri /index.html`,FastAPI 也做了带路径穿越防护的兜底,`/about` 这类前端路由不会 404。
+
+**SQLite 路径在 Windows 上要转 POSIX。** `sqlite:///` + `Path.as_posix()`,反斜杠直接拼进 URL 会被当转义序列,报 `unable to open database file`。
 
 ## 环境变量
 
@@ -205,18 +238,22 @@ deploy/             nginx 与 systemd 配置
 
 ```bash
 # 后端(需先启动服务)
-python backend/scripts/smoke.py http://127.0.0.1:5100        # 43 项公开接口
-python backend/scripts/test_auth_crud.py                      # 22 项认证 + CRUD
-python backend/scripts/browser_check.py http://127.0.0.1:5100 # 9 页真实渲染
-python backend/scripts/admin_check.py                         # 17 项后台
+python backend/scripts/smoke.py http://127.0.0.1:5100         # 43 项公开接口
+python backend/scripts/test_auth_crud.py                       # 22 项认证 + CRUD
+python backend/scripts/browser_check.py http://127.0.0.1:5100  # 9 页真实渲染
+python backend/scripts/admin_check.py                          # 17 项后台
+python backend/scripts/test_force_password.py                  # 25 项强制改密
+python backend/scripts/test_admin_ui.py                        # 17 项后台界面
 ```
 
-`test_auth_crud.py` 与 `admin_check.py` 需要指定临时库,避免污染开发数据:
+部分脚本需要指定测试库与服务地址,避免污染开发数据:
 
 ```bash
 # Windows PowerShell
-$env:SMOKE_DB='D:\tmp\test.db'
+$env:SMOKE_DB='D:\tmp\test.db'      # test_auth_crud.py / admin_check.py
+$env:TEST_DB='D:\tmp\test.db'       # test_force_password.py / test_admin_ui.py
 $env:SMOKE_BASE='http://127.0.0.1:5100'
+$env:TEST_BASE='http://127.0.0.1:5100'
 ```
 
 ## 版本
@@ -225,7 +262,8 @@ $env:SMOKE_BASE='http://127.0.0.1:5100'
 |---|---|
 | `v1.0.0` ~ `v3.2.2` | Flask + Jinja 单体(见 Git 历史) |
 | `v4.0.0` ~ `v4.2.0` | React 实验版(归档于 `v4-react-archive` 分支) |
-| **`v5.0.0`** | **当前:React SPA + FastAPI 重构** |
+| `v5.0.0` | React SPA + FastAPI 重构 |
+| **`v5.1.0`** | **当前:样式体系补全 + 动态组件 + 地图修复 + 强制改密** |
 
 旧版可通过 `git checkout v3.2.2-pre-react-refactor` 找回。
 

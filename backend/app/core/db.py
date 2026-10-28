@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from contextlib import contextmanager
+from pathlib import Path
 
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session, sessionmaker
@@ -15,8 +16,9 @@ from sqlalchemy.orm import Session, sessionmaker
 from .config import settings
 
 # check_same_thread=False: FastAPI 线程池里跨线程使用同一连接池需要
+# as_posix():Windows 路径的反斜杠在 SQLite URL 里会被当转义,必须转正斜杠
 engine = create_engine(
-    f"sqlite:///{settings.db_file}",
+    "sqlite:///" + Path(settings.db_file).as_posix(),
     connect_args={"check_same_thread": False, "timeout": 15},
     future=True,
 )

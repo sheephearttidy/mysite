@@ -149,8 +149,7 @@ export function Moderation({ onChanged }: { onChanged: () => void }) {
                 placeholder="写下回答,保存后即公开"
                 value={answerDraft[q.id] ?? q.answer ?? ''}
                 onChange={(e) => setAnswerDraft({ ...answerDraft, [q.id]: e.target.value })}
-                className="mt-2 w-full resize-none rounded-lg border-2 px-2 py-1 text-sm outline-none"
-                style={{ borderColor: 'var(--rule)', background: 'var(--cream)', color: 'var(--ink)' }}
+                className="admin-input mt-2 w-full resize-none  border-2 px-2 py-1 text-sm outline-none"
               />
               <div className="mt-2 flex gap-2">
                 <button

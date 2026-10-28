@@ -1,10 +1,16 @@
 /**
- * 首页:首屏 + 数据统计 + 那年今日。
+ * 首页:首屏(粒子背景 + 渐变标题 + 打字机) + 数据统计 + 那年今日。
  */
 import { Link } from 'react-router-dom';
 import { Aurora } from '@/components/Aurora';
+import { Particles } from '@/components/Particles';
+import { GridBackground } from '@/components/GridBackground';
+import { Meteors } from '@/components/Meteors';
 import { CountUp } from '@/components/CountUp';
 import { SplitText } from '@/components/SplitText';
+import { GradientText } from '@/components/GradientText';
+import { TextType } from '@/components/TextType';
+import { ShinyText } from '@/components/ShinyText';
 import { SpotlightCard } from '@/components/SpotlightCard';
 import { Empty, ErrorBox, Loading } from '@/components/PageShell';
 import { useApi } from '@/lib/useApi';
@@ -23,7 +29,14 @@ export default function Home() {
   const { data, loading, error, reload } = useApi<PageData>('/api/page/index');
 
   if (loading) return <Loading />;
-  if (error) return <div className="mx-auto max-w-6xl px-5 py-10"><ErrorBox message={error} /><button className="btn mt-4" onClick={reload}>重试</button></div>;
+  if (error) {
+    return (
+      <div className="mx-auto max-w-6xl px-5 py-10">
+        <ErrorBox message={error} />
+        <button type="button" className="btn mt-4" onClick={reload}>重试</button>
+      </div>
+    );
+  }
   if (!data) return null;
 
   const { site, stats = [], onthisday = [] } = data;
@@ -32,7 +45,11 @@ export default function Home() {
     <>
       {/* ---------- 首屏 ---------- */}
       <section className="relative overflow-hidden">
-        <Aurora opacity={0.4} />
+        <Aurora opacity={0.42} />
+        <Particles count={70} />
+        <GridBackground size={52} spotSize={300} />
+        <Meteors number={12} />
+
         <div className="relative mx-auto max-w-6xl px-5 py-20 sm:py-28">
           <p
             className="mb-4 inline-block rounded-full border-[3px] px-4 py-1 text-xs font-black tracking-wider"
@@ -42,28 +59,31 @@ export default function Home() {
           </p>
 
           <h1 className="font-round text-4xl font-black leading-tight sm:text-6xl">
-            <SplitText text={`你好,我是${site.site_owner}`} delay={45} />
+            <SplitText text="你好,我是" delay={45} />{' '}
+            <GradientText duration={7} className="font-round">
+              {site.site_owner}
+            </GradientText>
           </h1>
 
-          <p className="mt-5 max-w-xl text-lg" style={{ color: 'var(--text-2)' }}>
-            <SplitText
-              text={`${site.site_grade} · 沉迷${site.site_focus} · ${site.site_slogan}`}
-              splitBy="words"
-              delay={40}
-              immediate={false}
+          <p className="mt-5 max-w-2xl text-lg" style={{ color: 'var(--text-2)' }}>
+            <TextType
+              text={[
+                `${site.site_grade} · 沉迷${site.site_focus}`,
+                site.site_slogan,
+                '写代码、调小车、折腾 AI',
+              ]}
+              speed={80}
             />
           </p>
 
+          <p className="mt-2 text-sm" style={{ color: 'var(--text-3)' }}>
+            <ShinyText duration={5}>{site.site_credit}</ShinyText>
+          </p>
+
           <div className="mt-8 flex flex-wrap gap-3">
-            <Link to="/works" className="btn btn-accent">
-              🛠️ 看看我的项目
-            </Link>
-            <Link to="/about" className="btn">
-              🧍 关于我
-            </Link>
-            <Link to="/contact" className="btn">
-              ✉️ 来找我玩
-            </Link>
+            <Link to="/works" className="btn btn-accent">🛠️ 看看我的项目</Link>
+            <Link to="/about" className="btn">🧍 关于我</Link>
+            <Link to="/contact" className="btn">✉️ 来找我玩</Link>
           </div>
         </div>
       </section>
@@ -81,9 +101,7 @@ export default function Home() {
                     <CountUp to={s.number} separator />
                     <span className="ml-0.5 text-base">{s.unit}</span>
                   </div>
-                  <p className="mt-1 text-xs" style={{ color: 'var(--text-2)' }}>
-                    {s.label}
-                  </p>
+                  <p className="mt-1 text-xs" style={{ color: 'var(--text-2)' }}>{s.label}</p>
                 </div>
               </SpotlightCard>
             ))}
@@ -104,9 +122,7 @@ export default function Home() {
                     {item.years_ago} 年前的今天
                   </p>
                   {item.kind === 'note' ? (
-                    <p className="mt-2">
-                      {item.emoji} {item.text}
-                    </p>
+                    <p className="mt-2">{item.emoji} {item.text}</p>
                   ) : (
                     <div className="mt-2">
                       <img

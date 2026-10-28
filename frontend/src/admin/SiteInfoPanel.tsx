@@ -70,8 +70,7 @@ export function SiteInfoPanel({ onSaved }: { onSaved: () => void }) {
               <input
                 value={info[k]}
                 onChange={(e) => setInfo({ ...info, [k]: e.target.value })}
-                className="mt-1 w-full rounded-lg border-2 px-2 py-1 text-sm outline-none"
-                style={{ borderColor: 'var(--rule)', background: 'var(--cream)', color: 'var(--ink)' }}
+                className="admin-input mt-1 w-full  border-2 px-2 py-1 text-sm outline-none"
               />
             </div>
           ))}

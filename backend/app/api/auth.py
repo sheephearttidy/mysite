@@ -1,11 +1,12 @@
-"""认证:登录(密码 + 图形验证码)、登出、改密、会话管理。
+"""认证:登录(密码 + 图形验证码)、登出、改密、会话与安全设置。
 
-沿用原库的密码哈希格式与 settings 键名,站主无需重置密码。
+键名与线上历史库严格一致(pass_hash / must_change_pass / sec_captcha),
+这样从 Flask 版本迁移过来时站主无需重置密码。
 """
 
 from __future__ import annotations
 
-import hashlib
+import random
 import secrets
 import time
 from typing import Any
@@ -14,16 +15,24 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from ..core import keys as K
 from ..core.config import settings
 from ..core.db import get_db
-from ..core.deps import _client_ip, audit, current_sid, require_admin
+from ..core.deps import (
+    _client_ip,
+    audit,
+    current_sid,
+    must_change_password,
+    require_admin,
+    require_login,
+)
 from ..core.security import (
     captcha_code,
     captcha_digest,
+    hash_password,
     new_session_id,
     password_strength_error,
     verify_password,
-    hash_password,
 )
 from ..models import models as m
 from ..services import site as site_svc
@@ -43,18 +52,16 @@ def _fail_state(db: Session, ip: str) -> m.LoginFail:
 
 
 @router.get("/captcha.svg", tags=["认证"])
-def captcha_svg(request: Request, response: Response, db: Session = Depends(get_db)) -> Response:
-    """纯标准库 SVG 验证码:一次性、3 分钟过期、答案哈希存 session。"""
-    length = int(site_svc.get_setting(db, "sec_captcha_len", "4") or "4")
+def captcha_svg(request: Request, db: Session = Depends(get_db)) -> Response:
+    """纯标准库 SVG 验证码:一次性、3 分钟过期、答案哈希存储。"""
+    length = int(site_svc.get_setting(db, K.KEY_CAPTCHA_LEN, "4") or "4")
     length = max(3, min(length, 6))
     code = captcha_code(length)
 
     sid = current_sid(request) or new_session_id()
-    # 答案存进 settings 表(按会话指纹索引),避免引入额外 session 中间件
-    key = f"cap:{sid}"
-    site_svc.set_setting(db, key, f"{captcha_digest(code)}|{int(time.time())}")
-
-    import random
+    site_svc.set_setting(
+        db, K.CAPTCHA_PREFIX + sid, captcha_digest(code) + "|" + str(int(time.time()))
+    )
 
     rnd = random.Random(secrets.randbits(64))
     chars = []
@@ -64,39 +71,45 @@ def captcha_svg(request: Request, response: Response, db: Session = Depends(get_
         rot = rnd.randint(-22, 22)
         size = rnd.randint(24, 30)
         chars.append(
-            f'<text x="{x}" y="{y}" font-size="{size}" font-weight="700" '
-            f'fill="#2d2a32" font-family="monospace" '
-            f'transform="rotate({rot} {x} {y})">{ch}</text>'
+            '<text x="%d" y="%d" font-size="%d" font-weight="700" fill="#2d2a32" '
+            'font-family="monospace" transform="rotate(%d %d %d)">%s</text>'
+            % (x, y, size, rot, x, y, ch)
         )
+
     lines = []
     for _ in range(4):
         x1, y1 = rnd.randint(0, 140), rnd.randint(0, 50)
         x2, y2 = rnd.randint(0, 140), rnd.randint(0, 50)
+        cx, cy = rnd.randint(0, 140), rnd.randint(0, 50)
         lines.append(
-            f'<path d="M{x1} {y1} Q{rnd.randint(0,140)} {rnd.randint(0,50)} {x2} {y2}" '
-            f'stroke="#ff6b9d" stroke-width="1.2" fill="none" opacity="0.55"/>'
+            '<path d="M%d %d Q%d %d %d %d" stroke="#ff6b9d" stroke-width="1.2" '
+            'fill="none" opacity="0.55"/>' % (x1, y1, cx, cy, x2, y2)
         )
-    dots = [
-        f'<circle cx="{rnd.randint(2,138)}" cy="{rnd.randint(2,48)}" r="1.1" fill="#8a8494" opacity="0.5"/>'
-        for _ in range(26)
-    ]
+
+    dots = []
+    for _ in range(26):
+        dots.append(
+            '<circle cx="%d" cy="%d" r="1.1" fill="#8a8494" opacity="0.5"/>'
+            % (rnd.randint(2, 138), rnd.randint(2, 48))
+        )
 
     svg = (
         '<svg xmlns="http://www.w3.org/2000/svg" width="140" height="50" viewBox="0 0 140 50">'
         '<rect width="140" height="50" rx="10" fill="#fff8ee"/>'
         + "".join(lines) + "".join(dots) + "".join(chars) + "</svg>"
     )
-    return Response(
+
+    resp = Response(
         content=svg,
         media_type="image/svg+xml",
-        headers={
-            "Cache-Control": "no-store, no-cache, must-revalidate",
-            "Set-Cookie": (
-                f"{settings.session_cookie}={sid}; Path=/; HttpOnly; "
-                f"SameSite=Lax" + ("; Secure" if settings.cookie_secure else "")
-            ),
-        },
+        headers={"Cache-Control": "no-store, no-cache, must-revalidate"},
     )
+    resp.set_cookie(
+        settings.session_cookie, sid,
+        max_age=settings.session_max_age,
+        httponly=True, samesite="lax", secure=settings.cookie_secure, path="/",
+    )
+    return resp
 
 
 @router.post("/login", tags=["认证"])
@@ -113,33 +126,34 @@ def login(
     if state.blocked_until > now:
         left = int((state.blocked_until - now) / 60) + 1
         raise HTTPException(
-            status.HTTP_403_FORBIDDEN, f"失败次数过多,请 {left} 分钟后再试"
+            status.HTTP_403_FORBIDDEN, "失败次数过多,请 %d 分钟后再试" % left
         )
 
     password = str(payload.get("password") or "")
     captcha = str(payload.get("captcha") or "")
 
-    # 验证码校验(可在后台关闭)
-    if site_svc.get_setting(db, "sec_captcha_on", "1") == "1":
+    if site_svc.get_setting(db, K.KEY_CAPTCHA_ON, "1") == "1":
         sid = current_sid(request) or ""
-        stored = site_svc.get_setting(db, f"cap:{sid}", "")
+        stored = site_svc.get_setting(db, K.CAPTCHA_PREFIX + sid, "")
         if not stored or "|" not in stored:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, "验证码已过期,请刷新")
         digest, issued = stored.split("|", 1)
         # 一次性:校验后立即删除
-        db.query(m.Setting).filter(m.Setting.key == f"cap:{sid}").delete()
+        db.query(m.Setting).filter(
+            m.Setting.key == K.CAPTCHA_PREFIX + sid
+        ).delete()
         db.commit()
         if now - int(issued) > CAPTCHA_TTL_S:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, "验证码已过期,请刷新")
         if not secrets.compare_digest(digest, captcha_digest(captcha)):
             _bump_fail(db, state, ip, now)
-            audit(db, request, "captcha_fail", f"ip={ip}")
+            audit(db, request, "captcha_fail", "ip=" + ip)
             raise HTTPException(status.HTTP_400_BAD_REQUEST, "验证码错误")
 
-    stored_hash = site_svc.get_setting(db, "admin_password", "")
+    stored_hash = site_svc.get_setting(db, K.KEY_PASS_HASH, "")
     if not stored_hash or not verify_password(password, stored_hash):
         _bump_fail(db, state, ip, now)
-        audit(db, request, "login_fail", f"ip={ip}")
+        audit(db, request, "login_fail", "ip=" + ip)
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "密码错误")
 
     # 登录成功:清失败计数、换新会话(防会话固定)
@@ -151,23 +165,22 @@ def login(
         created=now, last_seen=now, revoked=0,
     ))
     db.commit()
-    audit(db, request, "login_ok", f"ip={ip}")
+    audit(db, request, "login_ok", "ip=" + ip)
 
-    must_change = site_svc.get_setting(db, "must_change_pwd", "1") == "1"
     response.set_cookie(
         settings.session_cookie, sid,
         max_age=settings.session_max_age,
         httponly=True, samesite="lax", secure=settings.cookie_secure, path="/",
     )
-    return {"ok": True, "must_change": must_change}
+    return {"ok": True, "must_change": must_change_password(db)}
 
 
 def _bump_fail(db: Session, state: m.LoginFail, ip: str, now: int) -> None:
     """失败计数落库,达阈值封锁 IP。"""
     state.count += 1
     state.last_ts = now
-    threshold = int(site_svc.get_setting(db, "sec_fail_limit", "5") or "5")
-    minutes = int(site_svc.get_setting(db, "sec_block_min", "15") or "15")
+    threshold = int(site_svc.get_setting(db, K.KEY_FAIL_THRESHOLD, "5") or "5")
+    minutes = int(site_svc.get_setting(db, K.KEY_BLOCK_MINUTES, "15") or "15")
     if state.count >= threshold:
         state.blocked_until = now + minutes * 60
         state.count = 0
@@ -175,7 +188,9 @@ def _bump_fail(db: Session, state: m.LoginFail, ip: str, now: int) -> None:
 
 
 @router.post("/logout", tags=["认证"])
-def logout(request: Request, response: Response, db: Session = Depends(get_db)) -> dict[str, bool]:
+def logout(
+    request: Request, response: Response, db: Session = Depends(get_db)
+) -> dict[str, bool]:
     sid = current_sid(request)
     if sid:
         sess = db.get(m.LoginSession, sid)
@@ -187,13 +202,18 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)) 
 
 
 @router.get("/me", tags=["认证"])
-def me(sess: m.LoginSession = Depends(require_admin)) -> dict[str, Any]:
+def me(
+    sess: m.LoginSession = Depends(require_login),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """当前会话。未改密也能调 —— 前端据此决定是否跳改密页。"""
     return {
         "ok": True,
-        "sid": sess.sid,
+        "sid": sess.sid[:8] + "...",
         "ip": sess.ip,
         "created": sess.created,
         "last_seen": sess.last_seen,
+        "must_change": must_change_password(db),
     }
 
 
@@ -202,20 +222,30 @@ def change_password(
     payload: dict[str, Any],
     request: Request,
     db: Session = Depends(get_db),
-    sess: m.LoginSession = Depends(require_admin),
+    sess: m.LoginSession = Depends(require_login),
 ) -> dict[str, Any]:
+    """修改密码。
+
+    用 require_login 而非 require_admin —— 否则「必须改密」状态下
+    连改密接口自己都会被拦死,用户永远出不来。
+    """
     old = str(payload.get("old") or "")
     new = str(payload.get("new") or "")
 
-    stored = site_svc.get_setting(db, "admin_password", "")
+    stored = site_svc.get_setting(db, K.KEY_PASS_HASH, "")
     if not verify_password(old, stored):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "原密码错误")
-    err = password_strength_error(new)
+
+    min_len = int(site_svc.get_setting(db, K.KEY_PASS_MINLEN, "8") or "8")
+    err = password_strength_error(new, min_len=min_len)
     if err:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, err)
 
-    site_svc.set_setting(db, "admin_password", hash_password(new))
-    site_svc.set_setting(db, "must_change_pwd", "0")
+    if verify_password(new, stored):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "新密码不能与当前密码相同")
+
+    site_svc.set_setting(db, K.KEY_PASS_HASH, hash_password(new))
+    site_svc.set_setting(db, K.KEY_MUST_CHANGE, "0")
     # 改密后踢掉其他会话
     db.query(m.LoginSession).filter(m.LoginSession.sid != sess.sid).update({"revoked": 1})
     db.commit()
@@ -229,16 +259,23 @@ def change_password(
 @router.get("/security/sessions", tags=["后台"], dependencies=[Depends(require_admin)])
 def list_sessions(db: Session = Depends(get_db)) -> list[dict[str, Any]]:
     rows = db.scalars(
-        select(m.LoginSession).where(m.LoginSession.revoked == 0).order_by(m.LoginSession.last_seen.desc())
+        select(m.LoginSession)
+        .where(m.LoginSession.revoked == 0)
+        .order_by(m.LoginSession.last_seen.desc())
     ).all()
     return [
-        {"sid": r.sid[:8] + "…", "ip": r.ip, "ua": r.ua, "created": r.created, "last_seen": r.last_seen}
+        {
+            "sid": r.sid[:8] + "...", "ip": r.ip, "ua": r.ua,
+            "created": r.created, "last_seen": r.last_seen,
+        }
         for r in rows
     ]
 
 
 @router.post("/security/revoke", tags=["后台"], dependencies=[Depends(require_admin)])
-def revoke_session(request: Request, sid: str, db: Session = Depends(get_db)) -> dict[str, bool]:
+def revoke_session(
+    request: Request, sid: str, db: Session = Depends(get_db)
+) -> dict[str, bool]:
     sess = db.get(m.LoginSession, sid)
     if sess is not None:
         sess.revoked = 1
@@ -256,12 +293,12 @@ def revoke_all(request: Request, db: Session = Depends(get_db)) -> dict[str, boo
     return {"ok": True}
 
 
-# ---------------- 审计与封锁名单 ----------------
+# ---------------- 审计与封锁 ----------------
 
 
 @router.get("/security/audit", tags=["后台"], dependencies=[Depends(require_admin)])
 def audit_log(limit: int = 100, db: Session = Depends(get_db)) -> list[dict[str, Any]]:
-    cap = int(site_svc.get_setting(db, "sec_audit_keep", "500") or "500")
+    cap = int(site_svc.get_setting(db, K.KEY_AUDIT_KEEP, "500") or "500")
     limit = max(1, min(limit, cap))
     rows = db.scalars(select(m.AuditLog).order_by(m.AuditLog.ts.desc()).limit(limit)).all()
     return [
@@ -297,3 +334,62 @@ def unblock(request: Request, ip: str, db: Session = Depends(get_db)) -> dict[st
         db.commit()
         audit(db, request, "unblock", ip)
     return {"ok": True}
+
+
+# ---------------- 安全设置 ----------------
+
+
+@router.get("/security/settings", tags=["后台"], dependencies=[Depends(require_admin)])
+def security_settings(db: Session = Depends(get_db)) -> dict[str, Any]:
+    """安全设置一览(后台面板用)。"""
+    return {
+        "captcha": site_svc.get_setting(db, K.KEY_CAPTCHA_ON, "1"),
+        "captcha_len": site_svc.get_setting(db, K.KEY_CAPTCHA_LEN, "4"),
+        "fail_threshold": site_svc.get_setting(db, K.KEY_FAIL_THRESHOLD, "5"),
+        "block_minutes": site_svc.get_setting(db, K.KEY_BLOCK_MINUTES, "15"),
+        "session_hours": site_svc.get_setting(db, K.KEY_SESSION_HOURS, "168"),
+        "idle_minutes": site_svc.get_setting(db, K.KEY_IDLE_MINUTES, "60"),
+        "audit_keep": site_svc.get_setting(db, K.KEY_AUDIT_KEEP, "500"),
+        "pass_minlen": site_svc.get_setting(db, K.KEY_PASS_MINLEN, "8"),
+        "pass_classes": site_svc.get_setting(db, K.KEY_PASS_CLASSES, "2"),
+        "bind_ip": site_svc.get_setting(db, K.KEY_BIND_IP, "0"),
+    }
+
+
+@router.post("/security/settings", tags=["后台"], dependencies=[Depends(require_admin)])
+def update_security_settings(
+    payload: dict[str, Any], request: Request, db: Session = Depends(get_db)
+) -> dict[str, Any]:
+    """更新安全设置,带范围校验。"""
+    bounds = {
+        K.KEY_CAPTCHA_LEN: (3, 6),
+        K.KEY_FAIL_THRESHOLD: (1, 50),
+        K.KEY_BLOCK_MINUTES: (1, 1440),
+        K.KEY_SESSION_HOURS: (1, 720),
+        K.KEY_IDLE_MINUTES: (0, 1440),
+        K.KEY_AUDIT_KEEP: (50, 5000),
+        K.KEY_PASS_MINLEN: (6, 64),
+        K.KEY_PASS_CLASSES: (1, 4),
+    }
+    for key, (lo, hi) in bounds.items():
+        if key not in payload:
+            continue
+        try:
+            val = int(payload[key])
+        except (TypeError, ValueError):
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST, key + " 必须是数字"
+            )
+        if not lo <= val <= hi:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST, "%s 必须在 %d~%d 之间" % (key, lo, hi)
+            )
+        site_svc.set_setting(db, key, str(val))
+
+    for key in (K.KEY_CAPTCHA_ON, K.KEY_BIND_IP):
+        if key in payload:
+            on = str(payload[key]) in ("1", "true", "on")
+            site_svc.set_setting(db, key, "1" if on else "0")
+
+    audit(db, request, "security_settings", "")
+    return security_settings(db)

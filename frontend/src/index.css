@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 /* ============================================================
-   配色变量 —— 沿用原站贴纸风,前后台共用
+   配色变量 —— 前台与后台共用,暗色由 [data-theme="dark"] 覆盖
    ============================================================ */
 :root {
   --cream: #fff8ee;
@@ -25,8 +25,13 @@
   --blue-bg: #e0f2ff;
 
   --rule: rgba(45, 42, 50, 0.12);
+  --rule-strong: rgba(45, 42, 50, 0.28);
   --text-2: #6b6577;
   --text-3: #8a8494;
+
+  --on-accent: #2d2a32;
+  --danger: #d64545;
+  --card: var(--paper);
 }
 
 [data-theme='dark'] {
@@ -49,8 +54,13 @@
   --blue-bg: #1e2d3f;
 
   --rule: rgba(242, 238, 247, 0.14);
+  --rule-strong: rgba(242, 238, 247, 0.3);
   --text-2: #b8b2c4;
   --text-3: #9a94a6;
+
+  --on-accent: #1b1922;
+  --danger: #ff7a7a;
+  --card: var(--paper);
 }
 
 @layer base {
@@ -62,6 +72,12 @@
 
   html {
     scroll-behavior: smooth;
+    color-scheme: light;
+  }
+
+  [data-theme='dark'] html,
+  html[data-theme='dark'] {
+    color-scheme: dark;
   }
 
   body {
@@ -78,15 +94,48 @@
     background: var(--yellow);
     color: #2d2a32;
   }
+
+  /* 表单控件在暗色下也要有正确底色,否则浏览器给白底黑字 */
+  input,
+  textarea,
+  select,
+  button {
+    font-family: inherit;
+    color: inherit;
+  }
+
+  input,
+  textarea,
+  select {
+    color-scheme: inherit;
+  }
+
+  /* 滚动条:暗色下不要太扎眼 */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--rule-strong);
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--text-3);
+  }
 }
 
 @layer components {
-  /* 贴纸卡片:粗描边 + 硬阴影,原站的核心视觉 */
+  /* 贴纸卡片:粗描边 + 硬阴影,全站核心视觉 */
   .sticker {
-    @apply rounded-sticker border-[3px] bg-paper p-5;
+    @apply rounded-sticker border-[3px] p-5;
     border-color: var(--shadow);
+    background: var(--paper);
+    color: var(--ink);
     box-shadow: 4px 4px 0 var(--shadow);
-    transition: transform 0.18s ease, box-shadow 0.18s ease;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, background-color 0.3s;
   }
 
   .sticker-hover:hover {
@@ -100,27 +149,86 @@
     background: var(--paper);
     color: var(--ink);
     box-shadow: 3px 3px 0 var(--shadow);
-    transition: transform 0.12s, box-shadow 0.12s;
+    transition: transform 0.12s, box-shadow 0.12s, background-color 0.2s;
+    cursor: pointer;
   }
 
-  .btn:hover {
+  .btn:hover:not(:disabled) {
     transform: translate(-1px, -1px);
     box-shadow: 4px 4px 0 var(--shadow);
   }
 
-  .btn:active {
+  .btn:active:not(:disabled) {
     transform: translate(2px, 2px);
     box-shadow: 1px 1px 0 var(--shadow);
   }
 
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
   .btn-accent {
     background: var(--yellow);
-    color: #2d2a32;
+    color: var(--on-accent);
   }
 
   .pill {
     @apply inline-block rounded-full px-3 py-1 text-xs font-bold;
     border: 2px solid var(--shadow);
+    background: var(--paper);
+    color: var(--ink);
+    cursor: pointer;
+  }
+
+  /* 后台表格:暗色下需要显式底色与分隔线 */
+  .admin-table {
+    width: 100%;
+    font-size: 0.8125rem;
+    border-collapse: collapse;
+  }
+
+  .admin-table thead th {
+    text-align: left;
+    padding: 0.5rem 0.75rem;
+    background: var(--yellow-bg);
+    color: var(--ink);
+    font-weight: 800;
+    white-space: nowrap;
+  }
+
+  .admin-table tbody td {
+    padding: 0.5rem 0.75rem;
+    border-top: 1px solid var(--rule);
+    color: var(--ink);
+  }
+
+  .admin-table tbody tr:hover {
+    background: color-mix(in srgb, var(--yellow-bg) 45%, transparent);
+  }
+
+  /* 后台输入框统一外观 */
+  .admin-input {
+    width: 100%;
+    border-radius: 0.5rem;
+    border: 2px solid var(--rule);
+    background: var(--cream);
+    color: var(--ink);
+    padding: 0.375rem 0.5rem;
+    font-size: 0.875rem;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .admin-input:focus {
+    border-color: var(--pink);
+  }
+
+  .admin-label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-2);
   }
 }
 

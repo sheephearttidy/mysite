@@ -164,7 +164,8 @@ def export_data(request: Request, db: Session = Depends(get_db)) -> dict[str, An
         "settings": {
             r.key: r.value
             for r in db.scalars(select(m.Setting)).all()
-            if not r.key.startswith(("admin_password", "cap:", "totp_"))
+            # 敏感项不导出:密码哈希、验证码临时答案、2FA 密钥
+            if not r.key.startswith(("pass_hash", "cap:", "totp_"))
         },
     }
     for kind in content_svc.REGISTRY:

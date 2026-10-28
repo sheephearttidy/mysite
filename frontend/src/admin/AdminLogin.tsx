@@ -56,8 +56,7 @@ export default function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           autoComplete="current-password"
-          className="mt-1 w-full rounded-xl border-2 px-3 py-2 outline-none"
-          style={{ borderColor: 'var(--rule)', background: 'var(--cream)', color: 'var(--ink)' }}
+          className="admin-input mt-1 w-full  border-2 px-3 py-2 outline-none"
         />
 
         <label className="mt-4 block text-xs font-bold" style={{ color: 'var(--text-2)' }}>
@@ -69,8 +68,7 @@ export default function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
             onChange={(e) => setCaptcha(e.target.value.toUpperCase())}
             maxLength={6}
             autoComplete="off"
-            className="w-28 rounded-xl border-2 px-3 py-2 text-center font-mono tracking-widest outline-none"
-            style={{ borderColor: 'var(--rule)', background: 'var(--cream)', color: 'var(--ink)' }}
+            className="admin-input w-28  border-2 px-3 py-2 text-center font-mono tracking-widest outline-none"
           />
           <button
             type="button"

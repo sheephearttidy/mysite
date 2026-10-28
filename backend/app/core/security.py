@@ -40,14 +40,35 @@ def verify_password(pwd: str, stored: str) -> bool:
     return hmac.compare_digest(calc.hex(), hash_hex)
 
 
-def password_strength_error(pwd: str) -> str | None:
-    """返回错误文案,None 表示通过。规则与原版一致。"""
-    if len(pwd) < 6:
-        return "密码至少 6 位"
+def _char_classes(pwd: str) -> int:
+    """统计字符种类数:小写 / 大写 / 数字 / 符号。"""
+    classes = 0
+    if any(c.islower() for c in pwd):
+        classes += 1
+    if any(c.isupper() for c in pwd):
+        classes += 1
+    if any(c.isdigit() for c in pwd):
+        classes += 1
+    if any(not c.isalnum() for c in pwd):
+        classes += 1
+    return classes
+
+
+def password_strength_error(
+    pwd: str, *, min_len: int = 8, min_classes: int = 2
+) -> str | None:
+    """返回错误文案,None 表示通过。
+
+    规则:长度达标、字符种类达标、不能是初始密码、不能纯数字。
+    """
+    if len(pwd) < min_len:
+        return "密码至少 %d 位" % min_len
     if pwd.lower() == "admin":
         return "不能继续用初始密码 admin"
     if pwd.isdigit():
         return "密码不能全是数字"
+    if _char_classes(pwd) < min_classes:
+        return "密码需包含至少 %d 类字符(大小写 / 数字 / 符号)" % min_classes
     return None
 
 

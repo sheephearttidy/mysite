@@ -1,6 +1,6 @@
 /**
- * 后台通用组件:表格编辑器 + 字段渲染。
- * 后台 10 个内容面板共用一套「列表 + 行内编辑 + 增删」逻辑。
+ * 后台通用表格编辑器:列表 + 行内编辑 + 增删。
+ * 所有内容面板共用一套逻辑。
  */
 import { useState } from 'react';
 import { api, ApiError } from '@/lib/api';
@@ -103,9 +103,7 @@ export function CrudTable({ kind, title, emoji, fields, rows, onReload }: CrudTa
       </div>
 
       {error && (
-        <p className="mb-3 text-xs font-bold" style={{ color: '#d64545' }}>
-          ⚠️ {error}
-        </p>
+        <p className="mb-3 text-xs font-bold" style={{ color: 'var(--danger)' }}>⚠️ {error}</p>
       )}
 
       {/* 编辑表单 */}
@@ -115,28 +113,22 @@ export function CrudTable({ kind, title, emoji, fields, rows, onReload }: CrudTa
           <div className="grid gap-3 sm:grid-cols-2">
             {fields.map((f) => (
               <div key={f.key} className={f.type === 'textarea' ? 'sm:col-span-2' : ''}>
-                <label className="block text-xs font-bold" style={{ color: 'var(--text-2)' }}>
-                  {f.label}
-                </label>
+                <label className="admin-label">{f.label}</label>
                 {f.type === 'textarea' ? (
                   <textarea
                     rows={2}
                     value={String(draft[f.key] ?? '')}
                     onChange={(e) => setDraft({ ...draft, [f.key]: e.target.value })}
-                    className="mt-1 w-full resize-none rounded-lg border-2 px-2 py-1 text-sm outline-none"
-                    style={{ borderColor: 'var(--rule)', background: 'var(--cream)', color: 'var(--ink)' }}
+                    className="admin-input mt-1 resize-none"
                   />
                 ) : f.type === 'select' ? (
                   <select
                     value={String(draft[f.key] ?? '')}
                     onChange={(e) => setDraft({ ...draft, [f.key]: e.target.value })}
-                    className="mt-1 w-full rounded-lg border-2 px-2 py-1 text-sm outline-none"
-                    style={{ borderColor: 'var(--rule)', background: 'var(--cream)', color: 'var(--ink)' }}
+                    className="admin-input mt-1"
                   >
                     {(f.options ?? []).map((o) => (
-                      <option key={o.value} value={o.value}>
-                        {o.label}
-                      </option>
+                      <option key={o.value} value={o.value}>{o.label}</option>
                     ))}
                   </select>
                 ) : (
@@ -146,8 +138,7 @@ export function CrudTable({ kind, title, emoji, fields, rows, onReload }: CrudTa
                     max={f.max}
                     value={String(draft[f.key] ?? '')}
                     onChange={(e) => setDraft({ ...draft, [f.key]: e.target.value })}
-                    className="mt-1 w-full rounded-lg border-2 px-2 py-1 text-sm outline-none"
-                    style={{ borderColor: 'var(--rule)', background: 'var(--cream)', color: 'var(--ink)' }}
+                    className="admin-input mt-1"
                   />
                 )}
               </div>
@@ -170,27 +161,28 @@ export function CrudTable({ kind, title, emoji, fields, rows, onReload }: CrudTa
           还没有数据
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-sticker border-[3px]" style={{ borderColor: 'var(--shadow)' }}>
-          <table className="w-full text-sm">
-            <thead style={{ background: 'var(--yellow-bg)' }}>
+        <div
+          className="overflow-x-auto rounded-sticker border-[3px]"
+          style={{ borderColor: 'var(--shadow)' }}
+        >
+          <table className="admin-table">
+            <thead>
               <tr>
                 {listFields.map((f) => (
-                  <th key={f.key} className="px-3 py-2 text-left font-bold">
-                    {f.label}
-                  </th>
+                  <th key={f.key}>{f.label}</th>
                 ))}
-                <th className="px-3 py-2 text-right font-bold">操作</th>
+                <th style={{ textAlign: 'right' }}>操作</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((row) => (
-                <tr key={String(row.id)} className="border-t" style={{ borderColor: 'var(--rule)' }}>
+                <tr key={String(row.id)}>
                   {listFields.map((f) => (
-                    <td key={f.key} className="px-3 py-2" style={{ maxWidth: f.width ?? '240px' }}>
+                    <td key={f.key} style={{ maxWidth: f.width ?? '240px' }}>
                       <span className="block truncate">{String(row[f.key] ?? '')}</span>
                     </td>
                   ))}
-                  <td className="whitespace-nowrap px-3 py-2 text-right">
+                  <td className="whitespace-nowrap" style={{ textAlign: 'right' }}>
                     <button
                       type="button"
                       className="text-xs underline decoration-dotted"
@@ -201,7 +193,7 @@ export function CrudTable({ kind, title, emoji, fields, rows, onReload }: CrudTa
                     <button
                       type="button"
                       className="ml-3 text-xs underline decoration-dotted"
-                      style={{ color: '#d64545' }}
+                      style={{ color: 'var(--danger)' }}
                       onClick={() => remove(Number(row.id))}
                     >
                       删除

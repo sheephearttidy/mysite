@@ -1,17 +1,25 @@
 /**
- * 后台主应用:侧边栏 + 面板路由。
+ * 后台主应用:登录 → 强制改密 → 面板。
  *
- * 面板:内容管理(6类) / 相册 / 互动审核 / 数据看板 / 站点信息 / 备份
+ * 三道关卡:
+ * 1. 未登录 → 登录页
+ * 2. 已登录但 must_change → 改密页(不可跳过)
+ * 3. 正常 → 后台面板
+ *
+ * 前端只是引导;真正拦住越权的是后端 require_admin(403 MUST_CHANGE_PASSWORD)。
  */
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError } from '@/lib/api';
 import { useApi } from '@/lib/useApi';
+import { useTheme } from '@/lib/theme';
 import AdminLogin from './AdminLogin';
+import { ForcePassword } from './ForcePassword';
 import { CrudTable, type FieldDef } from './CrudTable';
 import { Dashboard } from './Dashboard';
 import { Moderation } from './Moderation';
 import { SiteInfoPanel } from './SiteInfoPanel';
 import { BackupPanel } from './BackupPanel';
+import { SecurityPanel } from './SecurityPanel';
 
 const COLOR_OPTS = [
   { value: 'pink', label: '粉' }, { value: 'yellow', label: '黄' },
@@ -20,6 +28,7 @@ const COLOR_OPTS = [
 ];
 
 const PANELS: { key: string; label: string; emoji: string }[] = [
+  { key: 'dashboard', label: '数据看板', emoji: '📊' },
   { key: 'skills', label: '技能树', emoji: '🎯' },
   { key: 'timeline', label: '校园日常', emoji: '🗺️' },
   { key: 'stats', label: '趣味统计', emoji: '🧮' },
@@ -31,8 +40,8 @@ const PANELS: { key: string; label: string; emoji: string }[] = [
   { key: 'songs', label: '音乐', emoji: '🎵' },
   { key: 'photos', label: '相册', emoji: '📷' },
   { key: 'moderation', label: '互动审核', emoji: '💬' },
-  { key: 'dashboard', label: '数据看板', emoji: '📊' },
   { key: 'site', label: '站点信息', emoji: '🏷️' },
+  { key: 'security', label: '安全中心', emoji: '🔐' },
   { key: 'backup', label: '数据备份', emoji: '💾' },
 ];
 
@@ -124,23 +133,35 @@ const FIELDS: Record<string, FieldDef[]> = {
   ],
 };
 
+type Gate = 'checking' | 'login' | 'force-password' | 'ready';
+
 export function AdminApp() {
-  const [authed, setAuthed] = useState<boolean | null>(null);
+  const [gate, setGate] = useState<Gate>('checking');
   const [panel, setPanel] = useState('dashboard');
   const [content, setContent] = useState<Record<string, unknown[]>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const alerts = useApi<Record<string, number>>('/api/admin/alerts');
+  const { isDark, toggle } = useTheme();
 
-  // 探测登录态
-  useEffect(() => {
-    api
-      .get('/api/me')
-      .then(() => setAuthed(true))
-      .catch(() => setAuthed(false));
+  const alerts = useApi<Record<string, number>>(
+    gate === 'ready' ? '/api/admin/alerts' : null,
+  );
+
+  /** 判断当前该进哪一关 */
+  const checkGate = useCallback(async () => {
+    try {
+      const me = await api.get<{ must_change: boolean }>('/api/me');
+      setGate(me.must_change ? 'force-password' : 'ready');
+    } catch {
+      setGate('login');
+    }
   }, []);
 
-  const reloadContent = () => {
+  useEffect(() => {
+    void checkGate();
+  }, [checkGate]);
+
+  const reloadContent = useCallback(() => {
     setLoading(true);
     api
       .get<Record<string, unknown[]>>('/api/content')
@@ -149,33 +170,46 @@ export function AdminApp() {
         setError('');
       })
       .catch((err: unknown) => {
+        // 会话中途失效或状态变化,回到对应关卡
+        if (err instanceof ApiError && (err.status === 403 || err.status === 401)) {
+          void checkGate();
+          return;
+        }
         setError(err instanceof ApiError ? err.message : '加载失败');
       })
       .finally(() => setLoading(false));
-  };
+  }, [checkGate]);
 
   useEffect(() => {
-    if (authed) reloadContent();
-  }, [authed]);
+    if (gate === 'ready') reloadContent();
+  }, [gate, reloadContent]);
 
   async function logout() {
     await api.post('/api/logout').catch(() => undefined);
-    setAuthed(false);
+    setGate('login');
   }
 
-  if (authed === null) {
+  if (gate === 'checking') {
     return (
-      <div className="flex min-h-screen items-center justify-center" style={{ background: 'var(--cream)' }}>
+      <div
+        className="flex min-h-screen items-center justify-center"
+        style={{ background: 'var(--cream)' }}
+      >
         <span style={{ color: 'var(--text-3)' }}>检查登录态…</span>
       </div>
     );
   }
 
-  if (!authed) {
-    return <AdminLogin onSuccess={() => setAuthed(true)} />;
+  if (gate === 'login') {
+    return <AdminLogin onSuccess={checkGate} />;
+  }
+
+  if (gate === 'force-password') {
+    return <ForcePassword onDone={checkGate} onLogout={logout} />;
   }
 
   const pending = alerts.data ?? {};
+  const current = PANELS.find((p) => p.key === panel);
 
   return (
     <div className="flex min-h-screen" style={{ background: 'var(--cream)' }}>
@@ -186,9 +220,7 @@ export function AdminApp() {
       >
         <div className="border-b-2 px-4 py-4" style={{ borderColor: 'var(--rule)' }}>
           <p className="font-round font-black">🏠 我的小窝</p>
-          <p className="text-xs" style={{ color: 'var(--text-3)' }}>
-            SITE ADMIN
-          </p>
+          <p className="text-xs" style={{ color: 'var(--text-3)' }}>SITE ADMIN</p>
         </div>
         <nav className="flex-1 overflow-y-auto p-2">
           {PANELS.map((p) => {
@@ -201,7 +233,7 @@ export function AdminApp() {
                 className="mb-1 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-bold transition-colors"
                 style={{
                   background: panel === p.key ? 'var(--yellow)' : 'transparent',
-                  color: panel === p.key ? '#2d2a32' : 'var(--ink)',
+                  color: panel === p.key ? 'var(--on-accent)' : 'var(--ink)',
                 }}
               >
                 <span>{p.emoji}</span>
@@ -219,10 +251,13 @@ export function AdminApp() {
           })}
         </nav>
         <div className="border-t-2 p-3" style={{ borderColor: 'var(--rule)' }}>
-          <a href="/" className="block text-xs underline decoration-dotted">
-            ← 回前台
-          </a>
-          <button type="button" onClick={logout} className="mt-2 text-xs underline decoration-dotted" style={{ color: '#d64545' }}>
+          <a href="/" className="block text-xs underline decoration-dotted">← 回前台</a>
+          <button
+            type="button"
+            onClick={logout}
+            className="mt-2 text-xs underline decoration-dotted"
+            style={{ color: 'var(--danger)' }}
+          >
             退出登录
           </button>
         </div>
@@ -230,13 +265,34 @@ export function AdminApp() {
 
       {/* 主区 */}
       <main className="min-w-0 flex-1 p-5">
+        {/* 顶栏 */}
+        <div className="mb-4 flex items-center gap-2">
+          <span className="font-round text-sm font-black md:text-base">
+            {current?.emoji} {current?.label}
+          </span>
+          <button
+            type="button"
+            onClick={toggle}
+            aria-label={isDark ? '切换到亮色模式' : '切换到暗色模式'}
+            className="btn ml-auto px-3 py-1.5 text-sm"
+          >
+            {isDark ? '☀️ 亮色' : '🌙 暗色'}
+          </button>
+          <button
+            type="button"
+            onClick={logout}
+            className="btn px-3 py-1.5 text-sm md:hidden"
+          >
+            退出
+          </button>
+        </div>
+
         {/* 移动端面板切换 */}
         <div className="mb-4 md:hidden">
           <select
             value={panel}
             onChange={(e) => setPanel(e.target.value)}
-            className="w-full rounded-lg border-2 px-3 py-2 text-sm"
-            style={{ borderColor: 'var(--rule)', background: 'var(--paper)', color: 'var(--ink)' }}
+            className="admin-input"
           >
             {PANELS.map((p) => (
               <option key={p.key} value={p.key}>
@@ -247,23 +303,25 @@ export function AdminApp() {
         </div>
 
         {error && (
-          <p className="mb-3 text-xs font-bold" style={{ color: '#d64545' }}>
+          <p className="mb-3 text-xs font-bold" style={{ color: 'var(--danger)' }}>
             ⚠️ {error}
           </p>
         )}
-
         {loading && <p className="text-sm" style={{ color: 'var(--text-3)' }}>加载中…</p>}
 
         {panel === 'dashboard' && <Dashboard />}
-        {panel === 'moderation' && <Moderation onChanged={() => { reloadContent(); alerts.reload(); }} />}
+        {panel === 'moderation' && (
+          <Moderation onChanged={() => { reloadContent(); alerts.reload(); }} />
+        )}
         {panel === 'site' && <SiteInfoPanel onSaved={reloadContent} />}
+        {panel === 'security' && <SecurityPanel />}
         {panel === 'backup' && <BackupPanel onRestored={reloadContent} />}
 
         {FIELDS[panel] && (
           <CrudTable
             kind={panel}
-            title={PANELS.find((p) => p.key === panel)?.label ?? panel}
-            emoji={PANELS.find((p) => p.key === panel)?.emoji ?? ''}
+            title={current?.label ?? panel}
+            emoji={current?.emoji ?? ''}
             fields={FIELDS[panel]}
             rows={(content[panel] as Record<string, unknown>[]) ?? []}
             onReload={reloadContent}

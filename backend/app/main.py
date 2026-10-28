@@ -11,6 +11,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -34,6 +35,32 @@ if settings.debug:
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
+    )
+
+
+@app.exception_handler(HTTPException)
+async def _http_error(_request: Request, exc: HTTPException) -> JSONResponse:
+    """统一错误形状 {"error": "..."},与原 Flask 版兼容。
+
+    detail 是 dict 时(比如强制改密的 MUST_CHANGE_PASSWORD)原样透出,
+    前端才能据此区分「没登录」和「必须改密」。
+    """
+    if isinstance(exc.detail, dict):
+        body = dict(exc.detail)
+        body.setdefault("error", body.get("message", "请求失败"))
+        return JSONResponse(status_code=exc.status_code, content=body)
+    return JSONResponse(status_code=exc.status_code, content={"error": str(exc.detail)})
+
+
+@app.exception_handler(RequestValidationError)
+async def _validation_error(_request: Request, exc: RequestValidationError) -> JSONResponse:
+    """参数校验失败返回 422 + 可读文案,不吐堆栈。"""
+    first = exc.errors()[0] if exc.errors() else {}
+    loc = ".".join(str(x) for x in first.get("loc", []) if x != "body")
+    msg = first.get("msg", "参数不合法")
+    return JSONResponse(
+        status_code=422,
+        content={"error": (loc + ": " if loc else "") + msg},
     )
 
 
