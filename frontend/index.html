@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>至尊杰的小窝</title>
+    <meta name="description" content="至尊杰的小窝 —— 燕京理工学院计算机科学与技术,沉迷智能车 AI,正在 learning and building。" />
+    <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="至尊杰 · 大学生活实录" />
+    <meta property="og:description" content="燕京理工学院计算机科学与技术,沉迷智能车 AI。" />
+    <meta property="og:image" content="/assets/og-image.png" />
+    <meta name="theme-color" content="#fff8ee" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#1b1922" media="(prefers-color-scheme: dark)" />
+    <script>
+      // 防闪烁:在首屏绘制前定好主题
+      (function () {
+        try {
+          var saved = localStorage.getItem('theme');
+          var dark = saved
+            ? saved === 'dark'
+            : window.matchMedia('(prefers-color-scheme: dark)').matches;
+          if (dark) document.documentElement.setAttribute('data-theme', 'dark');
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

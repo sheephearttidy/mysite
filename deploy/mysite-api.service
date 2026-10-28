@@ -1,0 +1,30 @@
+[Unit]
+Description=mysite API (FastAPI + uvicorn)
+After=network.target
+
+[Service]
+Type=simple
+User=mysite
+Group=mysite
+WorkingDirectory=/var/www/mysite/backend
+Environment=MYSITE_DB_PATH=/var/www/mysite/admin/data/mysite.db
+Environment=MYSITE_UPLOAD_DIR=/var/www/mysite/assets/uploads
+Environment=MYSITE_FRONTEND_DIST=/var/www/mysite/dist
+Environment=MYSITE_COOKIE_SECURE=1
+Environment=MYSITE_SITE_ORIGIN=https://imyxj.xyz
+EnvironmentFile=-/etc/mysite-api.env
+ExecStart=/var/www/mysite/backend/.venv/bin/uvicorn app.main:app \
+    --host 127.0.0.1 --port 5200 --workers 2 \
+    --access-logfile - --error-logfile -
+Restart=always
+RestartSec=3
+
+# 安全加固
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ReadWritePaths=/var/www/mysite/admin/data /var/www/mysite/assets/uploads
+
+[Install]
+WantedBy=multi-user.target

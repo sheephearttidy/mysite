@@ -1,433 +1,125 @@
-# 学生个人主页 · 贴纸风个人站
+# 至尊杰的小窝 · v5.0(React + FastAPI)
 
 [![](https://img.shields.io/badge/powered_by-dsh-4D6BFE?style=flat-square&logo=deepseek&logoColor=white)](https://github.com/deepseek-ai/deepseek-harness)
 
-青春贴纸风的学生个人主页,前台使用 Flask + Jinja 模板输出页面,
-样式和交互仍是原生 CSS / JavaScript;后台用 Flask + SQLite 管理内容。
+学生个人主页。**前台 React SPA + 后台 React 管理面板 + FastAPI REST 后端。**
 
-> 🏫 某某大学 · 某工科专业
-> 🏎️ 爱好某技术方向 · 状态:learning and building
+> 🏫 燕京理工学院 · 计算机科学与技术
+> 🏎️ 智能车 AI · learning and building
 
-站点的姓名、校名、专业等身份信息全部由后台配置(见 `v2.5.0`),不在代码里写死,
-换个人用只需在后台改一遍,不用动源码。
+## 技术栈
+
+| 层 | 选型 |
+|---|---|
+| 前端 | React 18 + TypeScript + Vite + Tailwind CSS |
+| 动画组件 | [React Bits](https://reactbits.dev/) 风格组件(源码级集成) |
+| 后端 | FastAPI + SQLAlchemy 2.x + Pydantic 2 |
+| 数据库 | SQLite(沿用 v3 的老库,零迁移) |
+| 部署 | nginx(静态) + uvicorn(systemd) |
+
+## 目录结构
+
+```
+backend/
+  app/
+    core/       config · db · security · deps
+    models/     22 张表的 ORM 模型
+    schemas/    Pydantic 请求/响应模型
+    services/   content · site
+    api/        content · interact · stats · auth · admin
+  scripts/      冒烟/回归测试
+frontend/
+  src/
+    components/ SplitText · CountUp · SpotlightCard · TiltedCard · Aurora · Nav · Footer
+    pages/      前台 8 页
+    admin/      后台面板
+    lib/        api · theme · useApi
+  dist/         构建产物
+deploy/         nginx 与 systemd 配置
+DEPLOY.md       部署手册
+```
+
+## 快速开始
+
+```bash
+# 后端
+cd backend
+python -m venv .venv && .venv/Scripts/pip install -r requirements.txt
+MYSITE_COOKIE_SECURE=0 .venv/Scripts/python -m uvicorn app.main:app --reload --port 5100
+
+# 前端
+cd frontend && npm install && npm run dev
+```
+
+访问 <http://127.0.0.1:5173>(前台)/ <http://127.0.0.1:5173/admin.html>(后台)。
+
+## 测试
+
+```bash
+python backend/scripts/smoke.py            # 43 项:公开接口 / 未授权 / 输入校验
+python backend/scripts/test_auth_crud.py   # 22 项:登录 + CRUD + 导出
+python backend/scripts/browser_check.py    # 9 页真实渲染(headless Chrome)
+python backend/scripts/admin_check.py      # 17 项:后台接口 + 资源
+```
+
+## React Bits 组件
+
+从 [reactbits.dev](https://reactbits.dev/) 按其设计思路源码级实现(不引运行时依赖):
+
+| 组件 | 对应 | 用途 |
+|---|---|---|
+| `SplitText` | Split Text | 标题逐字入场 |
+| `CountUp` | Count Up | 数字滚动 |
+| `SpotlightCard` | Spotlight Card | 光标聚光灯卡片 |
+| `TiltedCard` | Tilted Card | 3D 倾斜卡片 |
+| `Aurora` | Aurora | 首屏柔光背景 |
+
+均为纯 CSS/transform 实现,尊重 `prefers-reduced-motion`,移动端不掉帧。
+
+## API 概览
+
+完整文档:运行后访问 `/api/docs`(Swagger)。
+
+```
+GET  /api/health                 健康检查
+GET  /api/site                   站点信息
+GET  /api/page/{name}            按页取数(index/about/skills/works/campus/contact/map/gallery)
+GET  /api/content                全量内容
+GET  /api/content/{kind}         某类内容列表
+POST /api/content/{kind}         新增(需登录)
+PUT  /api/content/{kind}/{id}    部分更新(需登录)
+DELETE /api/content/{kind}/{id}  删除(需登录)
+GET  /api/messages               留言墙(已审核)
+POST /api/messages               发留言
+POST /api/messages/{id}/follow   凭凭证追问
+GET  /api/questions              已答公开问答
+POST /api/questions              匿名提问
+POST /api/likes                  点赞
+GET  /api/map                    来访城市聚合
+POST /api/track                  访问上报
+GET  /api/captcha.svg            图形验证码
+POST /api/login                  登录
+POST /api/logout                 登出
+GET  /api/me                     当前会话
+```
+
+后台专属接口(需登录)挂在 `/api/admin/*` 与 `/api/stats/*`、`/api/security/*`。
+
+## 从 v3 升级
+
+- 数据库表结构**完全不变**,22 张表逐一对应
+- 密码哈希格式沿用 `pbkdf2:iters:salt:hash`,**站主无需重置密码**
+- 旧版完整保留在 Git tag `v3.2.2-pre-react-refactor`
+
+详见 [DEPLOY.md](DEPLOY.md)。
 
 ## 版本
 
 | 版本 | 说明 |
 |---|---|
-| `v1.0.0` | 纯静态贴纸风主页,内容全写死在 HTML 里 |
-| `v1.1.0` | 加后台管理:技能树 / 校园日常 / 趣味统计可在线改,前台动态加载 |
-| `v1.1.1` | 密码存进数据库,首次登录强制改密码 |
-| `v1.1.2` | 安全加固:修限速绕过、后台降权运行、安全响应头、SSH 仅公钥 |
-| `v1.2.0` | 项目墙 / 关于我 / 信息卡片进后台,加图片上传、数据导入导出、深色模式 |
-| `v1.2.1` | 后台改左侧边栏多级导航,9 个面板 + 数量角标 + 移动端抽屉 |
-| `v1.3.0` | 分享卡片与 SEO(og / favicon / robots / sitemap / JSON-LD),自建访问统计和看板 |
-| `v1.4.0` | 登录图形验证码;安全设置面板扩充到 7 项,含封锁名单、踢会话、操作记录 |
-| `v1.5.0` | 前后台 CSS/JS 全部分文件,静态资源自动加版本号 |
-| `v1.5.1` | 前后台统一暗色模式,跟随系统 + 手动切换,带防闪烁 |
-| `v1.6.0` | 前台拆成 6 个独立页面,按页取数据 |
-| `v1.7.0` | 来访地图(按 IP 定位到城市);节日特效系统按日期自动切换 |
-| `v1.7.1` | 修 6 个页面导航漏加「来访地图」链接 |
-| `v1.8.0` | 后台接管节日特效;安全设置拆成多级「安全中心」 |
-| `v1.8.1` | 修统计三处:趋势补零、时区写死北京时间、城市解析失败缓存过长 |
-| `v1.8.2` | 修「手动指定节日不生效」;资源加内容哈希破缓存 |
-| `v1.8.3` | HTML 加 no-cache,避免浏览器启发式缓存 |
-| `v1.9.0` | 留言墙 + 点赞按钮 + 点击粒子特效 + 标签页标题彩蛋 |
-| `v1.9.1` | 一键换主题色(六套预设)+ 按时间段显示问候语 |
-| `v1.10.0` | 站点公告、倒计时挂件、新老访客统计、停留时长、访问明细 CSV 导出 |
-| `v2.0.0` | PWA 可装到桌面;两步验证;每日自动备份;GitHub Actions CI |
-| `v2.0.1` | 修样式:前台输入框裸样式、项目墙封面配色、2FA 二维码画不出来 |
-| `v2.0.2` | 修留言墙整墙不显示;公告改成顶部弹窗 |
-| `v2.1.0` | 前后台代码按职责拆成多个模块,主题文件单一真源同步 |
-| `v2.2.0` | 新增荣誉墙、随手记、友情链接三个板块 |
-| `v2.3.0` | 安全加固:CSP、跨站写防护、密码强度策略、失败时延、会话绑 IP |
-| `v2.3.1` | 修 strict-dynamic 导致后台脚本全被拦、面板全空 |
-| `v2.4.0` | 「最近在听」QQ 音乐区块;修 nginx 重复下发 CSP 导致后台面板全空 |
-| `v2.4.1` | 修来访地图底图与经纬度对不上、同一城市显示两遍 |
-| `v2.5.0` | 站点信息(姓名 / 站名 / 学校 / 标语等 9 项)后台可配,前台全站生效 |
-| `v2.6.0` | 前台七页迁入 Jinja 模板,Flask 统一渲染,nginx 改反代 |
-| `v2.7.0` | 留言支持多轮对话:站主回复、留言人凭凭证追问,可多轮来回 |
-| `v2.7.1` | 后台实时提醒:有人留言 / 追问就弹窗,点一下直接跳过去处理 |
-| `v2.7.2` | 便签墙改成瀑布流,每张按自己的内容决定大小 |
-| `v2.7.3` | 修备份漏留言、导入白名单缺表、便签倾斜失效;后台文案改通俗 |
-| `v2.7.4` | **性能优化**:①启用 HTTP/2(多路复用,首屏资源并行下载);②gzip 补 `application/json` 与字体(API 响应 883B→449B),压缩级别提到 6;③去掉 `holiday.js` 里的**同步 XHR**(原来会阻塞 HTML 解析等 `/api/fx`,网络慢时首屏干等),改成「先按日期本地判断立刻上色,再异步校正后台配置」;④Google Fonts 从阻塞渲染改为 `media=print` + `onload` 异步加载,国内网络不再白屏等字体。页面响应 40ms→28~33ms,首屏无阻塞 |
-| `v2.7.5` | **安全加固**:①公开接口收到畸形 JSON(如 name 传对象而不是字符串)会 500 崩溃,加了 `_as_text` 类型收敛,现在正确返回 400;②数据导入不校验数值/枚举,`percent` 传 99999 也能落库(前台进度条会画出界),现在按字段约束收敛(百分比 0~100、分类只认合法值、文本按长度截断)。附:全量安全审计 40 项通过(认证绕过 / 路径穿越 / 敏感文件 / 上传 webshell / XSS / CSRF / 会话固定 / 踢下线 / 密码强度 / SQL 注入) |
-| `v2.7.6` | **自定义 404 页面**:原来访问错链接看到的是 Flask 默认英文页(`Not Found`,207 字节,和站点风格完全不搭)。现在做了一个贴纸风中文 404 页(旋转的甜甜圈当数字 0、回首页/看项目/来找我三个按钮、四个常用页快捷链接),继承全站布局(导航/页脚/深色模式/节日特效都在);同时接管 403 和 500 —— 接口请求仍返回 JSON 不塞 HTML,页面请求才渲染错误页;错误页带 `noindex` 防搜索引擎收录 |
-| `v2.7.7` | **小彩蛋 🌱**:页脚版权行的小豆芽连点 5 次(间隔超 1.6 秒清零)会越长越欢,第 5 下唤醒小鲸鱼仆娘 —— 贴纸风弹窗立绘 + 满屏气泡;立绘 266KB 首次触发才加载,平时访客零开销;✕ / 点遮罩 / Esc 关闭;尊重「动效总开关」(关掉后只弹窗不飘气泡);七页共享页脚所以到处都能触发 |
-| `v3.0.0` | **相册系统**:后台新增「📷 相册」面板,把图片库里的图挑进相册(已在相册的会变灰),可填标题、分类、描述、拍摄日期、排序、单独显隐;前台新增 `/gallery.html` 相册页 —— 瀑布流按每张图真实比例撑高、分类筛选、点开灯箱看大图(左右切换 / 键盘 ←→ / Esc 关闭 / 点背景关闭),图片懒加载 + 按宽高预留占位避免跳动;上传接口用纯标准库解析 PNG/JPEG/GIF/WebP 文件头自动读出像素宽高(不引入 Pillow)。导航加「相册」入口,sitemap 从 1 个 URL 补全到 8 个,SW 缓存升 v3.0.0。测试:数据层 26/26 + 页面 41/41 + 无头 Chrome 实测(5 张不同比例正确渲染成 3 列瀑布流、灯箱开关切换正常、分类筛选剩 2 张) |
-| `v3.0.1` | **修「相册页一进去就弹灯箱」**:`.gal-lightbox` 写了 `display:flex`,优先级高于浏览器对 `[hidden]` 的默认 `display:none`,于是 hidden 属性失效、灯箱常驻全屏把整页盖住。改成 class 控制显隐(`.gal-lightbox{display:none}` / `.gal-lightbox.show{display:flex}`),JS 不再操作 hidden 属性,并加 `[hidden]{display:none!important}` 兜底 |
-| `v3.1.0` | **互动五件套 🐳**:①**小鲸鱼桌宠** —— 不定时从页面左下角探头说话(白天 6 句 / 深夜 0~5 点北京时间 3 句晚安台词,其中一句会暗示豆芽彩蛋),点她搭话、10% 概率翻出完整立绘;后台「前台特效」面板加开关,尊重动效总开关,单页最多出场 4 次;②**匿名提问箱**(来找我玩页)—— 访客匿名提问(200 字 / 60 秒一条),站主后台「💬 提问箱」面板回答即公开,问答成卡贴在页面上,进实时提醒;③**访客涂鸦墙**(来找我玩页)—— canvas 画板(8 色站点色板 / 3 档笔刷 / 撤销 / 清空),交涂鸦走公开 multipart 接口(只收 PNG、≤300KB、≤1000px、120 秒一张),默认待审核,前台缩略墙点击放大,后台「🎨 涂鸦墙」面板审核(删除连文件);④**那年今日**(首页)—— 往年同月日的随手记和相册照片自动浮一张细卡,没数据保持隐藏,攒一年自然长出来;⑤提问进备份导出/导入。测试:数据层 30 项 + 接口冒烟(限频 429 / 非 PNG 400 / 未答不展示 / 401)+ 浏览器实测(提问全流程 / 画板提交 / 后台审核上墙 / 桌宠出场与深夜台词)+ CI 7/7 |
-| `v3.1.1` | **修线上彩蛋立绘损坏 + SW 缓存加固**:立绘 PNG 上传时被文本模式传输折叠了 9 处 `\r\n` 字节(272913→272904),解码失败显示空白;重传完好文件并给彩蛋/桌宠图片 URL 加内容哈希 `?v=1b0f9cd7` 破 7 天强缓存;sw.js 修掉「404 也写入 cache-first 缓存」的隐患(非 2xx 不再缓存),缓存名升 v3.1.1 触发全站清缓存 |
-| `v3.1.2` | **暗色模式对比度专项修复**:①留言墙提交按钮裸 `.btn` 无背景,暗色下浅底浅字(1.07:1)完全看不清——`.btn` 基础类补 `background: var(--paper)`;②黄底组件(技能背包标签/项目状态标签/页头贴纸/黄色按钮)暗色下浅字压暗黄只有 1.67:1,统一换 `--on-accent` 深字(≈8:1);③点赞按钮暗色下一颗突兀白药丸,补暗色规则(纸色底+已赞暗粉);④换肤按钮暗色补文字色;⑤`dark.css` 3 处引用不存在的 `var(--text)`(靠继承侥幸)改为 `var(--ink)`,说明文字 `--text-3` 提亮(3.4→5.6:1),技能吐槽小字从 `--text-4` 升 `--text-3`;⑥后台 `--card` 变量补正式定义(此前 6 处引用全靠兜底、2 处没兜底导致暗色透明),清掉 `--rule` 自引用。⑦技能背包六色标签暗色下全糊成近似的深泥色(JavaScript 的粉色身份完全丢失),补彩色描边+彩色文字规则(粉/紫略提亮保 4.5:1,实测 4.7~5.7)。验证:8 页暗色逐元素对比度爬虫 34 项超标→5 项(余为 emoji 自渲染误报),CI 7/7 |
-| `v3.2.0` | **工程大清理 + CRUD 工厂化 + 测试体系**:①`deploy/` 131 个脚本只留 11 个活跃资产,129 个历史脚本(版本部署/线上诊断/专项回归/一次性修补)归档进 `deploy/archive/`;②新建 `tests/`(标准库 unittest,零依赖,临时库隔离)51 项测试钉死数据层语义与 Web 路为,进 CI(`unittest discover` + 面板映射检查);③**CRUD 工厂化**:db.py 9 类内容的四件套样板(383 行)换成 `TABLE_SPECS` 注册表 + 4 个通用函数 + 36 个同名薄壳(公共 API 零变化),app.py 24 个同构路由(209 行)换成循环注册(62 行),songs 的 QQ 链接解析保持手写;前后共省 320 行,新增一种内容类型从"抄 45 行"变成"注册 5 行";④修真 bug:questions 同时登记在 IMPORT_FIELDS 和特殊分支,恢复一次备份每条提问翻倍;⑤后台侧栏多级菜单层级感回归(v2.6 整理时删了子项导引线,补回缩进+导引线+清晰折叠箭头)。验证:工厂化前后 51 项测试全绿(零语义漂移)+ 浏览器实测后台增删改全流程 |
-| `v3.2.1` | **前台禁右键 + 禁选中**:body 全局 user-select:none(移动端连长按呼出一起关,-webkit-touch-callout),右键菜单在 core.js 统一 preventDefault(后台不加载 core.js,站主编辑不受影响);表单控件(input/textarea/select)显式放开 user-select:text,留言墙/提问箱正常输入。说明:这是防顺手复制,不是真防护,懂行的人拦不住 |
-| `v3.2.2` | **修调色盘换肤与暗色模式打架**:ambience.js 换肤时直接内联改写 `--pink`/`--pink-bg` 本体,内联优先级高于 dark.css 的 `[data-theme]` 覆盖——暗色下一切色,整站粉色系被打回亮色值(亮粉压暗底,刺眼);且 localStorage 的 accent 一旦存过就永远回不去默认。修复:①`--pink` 改为桥接 `--accent-pink`(base.css),换肤只写间接变量;②六套主题各带暗色版色值,按当前明暗应用,theme.js 在明暗实际变化时广播 `themechange` 事件(附 400ms 兜底轮询),换肤即时跟随明暗;③调色盘加「↺ 恢复默认」(清 localStorage 回奶糖粉)。验证:亮默认/亮换肤/暗+换肤/暗切换/恢复默认五种组合实测,暗色下薄荷绿正确呈现 `#d488a6`(修复前穿透为亮色 `#2fa886`) |
-
-## 预览
-
-- 线上地址:`https://<你的域名>`
-- 后台入口:`https://<你的域名>/admin`(输密码进入)
-- 本地运行:`cd admin && python -m venv .venv && .venv\Scripts\pip install -r requirements.txt && .venv\Scripts\python app.py`,然后访问 <http://127.0.0.1:5100/>。前台模板、API 和后台由同一个 Flask 服务提供。
-- 本地登录后台时,HTTP 不会发送 Secure Cookie;如需登录,在启动前设置 `$env:MYSITE_COOKIE_SECURE='0'`(仅本地开发),再访问 <http://127.0.0.1:5100/admin>
-
-## 文件结构
-
-```
-my-portfolio/
-├── templates/front/      ← Flask + Jinja 前台模板
-│   ├── base.html         ← 公共 head、资源引用、导航、页脚与脚本
-│   ├── _nav.html         ← 共用导航(按当前页面标记)
-│   ├── _footer.html      ← 共用页脚、二维码弹窗与返回顶部
-│   └── index/about/...   ← 七个页面主体与各自 SEO 信息
-├── robots.txt            ← 搜索引擎规则(禁收录 /admin 和 /api)
-├── sitemap.xml           ← 站点地图
-├── css/                  ← 前台样式,按层拆分(加载顺序有意义,别乱调)
-│   ├── base.css          ← 配色变量 / 重置 / 排版 / 卡片 / 导航
-│   ├── home.css          ← 首屏 / 跑马灯 / 数据 / 关于 / 技能 / 作品 / 时间线 / 联系 / 地图
-│   ├── widgets.css       ← 页脚 / 动画 / 二维码弹窗 / 技能背包 / 深色切换按钮
-│   ├── dark.css          ← 深色模式(覆盖变量)
-│   ├── holidays.css      ← 节日特效(红旗 / 爱心 / 雪花 / 黑白…)
-│   └── responsive.css    ← 响应式断点(必须最后加载)
-├── js/
-│   ├── main.js           ← 前台交互 + 按页拉内容 + 访问上报
-│   ├── theme.js          ← 前后台共用的主题切换(手动 > 系统)
-│   ├── cities.js         ← 城市名 → 经纬度映射表(来访地图钉星用)
-│   ├── map.js            ← 来访地图渲染(SVG 星星 + 城市列表)
-│   ├── holiday.js        ← 节日检测(给 <html> 打 data-holiday,head 里先跑防闪)
-│   └── holiday-fx.js     ← 节日粒子特效(生成红旗/爱心/雪花等 DOM 元素)
-├── assets/
-│   ├── wechat-qr.jpg     ← 微信二维码
-│   ├── favicon.svg       ← 站点图标
-│   ├── og-image.png      ← 分享卡片图(1200×630)
-│   ├── apple-touch-icon.png
-│   └── uploads/          ← 后台传的图片(gitignore,线上自动创建)
-├── docs/
-│   └── api.html          ← 全站 API 文档(v3.1.0,面向 AI/开发者;含机器可读端点清单)
-├── tests/                ← 单元测试 + Web 冒烟(v3.2.0,unittest 零依赖,CI 同款命令)
-│   ├── test_db.py        ← 数据层行为基线:CRUD 语义 / 导入导出 / 审核流 / 那年今日
-│   └── test_web.py       ← test_client 冒烟:页面 / 401 / CRUD 路由 / 限频
-└── admin/                ← 后台管理系统(Flask + SQLite)
-    ├── app.py            ← 路由 / API / 登录 / 改密码 / 上传 / 备份 / 统计 / 安全
-    ├── db.py             ← 建表 + 初始数据 + 增删改查 + 密码哈希 + 导入导出 + 统计 + 安全
-    ├── geo.py            ← IP 定位(淘宝 API + 内存缓存,只存城市不存 IP)
-    ├── captcha.py        ← 图形验证码生成(纯标准库 SVG,零依赖)
-    ├── unlock.py         ← 安全应急工具(SSH 里解锁 IP / 踢会话 / 关验证码)
-    ├── gen_pass.py       ← 生成密码哈希的小工具(备用)
-    ├── requirements.txt
-    ├── static/           ← 后台静态资源,不经过 Jinja 渲染
-    │   ├── css/
-    │   │   ├── admin.css ← 后台管理页样式
-    │   │   ├── login.css ← 登录页样式
-    │   │   └── holidays.css ← 节日特效(与前台同一份,复制过来)
-    │   └── js/
-    │       ├── admin.js  ← 后台管理页脚本
-    │       ├── login.js  ← 登录页脚本(点验证码换图)
-    │       ├── theme.js  ← 与前台同一个主题切换脚本
-    │       ├── holiday.js    ← 与前台同一份节日检测
-    │       └── holiday-fx.js ← 与前台同一份节日粒子
-    ├── templates/        ← 只有 HTML 结构,不含 CSS/JS
-    │   ├── login.html    ← 后台登录页(密码 + 验证码)
-    │   └── admin.html    ← 后台管理页(侧边栏 + 10 个面板)
-    └── data/mysite.db    ← SQLite 数据库(gitignore,首次启动自动生成,初始密码 admin)
-```
-
-## 后台能管什么
-
-| 板块 | 对应前台 | 字段 |
-|---|---|---|
-| 🎯 技能树 | 「技能树」两列技能条 | 名称、熟练度%、吐槽、分类(认真/被动)、颜色、排序 |
-| 🗺️ 校园日常 | 「校园打怪升级记录」时间线 | emoji、时间、标题、描述、排序 |
-| 🧮 趣味统计 | 首屏「不正经数据统计」 | emoji、数字、单位、说明、排序 |
-| 🛠️ 项目墙 | 「我的小破项目们」卡片墙 | emoji、封面底色、项目名、描述、状态标签、链接、排序 |
-| 🧍 关于我 | 「关于我这只人类」段落 + 右侧信息卡片 | 类型(段落/卡片)、emoji、小标题、正文、排序 |
-| 🖼️ 图片 | 全站图片素材 | 拖拽/点选上传,自动校验真实文件类型,可复制路径 |
-| 📊 数据看板 | —— | 访问量趋势、来源、浏览器/系统、活跃时段、最近访问 |
-| 💾 数据备份 | —— | 一键导出 JSON / 从 JSON 恢复 / 清空并恢复 |
-
-改完保存,前台刷新即可生效(前台各页面按需拉 `/api/page/<页面名>` 接口,只取自己用到的数据)。
-
-## 样式与脚本怎么组织
-
-**前后台都是 HTML / CSS / JS 三分离,模板里不写样式也不写逻辑。**
-
-前台:
-
-| 文件 | 管什么 |
-|---|---|
-| `css/base.css` | `:root` 配色变量、重置、排版、贴纸卡片、导航 |
-| `css/home.css` | 首屏、跑马灯、数据统计、关于、技能、作品、时间线、联系、来访地图 |
-| `css/widgets.css` | 页脚、动画、二维码弹窗、技能背包、深色模式切换按钮 |
-| `css/dark.css` | 深色模式(`[data-theme="dark"]` 覆盖变量) |
-| `css/holidays.css` | 节日特效(红旗 / 爱心 / 雪花 / 全站黑白等,`data-holiday` 驱动) |
-| `css/responsive.css` | 响应式断点 |
-| `js/main.js` | 交互、按页拉内容、访问上报 |
-| `js/theme.js` | 主题切换(手动 > 系统),前后台共用同一份 |
-| `js/cities.js` | 城市名 → 经纬度表(地图页钉星) |
-| `js/map.js` | 来访地图渲染(SVG 世界地图 + 贴纸星星 + 城市列表) |
-| `js/holiday.js` | 节日检测(head 里先跑,给 `<html>` 打 `data-holiday`) |
-| `js/holiday-fx.js` | 节日粒子特效(生成红旗 / 爱心 / 雪花等元素) |
-
-`<link>` 的顺序就是层叠顺序,**`responsive.css` 必须最后**,否则媒体查询会被后面的规则盖掉。
-改配色只改 `base.css` 的 `:root` 就行。
-
-后台:
-
-| 文件 | 管什么 |
-|---|---|
-| `admin/static/css/admin.css` | 后台管理页全部样式 |
-| `admin/static/js/admin.js` | 后台管理页全部逻辑(含看板城市分布渲染) |
-| `admin/static/css/login.css` | 登录页样式 |
-| `admin/static/js/login.js` | 登录页脚本(点验证码换一张) |
-| `admin/static/css/holidays.css` | 节日特效(与前台同一份) |
-| `admin/static/js/holiday.js` / `holiday-fx.js` | 节日检测 + 粒子(与前台同一份) |
-| `admin/templates/*.html` | 只有 HTML 结构 |
-
-前台模板通过 `templates/front/base.html` 继承公共布局,导航和页脚分别放在
-`_nav.html` 与 `_footer.html`;七个页面只保留自己的 SEO 数据和主体内容。
-CSS/JS 继续作为静态资源提供,统一由基础模板引用;后台资源通过 `/admin/static/` 提供。
-
-**模板数据注入**:`admin.html` 里只剩一小段内联脚本,把后端数据挂到 `window` 上:
-
-```html
-<script>
-window.__ADMIN_DATA__ = {{ data | tojson }};
-window.__ADMIN_MUST_CHANGE__ = {{ 'true' if must_change else 'false' }};
-</script>
-<script src=".../admin.js?v=..."></script>
-```
-
-`admin.js` 从 `window` 读取,所以它本身是纯静态文件。
-
-**缓存版本号**:静态资源 URL 自动带 `?v=<时间戳>`,取 `app.py` 和所有静态文件的
-最大修改时间。每次部署版本号都会变,浏览器立刻拿到新的 CSS/JS,不用手动 Ctrl+F5。
-
-前台 7 个模板引用使用**内容哈希**:`js/holiday.js?v=15712256`。
-哈希由 `deploy/add_asset_ver.py` 按文件内容算(sha256 前 8 位),文件改了哈希就变,
-URL 跟着变,自动绕过浏览器和 nginx 的 7 天强缓存。
-
-> ⚠️ **改完前台 CSS/JS 后必须重跑一次 `add_asset_ver.py`**,否则 URL 不变,
-> 用户拿到的还是旧缓存文件。脚本会更新公共基础模板和地图页的资源引用。
-
-```bash
-python deploy/add_asset_ver.py    # 重新算哈希并写回公共模板
-```
-
-## 分享卡片与 SEO
-
-发到微信 / QQ / 群里的链接会显示标题、描述和预览图,不再是光秃秃的网址。
-
-| 文件 | 作用 |
-|---|---|
-| `assets/og-image.png` | 分享预览图(1200×630),想换就重新生成同名文件 |
-| `assets/favicon.svg` | 浏览器标签页图标 |
-| `robots.txt` | 允许收录首页,禁止收录 `/admin` 和 `/api` |
-| `sitemap.xml` | 站点地图,提交给搜索引擎 |
-
-`templates/front/index.html` 有首页 JSON-LD;共享基础模板统一输出 `og:*` 与 `twitter:*` 标签。
-
-## 访问统计
-
-自建轻量统计,不引第三方(没有 Google Analytics,不涉及隐私外传)。
-
-- 前台打开任意页面时用 `sendBeacon` 上报一次,**同一标签页会话只报一次**(刷新不刷量)
-- 只记录已知页面(首页 / 关于 / 技能 / 项目 / 校园 / 地图 / 联系),其他路径一律拒收,防止被扫描器刷爆数据库
-- 自动识别并过滤爬虫(Googlebot、curl、python-requests 等)
-- 来源只留域名,站内跳转不算外部来源
-- 后台「📊 数据看板」看:今天/区间/累计访问、每日趋势、来源排行、浏览器系统占比、24 小时活跃分布、**访客城市分布**、最近 20 条明细
-
-**访客城市**:每次上报时把访问 IP 交给 `geo.py` 解析成「省 市」存库;只存城市**不存 IP 原文**(隐私友好)。
-
-- 主源淘宝 IP 库(国内准),失败自动切备源 ip-api.com(有国家字段,补全国外城市)
-- 解析成功缓存 30 天;**解析失败只缓存 5 分钟**,过一会儿自动重试(避免限流期间永久记空)
-- 港澳台只显示地区名,国外显示「国家 城市」
-
-前台「来访地图」页按城市聚合,把星星钉在 SVG 世界地图上。
-
-**统计口径**(避免看到数字对不上):
-
-- 所有时间按**北京时间**计算,不依赖服务器/SQLite 时区设置
-- 每日趋势**固定补齐区间内每一天**(没访问的补 0),所以 X 轴始终连续
-- 「累计访问」只算真人(爬虫单独计数在「已过滤爬虫」卡片)
-- 城市统计只算真人、且只统计能解析出城市的访问;查不到城市的访问不计入城市榜(但不影响总数)
-
-想清空统计:`sqlite3 admin/data/mysite.db "DELETE FROM visits;"`
-
-## 深色模式
-
-前后台都支持暗色:导航栏 / 后台右上角有 ☀️/🌙 按钮,点击手动切换;没点过就一直跟随系统偏好(系统切了页面实时跟着变),选择存在 `localStorage`。
-
-切换逻辑前后台共用同一个 `js/theme.js`(优先级:手动选择 > 系统偏好),页面 `<head>` 里有防闪烁脚本,深色用户打开不会闪白。
-
-配色通过 `[data-theme="dark"]` 覆盖 `:root` 变量实现,变量按语义分层(文字 / 描边 / 阴影 / 底色 / 强调色各管各的),所以深色下不会出现浅色的描边或投影。
-
-## 节日特效
-
-到日子了自动换皮肤,前后台一起生效。**也可以完全由后台手动控制**(见下)。
-
-| 节日 | 日期 | 特效 |
-|---|---|---|
-| 🇨🇳 国庆节 | 10.1 ~ 10.7 | 红旗飘飘 |
-| 💗 情人节 | 2.14 | 爱心上飘 |
-| 🕯️ 国家公祭日 | 12.13 | **全站黑白**(优先级最高,撞上别的节日也黑白) |
-| 🎆 元旦 | 1.1 ~ 1.2 | 彩带飘落 |
-| 🎄 圣诞节 | 12.24 ~ 12.25 | 雪花 |
-| 🧹 劳动节 | 5.1 ~ 5.5 | 彩带 |
-| ✈️ 儿童节 | 6.1 | 纸飞机 |
-| ⭐ 教师节 | 9.10 | 小星星 |
-
-### 后台手动控制
-
-后台「⚙️ 站点维护 → 🎉 前台特效」可以完全接管节日特效:
-
-| 设置 | 作用 |
-|---|---|
-| 节日装饰开关 | 关掉 = 全站不显示任何节日特效 |
-| 模式 | `按日期自动` / `手动指定节日` / `全部关闭` |
-| 指定节日 | 手动模式下选哪个节日(可提前预览,不用等日子) |
-| 前台动效总开关 | 关掉后所有粒子/飘落动效都不加载,页面更省电 |
-
-前台每个页面在 `<head>` 里同步读一次 `/api/fx`(超时 1.2 秒),**后台挂掉或响应慢会自动回退到「按日期自动」**,不会白屏或卡顿。改完刷新前台即可生效,不需要重启服务。
-
-### 实现
-
-`js/holiday.js` 在 `<head>` 里(主题防闪脚本之后)决定 `<html>` 上的 `data-holiday="<key>"`:
-优先级是 **后台手动配置 > 按日期自动 > 不过节**。`css/holidays.css` 按属性显示装饰样式,
-`js/holiday-fx.js` 在页面末尾生成对应粒子 DOM(纯 CSS 动画,零依赖)。
-
-想加节日:改 `js/holiday.js` 的日期判断 + `css/holidays.css` 加一套样式 + `js/holiday-fx.js` 加一个粒子定义,
-再到 `admin/db.py` 的 `HOLIDAY_KEYS` 和 `admin/templates/admin.html` 的下拉框里加上(后台 `admin/static/` 里是同一份,复制过去即可)。
-
-## 来访地图
-
-「地图」页展示访客都来自哪些城市:SVG 世界地图(低多边形大陆),每座城市一颗贴纸星星,星星越大访问越多,悬停显示城市名 + 次数;右侧列表按访问量排行。
-
-- 数据来源:访问统计时用 `geo.py`(淘宝 IP 库)把 IP 解析成「省 市」,存库并聚合
-- **隐私**:只存城市,不存 IP 原文;IP 仅用于查询,30 天缓存,内存 LRU 上限 1000
-- 城市坐标映射在 `js/cities.js`(约 150 个国内城市 + 港澳台 + 海外主要城市),查不到坐标的城市在列表里用 ❓ 显示
-- 后台「📊 数据看板」也有城市分布排行,不用开前台就能看
-
-## 想改内容去哪改
-
-| 想改什么 | 去哪里改 |
-|---|---|
-| 技能 / 时间线 / 统计 / 项目墙 / 关于我 | 后台 `https://<你的域名>/admin` 在线改(推荐) |
-| 图片素材 | 后台上传,或直接替换 `assets/` 里的文件 |
-| 姓名 / 站名 / 学校 / 专业 / 年级 / 方向 / 标语 / 版权 / 建站年份 | 后台 `https://<你的域名>/admin` → 🏷️ 站点信息(推荐,v2.5 起支持) |
-| 跑马灯文案 | `templates/front/index.html`(这块没做进后台) |
-| 关于我文案 / 技能背包 / 作品兜底卡片 | `templates/front/about.html` / `skills.html` / `works.html`(后台数据拉不到时显示的兜底) |
-| 联系方式按钮 | `templates/front/contact.html`(微信按钮 + GitHub) |
-| 节日特效(开关 / 指定节日) | 后台 `https://<你的域名>/admin` → 🎉 前台特效(推荐,可提前预览) |
-| 节日特效(加节日 / 换样式) | `js/holiday.js` + `css/holidays.css` + `js/holiday-fx.js`(后台同步 `admin/static/` 里同一份) |
-| 节日特效默认模式 | `admin/db.py` 的 `FX_DEFAULTS`(默认 `auto` 按日期自动) |
-| 地图星星坐标 | `js/cities.js`(城市名 → 经纬度表) |
-| 地图页文案 / 布局 | `templates/front/map.html` + `css/home.css` 里 `.map-*` 块 |
-| 前台配色(浅色) | `css/base.css` 顶部 `:root` |
-| 前台配色(深色) | `css/dark.css` 的 `[data-theme="dark"]` 块 |
-| 后台配色(浅色) | `admin/static/css/admin.css` 顶部 `:root` |
-| 后台配色(深色) | `admin/static/css/admin.css` 底部 `[data-theme="dark"]` 块 |
-| 微信二维码 | 替换 `assets/wechat-qr.jpg`(保持文件名不变最省事) |
-
-> ⚠️ 改完**前台的** `js/` 或 `css/` 文件后,记得跑 `python deploy/add_asset_ver.py`
-> 更新 7 个页面里的 `?v=` 哈希,否则用户浏览器还是用旧缓存。
-
-## 部署结构(线上)
-
-```
-浏览器 → Nginx(80/443, 证书 Let's Encrypt)
-   ├── 页面/API/后台 → 反代到 127.0.0.1:5100(Flask + Jinja, gunicorn)
-   └── CSS/JS/图片   → Nginx 静态文件
-Flask 服务由 systemd 守护(mysite-admin.service),开机自启、挂了自动拉起
-```
-
-## 后台密码
-
-- **初始密码是 `admin`**,第一次用 admin 登录后台会自动弹出改密码窗口,改完才算完事(改密码规则:至少 6 位、不能还是 `admin`、要输两遍确认)
-- 没改初始密码期间:登录页会提示「首次使用初始密码 admin」,后台顶部挂黄色警示横幅
-- 改完密码会强制退出重新登录;之后随时点后台「🔐 安全设置 → 修改密码」再改
-- 密码以 PBKDF2(120k 迭代)哈希存在数据库 settings 表里,明文不落盘
-
-## 登录验证码
-
-登录页除密码外还要输图形验证码。
-
-- **纯标准库 SVG 生成**,不依赖 Pillow、不依赖字体文件,服务器上零额外安装
-- 4 位字符,**去掉了容易看错的 `0O1lI2Z5S8B`**,只剩 `ACDEFGHJKLMNPQRTUVWXY34679`
-- 每个字符随机旋转 ±22°、上下偏移、字号粗细变化,再叠 4 条贝塞尔干扰线 + 26 个噪点
-- **答案不存明文**:session 里只存 `sha256("cap:" + 大写答案)`,数据库泄露也反推不出来
-- **一次性**:不管输对输错,校验完立刻从 session 删掉,不能复用
-- **3 分钟过期**,超时提示刷新
-- 点图片换一张,响应头 `Cache-Control: no-store`,不会被浏览器缓存住
-- 可在后台「🔐 安全中心 → 🛡️ 登录防护」里关闭或调位数(3~6 位)
-
-## 安全中心
-
-后台侧边栏「🔐 安全中心」是**多级菜单**,下面 6 个子页面各管一块,互不干扰:
-
-| 子菜单 | 管什么 |
-|---|---|
-| 🔑 后台密码 | 顶部四张状态卡 + 修改密码 + 踢掉其他会话 |
-| 🛡️ 登录防护 | 验证码开关/位数、失败封锁、会话时长、审计保留条数(全部手动开关) |
-| ⛔ 封锁名单 | 被临时封锁的 IP,实时倒计时 + 一键解除 |
-| 💻 登录会话 | 所有登录设备列表,单个踢下线 / 全部踢掉 |
-| 📜 审计日志 | 15 类敏感操作留痕,可刷新可清空 |
-| 🛡️ 防护状态 | 当前全站安全措施一览(只读) |
-
-所有防护项**默认开启,但都可以手动关掉**(比如验证码、失败封锁、空闲登出),按自己习惯调。
-
-**顶部四张状态卡**(在「后台密码」页):验证码状态 / 24 小时登录失败次数 / 封锁中 IP 数 / 活跃会话数,
-数量异常时卡片自动变黄或变红。
-
-**可调参数**(全部有范围校验,非法值直接 400):
-
-| 设置 | 默认 | 范围 | 作用 |
-|---|---|---|---|
-| 登录验证码 | 开 | 开/关 | 关掉后只验密码 |
-| 验证码位数 | 4 | 3~6 | 越长越难认 |
-| 失败几次后封锁 | 5 | 1~50 | 达到次数临时禁登 |
-| 封锁时长 | 15 分钟 | 1~1440 | 期间该 IP 无法登录 |
-| 空闲自动登出 | 60 分钟 | 0~1440 | 0 = 不自动登出 |
-| 会话有效期 | 168 小时 | 1~720 | 超时重新登录 |
-| 审计日志保留 | 500 条 | 50~5000 | 面板显示上限 |
-
-**封锁中的 IP**:实时倒计时 + 一键解除。
-
-**登录会话**:列出 IP、设备、登录时间、最后活动时间,当前会话带绿色标记。
-可以单个「踢下线」,也可以「踢掉其他所有会话」——改完密码后建议点一下。
-
-**操作审计日志**:记录登录成功/失败/触发封锁/封锁期尝试/退出/改密码/改安全设置/改特效设置/
-踢会话/解除封锁/上传图片/删图片/导入/导出/清空日志/空闲登出,共 16 类动作,
-带时间、IP、详情。可刷新可清空(清空本身也会被记录)。
-
-### 应急:把自己锁在门外了怎么办
-
-如果输错太多次把自己 IP 封了,SSH 上去跑:
-
-```bash
-cd /var/www/mysite/admin
-venv/bin/python unlock.py              # 看当前封了哪些 IP
-venv/bin/python unlock.py --all        # 全部解除
-venv/bin/python unlock.py 1.2.3.4      # 解除指定 IP
-venv/bin/python unlock.py --sessions   # 看登录会话
-venv/bin/python unlock.py --kill-all   # 踢掉所有会话
-venv/bin/python unlock.py --captcha off  # 临时关验证码(应急)
-venv/bin/python unlock.py --audit 30   # 看最近 30 条审计
-```
-
-## 安全加固
-
-| 层面 | 措施 |
-|---|---|
-| 登录防爆破 | **图形验证码**(一次性、3 分钟过期、答案哈希存储);nginx 层 `limit_req` 限速(登录 10 次/分钟、验证码 30 次/分钟,基于真实 TCP 源,`X-Forwarded-For` 改为 `$remote_addr` **覆盖**,伪造无效);应用层失败次数**落库**(重启不丢),达阈值自动封锁 IP |
-| 会话安全 | 登录成功 `session.clear()` 防会话固定;会话登记入库,支持远程踢下线;空闲超时自动登出;`Secure` + `HttpOnly` + `SameSite=Lax` |
-| 审计留痕 | 15 类敏感操作全部记入 `audit` 表,后台可视、可清空,应急工具也能查 |
-| 运行权限 | 后台以专用系统用户 `mysite` 运行(非 root);`data/` 750、数据库 640、`/etc/mysite-admin.env` 640 root:mysite |
-| 传输安全 | 全站 HTTPS,HSTS 一年 |
-| 响应头 | `X-Content-Type-Options` / `X-Frame-Options` / `Referrer-Policy` / `Permissions-Policy`;`server_tokens off` 隐藏版本 |
-| 输入防护 | 请求体上限 64KB;`escAttr()` 对属性值额外转义引号,防属性逃逸 XSS;安全设置项全部做范围与类型校验 |
-| 上传防护 | 校验真实文件头(magic bytes),扩展名与真实类型不符以真实类型为准,防改扩展名 webshell |
-| 资源隔离 | 隐藏文件(`.git`/`.env`)与 `.db/.sql/.py/.bak` 一律 403;数据库和源码不在 webroot 可访问路径 |
-| SSH | 仅公钥登录(`PasswordAuthentication no`),root 仅密钥(`prohibit-password`),`MaxAuthTries 3` |
-| 备份 | 每次部署前自动备份 nginx / app.py / db.py / admin.html / 数据库到 `/root/*.bak.<时间戳>` |
+| `v1.0.0` ~ `v3.2.2` | Flask + Jinja 单体,23 个版本迭代(见 Git 历史) |
+| `v4.0.0` ~ `v4.2.0` | React 实验版(已归档到 `v4-react-archive` 分支) |
+| **`v5.0.0`** | **当前:React SPA + FastAPI 重构** |
 
 ---
 

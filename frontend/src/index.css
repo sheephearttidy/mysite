@@ -1,0 +1,136 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   配色变量 —— 沿用原站贴纸风,前后台共用
+   ============================================================ */
+:root {
+  --cream: #fff8ee;
+  --paper: #ffffff;
+  --ink: #2d2a32;
+  --shadow: #2d2a32;
+
+  --pink: var(--accent-pink, #ff6b9d);
+  --pink-bg: var(--accent-pink-bg, #ffe4ef);
+  --yellow: #ffd93d;
+  --yellow-bg: #fff6d6;
+  --teal: #2fa886;
+  --teal-bg: #dcf5ee;
+  --purple: #9b6bff;
+  --purple-bg: #ece2ff;
+  --orange: #ffa94d;
+  --orange-bg: #ffe8d6;
+  --blue: #4da3ff;
+  --blue-bg: #e0f2ff;
+
+  --rule: rgba(45, 42, 50, 0.12);
+  --text-2: #6b6577;
+  --text-3: #8a8494;
+}
+
+[data-theme='dark'] {
+  --cream: #1b1922;
+  --paper: #252230;
+  --ink: #f2eef7;
+  --shadow: #0f0d14;
+
+  --pink: var(--accent-pink-dark, #d488a6);
+  --pink-bg: var(--accent-pink-bg-dark, #3a2732);
+  --yellow: #ffd93d;
+  --yellow-bg: #3a3320;
+  --teal: #4fc9a6;
+  --teal-bg: #1e3a33;
+  --purple: #b48cff;
+  --purple-bg: #2e2540;
+  --orange: #ffb86b;
+  --orange-bg: #3a2d1f;
+  --blue: #6cb6ff;
+  --blue-bg: #1e2d3f;
+
+  --rule: rgba(242, 238, 247, 0.14);
+  --text-2: #b8b2c4;
+  --text-3: #9a94a6;
+}
+
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: 'Baloo 2', 'PingFang SC', 'Microsoft YaHei', 'Segoe UI', sans-serif;
+    background: var(--cream);
+    color: var(--ink);
+    line-height: 1.8;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+    transition: background-color 0.3s, color 0.3s;
+  }
+
+  ::selection {
+    background: var(--yellow);
+    color: #2d2a32;
+  }
+}
+
+@layer components {
+  /* 贴纸卡片:粗描边 + 硬阴影,原站的核心视觉 */
+  .sticker {
+    @apply rounded-sticker border-[3px] bg-paper p-5;
+    border-color: var(--shadow);
+    box-shadow: 4px 4px 0 var(--shadow);
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+  }
+
+  .sticker-hover:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 6px 6px 0 var(--shadow);
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-full border-[3px] px-5 py-2 font-bold;
+    border-color: var(--shadow);
+    background: var(--paper);
+    color: var(--ink);
+    box-shadow: 3px 3px 0 var(--shadow);
+    transition: transform 0.12s, box-shadow 0.12s;
+  }
+
+  .btn:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 4px 4px 0 var(--shadow);
+  }
+
+  .btn:active {
+    transform: translate(2px, 2px);
+    box-shadow: 1px 1px 0 var(--shadow);
+  }
+
+  .btn-accent {
+    background: var(--yellow);
+    color: #2d2a32;
+  }
+
+  .pill {
+    @apply inline-block rounded-full px-3 py-1 text-xs font-bold;
+    border: 2px solid var(--shadow);
+  }
+}
+
+/* 尊重系统「减少动效」偏好 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
