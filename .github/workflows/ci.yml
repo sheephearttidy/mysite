@@ -8,7 +8,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  test:
+  backend:
+    name: 后端(FastAPI)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -18,18 +19,80 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: 语法检查(核心模块)
-        run: python -m py_compile admin/app.py admin/db.py admin/geo.py admin/captcha.py
+      - name: 安装依赖
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
-      - name: 单元测试 + Web 冒烟(tests/,临时库,零第三方依赖)
-        run: python -m unittest discover -s tests -v
+      - name: 语法检查
+        working-directory: backend
+        run: python -m compileall -q app
 
-      - name: 前端资源一致性检查(页面/导航/资源哈希)
-        run: python deploy/ci_front_check.py
+      - name: 导入自检(路由注册 + ORM 模型)
+        working-directory: backend
+        run: |
+          python -c "
+          from app.main import app
+          from app.models.models import Base
+          print('routes ok, tables:', len(Base.metadata.tables))
+          assert len(Base.metadata.tables) == 22, '模型数量异常'
+          "
 
-      - name: 后台面板映射检查(侧边栏/PANELS/容器对齐)
-        run: python deploy/check_panel_map.py
+      - name: 公开接口冒烟(临时库)
+        working-directory: backend
+        run: |
+          python - <<'PY'
+          import os, sqlite3, tempfile
+          db = os.path.join(tempfile.mkdtemp(), 'ci.db')
+          con = sqlite3.connect(db)
+          # 最小表结构:冒烟只验证路由与序列化
+          con.execute("CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
+          con.execute("CREATE TABLE skills (id INTEGER PRIMARY KEY, name TEXT, percent INTEGER, note TEXT, category TEXT, color TEXT, sort INTEGER)")
+          con.execute("INSERT INTO skills VALUES (1,'test',50,'','serious','teal',1)")
+          con.commit(); con.close()
+          os.environ['MYSITE_DB_PATH'] = db
+          os.environ['MYSITE_COOKIE_SECURE'] = '0'
+          from fastapi.testclient import TestClient
+          from app.main import app
+          c = TestClient(app)
+          for p in ['/api/health', '/api/content/skills']:
+              r = c.get(p)
+              assert r.status_code == 200, f'{p} -> {r.status_code}'
+              print(f'{p} -> {r.status_code}')
+          # 未登录必须 401
+          assert c.get('/api/admin/alerts').status_code == 401
+          print('smoke ok')
+          PY
 
-      - name: 上传检查结果
-        if: always()
-        run: echo "CI done"
+  frontend:
+    name: 前端(React)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: 安装依赖
+        working-directory: frontend
+        run: npm ci
+
+      - name: 类型检查
+        working-directory: frontend
+        run: npx tsc --noEmit
+
+      - name: 构建
+        working-directory: frontend
+        run: npm run build
+
+      - name: 构建产物检查
+        working-directory: frontend
+        run: |
+          test -f dist/index.html || { echo "缺少 dist/index.html"; exit 1; }
+          test -f dist/admin.html || { echo "缺少 dist/admin.html"; exit 1; }
+          echo "构建产物完整"

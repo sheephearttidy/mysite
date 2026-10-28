@@ -34,6 +34,9 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    // 默认只监听 IPv6 ::1,导致 127.0.0.1 访问不到;显式绑到 127.0.0.1
+    host: '127.0.0.1',
+    strictPort: true,
     proxy: {
       '/api': 'http://127.0.0.1:5100',
       '/assets/uploads': 'http://127.0.0.1:5100',
