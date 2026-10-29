@@ -294,6 +294,7 @@ $env:TEST_BASE='http://127.0.0.1:5100'
 | `v4.0.0` ~ `v4.2.0` | React 实验版(归档于 `v4-react-archive` 分支) |
 | `v5.0.0` | React SPA + FastAPI 重构 |
 | `v5.1.0` | 样式体系补全 + 动态组件 + 强制改密 |
+| `v5.1.1` | 修复安全设置保存失效 + 补全量审计脚本 |
 | **`v5.2.0`** | **当前:真实世界地图 + CSRF/CSP/安全响应头加固** |
 
 旧版可通过 `git checkout v3.2.2-pre-react-refactor` 找回。
