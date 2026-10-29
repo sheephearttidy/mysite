@@ -280,7 +280,7 @@ python backend/scripts/verify_prod_v52.py                          # 线上终�
 ```bash
 # Windows PowerShell
 $env:SMOKE_DB='D:\tmp\test.db'      # test_auth_crud.py / admin_check.py
-$env:TEST_DB='D:\tmp\test.db'       # test_force_password.py / audit_actions.py
+$env:TEST_DB='D:\tmp\test.db'       # test_force_password.py / audit_actions.py / test_csrf_matrix.py / audit_security.py
 $env:TEST_ORIGIN='http://127.0.0.1:5100'   # CSRF 同源校验用
 $env:SMOKE_BASE='http://127.0.0.1:5100'
 $env:TEST_BASE='http://127.0.0.1:5100'
