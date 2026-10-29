@@ -64,6 +64,14 @@ def main() -> int:
         c = m.group(1)
         ck(c, (ROOT / c).exists(), "不存在")
 
+    # DEPLOY 里写的 /etc/nginx/snippets/xxx.conf 必须能在 deploy/nginx/ 找到源文件,
+    # 否则照文档部署会得到 unknown snippet(曾把已废弃的 nocsp 片段写进文档)。
+    for m in re.finditer(r"/etc/nginx/snippets/([\w.-]+\.conf)", deploy):
+        name = m.group(1)
+        ck(f"/etc/nginx/snippets/{name} 有源文件",
+           (ROOT / "deploy/nginx" / name).exists(),
+           f"deploy/nginx/{name} 不存在")
+
     print()
     print("=" * 60)
     print("文档里是否残留已删除的旧路径")
@@ -89,17 +97,29 @@ def main() -> int:
     print("=" * 60)
     print("版本号一致性")
     print("=" * 60)
-    # package.json 版本 vs README 版本表
+    # package.json / package-lock.json / main.py / README 版本表必须一致。
+    # 只比前后端两处会漏掉 lock 与文档,历史上就出现过 5.0.0 残留。
     import json
 
     pkg = json.loads((ROOT / "frontend/package.json").read_text(encoding="utf-8"))
     ck("package.json 有 version", "version" in pkg, str(pkg.get("version")))
+    lock = json.loads((ROOT / "frontend/package-lock.json").read_text(encoding="utf-8"))
+    lock_root = lock.get("packages", {}).get("", {}).get("version")
+    ck("package-lock.json 与 package.json 版本一致",
+       lock.get("version") == pkg.get("version") and lock_root == pkg.get("version"),
+       f"pkg={pkg.get('version')} lock={lock.get('version')} lock.root={lock_root}")
     main_py = (ROOT / "backend/app/main.py").read_text(encoding="utf-8")
     m = re.search(r'version="([\d.]+)"', main_py)
     ck("main.py 有 version", bool(m), "")
     if m and "version" in pkg:
         ck("前后端版本号一致", pkg["version"] == m.group(1),
            f"pkg={pkg['version']} api={m.group(1)}")
+    # README 版本表里标“当前”的那一行
+    cur = re.search(r"`v([\d.]+)`[^\n]*当前", readme)
+    ck("README 版本表有“当前”行", bool(cur), "")
+    if cur and "version" in pkg:
+        ck("README 当前版本与 package.json 一致", cur.group(1) == pkg["version"],
+           f"readme={cur.group(1)} pkg={pkg['version']}")
 
     print()
     print("通过 %d 项,失败 %d 项" % (PASS, FAIL))
