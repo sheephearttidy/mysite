@@ -42,23 +42,33 @@ for p in ["/api/health", "/api/site", "/api/map", "/api/page/index",
 
 print()
 print("=== 世界地图(真实国界数据)===")
+# /map 是 SPA 路由:直接请求只拿到 index.html 外壳,地图代码在懒加载 chunk 里。
+# 正确路径:index.html -> 主包 main-*.js -> 动态 import 的 MapPage-*.js。
+# (投影是 gen_world_map.py 预计算的,bundle 里没有 0.8707/MAX_Y 这类常量,
+#  原脚本在 DOM 里找 MapPage chunk 必然失败。)
 st, raw, _ = get("/map")
 dom = raw.decode("utf-8", "replace")
-# 国界在懒加载 chunk 里,页面 DOM 应包含地图容器
-ck("地图页渲染", "来访地图" in dom and "城市排行" in dom, "")
+ck("/map 返回页面(SPA 外壳)", st == 200 and 'id="root"' in dom, str(st))
 
-# 检查地图 chunk 可访问
-chunks = re.findall(r'assets/(MapPage-[^"]+\.js)', dom)
-if chunks:
-    st, raw, _ = get("/assets/" + chunks[0])
-    js = raw.decode("utf-8", "replace")
-    ck("地图 chunk 可加载(%dKB)" % (len(js) // 1024), st == 200, str(st))
-    ck("含世界国界数据", js.count("M") > 150 and len(js) > 50000,
-       "len=%d" % len(js))
-    ck("含 Natural Earth 投影", "0.8707" in js, "")
-    ck("y 翻转已包含", "MAX_Y" in js, "")
-else:
-    ck("找到地图 chunk", False, "未在 DOM 中发现 MapPage chunk")
+st, raw, _ = get("/")
+idx = raw.decode("utf-8", "replace")
+entry = re.search(r'assets/(main-[\w-]+\.js)', idx)
+ck("index.html 引用主包 main-*.js", bool(entry), "")
+if entry:
+    st, raw, _ = get("/assets/" + entry.group(1))
+    main_js = raw.decode("utf-8", "replace")
+    ck("主包可加载(%dKB)" % (len(main_js) // 1024),
+       st == 200 and len(main_js) > 3000, str(st))
+    m = re.search(r"MapPage-[\w-]+\.js", main_js)
+    ck("主包引用地图 chunk", bool(m), "")
+    if m:
+        st, raw, _ = get("/assets/" + m.group(0))
+        js = raw.decode("utf-8", "replace")
+        ck("地图 chunk 可加载(%dKB)" % (len(js) // 1024), st == 200, str(st))
+        # 国界是预生成的 SVG path 字符串,形如 "M993.7,312.1 994.5,311.6 ..."
+        borders = len(re.findall(r'"M[\d.]', js))
+        ck("含世界国界数据(%d 条轮廓)" % borders, borders >= 150, "len=%d" % len(js))
+        ck("地图按 1000x514 投影", "height:514" in js or "viewBox" in js, "")
 
 print()
 print("=== 安全响应头 ===")
