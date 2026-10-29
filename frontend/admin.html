@@ -6,17 +6,8 @@
     <title>后台管理 · 我的小窝</title>
     <meta name="robots" content="noindex, nofollow" />
     <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
-    <script>
-      (function () {
-        try {
-          var saved = localStorage.getItem('theme');
-          var dark = saved
-            ? saved === 'dark'
-            : window.matchMedia('(prefers-color-scheme: dark)').matches;
-          if (dark) document.documentElement.setAttribute('data-theme', 'dark');
-        } catch (e) {}
-      })();
-    </script>
+    <!-- 防闪烁:用外部文件以配合严格 CSP -->
+    <script src="/theme-init.js"></script>
   </head>
   <body>
     <div id="root"></div>

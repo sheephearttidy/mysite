@@ -91,11 +91,12 @@ def call(method, path):
 
 def main() -> int:
     print("=" * 60)
-    print("未登录时必须 401 的接口")
+    print("未登录时必须被拒的接口")
+    print("  403 = CSRF 中间件先拒;401 = 认证层拒。两者都表示未放行。")
     print("=" * 60)
     for method, path in MUST_401:
         st = call(method, path)
-        ck(f"{method:6s} {path:34s} -> {st}", st == 401, f"期望 401,实际 {st}")
+        ck(f"{method:6s} {path:34s} -> {st}", st in (401, 403), f"期望 401/403,实际 {st}")
 
     print()
     print("=" * 60)

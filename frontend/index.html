@@ -13,18 +13,8 @@
     <meta property="og:image" content="/assets/og-image.png" />
     <meta name="theme-color" content="#fff8ee" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#1b1922" media="(prefers-color-scheme: dark)" />
-    <script>
-      // 防闪烁:在首屏绘制前定好主题
-      (function () {
-        try {
-          var saved = localStorage.getItem('theme');
-          var dark = saved
-            ? saved === 'dark'
-            : window.matchMedia('(prefers-color-scheme: dark)').matches;
-          if (dark) document.documentElement.setAttribute('data-theme', 'dark');
-        } catch (e) {}
-      })();
-    </script>
+    <!-- 防闪烁:在首屏绘制前定好主题。用外部文件以配合严格 CSP -->
+    <script src="/theme-init.js"></script>
   </head>
   <body>
     <div id="root"></div>

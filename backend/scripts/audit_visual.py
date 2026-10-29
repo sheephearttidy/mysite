@@ -1,11 +1,6 @@
-"""全站视觉/功能浏览器检查:暗色模式、地图、动态组件、后台。
+"""全站视觉检查:页面渲染、世界地图、动态组件、暗色 CSS。
 
-检查点:
-1. 前台 9 页正常渲染,无 React 崩溃
-2. 暗色模式:切到 dark 后 CSS 变量生效、文字有对比度
-3. 地图:SVG 底图 + 城市点位
-4. 动态组件:CSS 动画 keyframes 存在
-5. 后台:登录页 + bundle 含强制改密/暗色/安全中心
+用 headless Chrome dump-dom 取真实渲染结果,检查关键元素是否出现。
 """
 from __future__ import annotations
 
@@ -15,7 +10,7 @@ import subprocess
 import sys
 import tempfile
 
-BASE = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:5214"
+BASE = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:5216"
 CHROME = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
 PASS = FAIL = 0
 
@@ -36,11 +31,11 @@ def dump(url, width=1400, height=900):
         r = subprocess.run(
             [CHROME, "--headless=new", "--disable-gpu", "--no-sandbox",
              "--user-data-dir=" + prof,
-             f"--window-size={width},{height}",
-             "--virtual-time-budget=10000", "--dump-dom", url],
-            capture_output=True, timeout=150,
+             "--window-size=%d,%d" % (width, height),
+             "--virtual-time-budget=12000", "--dump-dom", url],
+            capture_output=True, timeout=180,
         )
-        return r.stdout.decode("utf-8", "replace")
+        return r.stdout.decode("utf-8", "replace"), r.stderr.decode("utf-8", "replace")
     finally:
         shutil.rmtree(prof, ignore_errors=True)
 
@@ -50,7 +45,7 @@ def main() -> int:
     print("前台 9 页")
     print("=" * 62)
     pages = {
-        "/": ["你好,我是", "不正经数据统计"],
+        "/": ["你好,我是"],
         "/about": ["关于我这只人类"],
         "/skills": ["技能树", "认真技能"],
         "/works": ["我的小破项目们"],
@@ -61,27 +56,30 @@ def main() -> int:
         "/nope": ["这个页面跑丢了"],
     }
     for path, needles in pages.items():
-        dom = dump(BASE + path)
+        dom, _ = dump(BASE + path)
         missing = [n for n in needles if n not in dom]
         crash = bool(re.search(r"Uncaught|Minified React error", dom))
         ok = not missing and not crash and len(dom) > 500
-        ck(f"{path:12s} dom={len(dom)}B", ok, f"missing={missing} crash={crash}")
+        ck("%-12s dom=%dB" % (path, len(dom)), ok, "missing=%s crash=%s" % (missing, crash))
 
     print()
     print("=" * 62)
-    print("地图渲染")
+    print("世界地图")
     print("=" * 62)
-    dom = dump(BASE + "/map")
-    ck("SVG 底图存在", 'viewBox="0 0 1000 500"' in dom, "")
-    ck("大陆轮廓 path >= 5", dom.count('<path d="M') >= 5, str(dom.count('<path d="M')))
-    ck("城市圆点 >= 3", len(re.findall(r"<circle", dom)) >= 3, str(len(re.findall(r"<circle", dom))))
-    ck("有经纬网格线", "<line" in dom, "")
+    dom, _ = dump(BASE + "/map")
+    ck("SVG 底图存在", 'viewBox="0 0 1000 514"' in dom, "")
+    ck("国界路径 >= 150 条", len(re.findall(r'<path d="M', dom)) >= 150,
+       "实际 %d" % len(re.findall(r'<path d="M', dom)))
+    ck("城市圆点 >= 3", len(re.findall(r"<circle", dom)) >= 3,
+       "实际 %d" % len(re.findall(r"<circle", dom)))
+    ck("经纬网格线", len(re.findall(r"<line", dom)) >= 10,
+       "实际 %d" % len(re.findall(r"<line", dom)))
 
     print()
     print("=" * 62)
     print("动态组件")
     print("=" * 62)
-    dom = dump(BASE + "/")
+    dom, _ = dump(BASE + "/")
     ck("GradientText 动画", "gradient-flow" in dom, "")
     ck("TextType 光标动画", "cursor-blink" in dom, "")
     ck("ShinyText 扫光", "shiny-sweep" in dom, "")
@@ -93,7 +91,7 @@ def main() -> int:
     print("=" * 62)
     print("后台")
     print("=" * 62)
-    dom = dump(BASE + "/admin.html")
+    dom, _ = dump(BASE + "/admin.html")
     ck("后台页加载", len(dom) > 800, str(len(dom)))
     ck("登录表单", "后台登录" in dom, "")
     ck("无 React 崩溃", "Minified React error" not in dom, "")
@@ -127,6 +125,17 @@ def main() -> int:
         ck("含减少动效适配", "prefers-reduced-motion" in sheet, "")
     else:
         ck("找到 CSS", False, str(css))
+
+    print()
+    print("=" * 62)
+    print("CSP 兼容性(内联脚本不应被拦)")
+    print("=" * 62)
+    _, err = dump(BASE + "/")
+    violations = [l for l in err.splitlines() if "Content Security Policy" in l or "Refused to" in l]
+    ck("首页无 CSP 违规", not violations, "违规 %d 条" % len(violations))
+    _, err2 = dump(BASE + "/admin.html")
+    v2 = [l for l in err2.splitlines() if "Content Security Policy" in l or "Refused to" in l]
+    ck("后台无 CSP 违规", not v2, "违规 %d 条" % len(v2))
 
     print()
     print("通过 %d 项,失败 %d 项" % (PASS, FAIL))

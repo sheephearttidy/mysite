@@ -16,6 +16,8 @@ import urllib.request
 
 BASE = os.environ.get("TEST_BASE", "http://127.0.0.1:5213")
 DB = os.environ["TEST_DB"]
+# CSRF 防护要求后台写请求带同源 Origin
+SITE_ORIGIN = os.environ.get("TEST_ORIGIN", BASE)
 PASS = FAIL = 0
 
 
@@ -78,6 +80,9 @@ def main() -> int:
     def call(path, method="GET", body=None):
         data = json.dumps(body).encode() if body is not None else None
         h = {"Content-Type": "application/json"} if data else {}
+        # 写操作带同源 Origin,否则被 CSRF 中间件拒绝
+        if method in ("POST", "PUT", "DELETE", "PATCH"):
+            h["Origin"] = SITE_ORIGIN
         req = urllib.request.Request(BASE + path, data=data, headers=h, method=method)
         try:
             with op.open(req, timeout=20) as r:

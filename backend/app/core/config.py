@@ -40,6 +40,11 @@ class Settings(BaseSettings):
     upload_dir: str = str(REPO_ROOT / "assets" / "uploads")
     max_upload_bytes: int = 8 * 1024 * 1024
 
+    # --- 安全响应头 ---
+    # 线上由 nginx 统一下发(HTML 不经过本服务),默认关闭避免重复头。
+    # 本地直连调试时设 MYSITE_EMIT_SECURITY_HEADERS=1。
+    emit_security_headers: bool = False
+
     # --- 前端产物(生产由 nginx 直出,开发走 Vite) ---
     frontend_dist: str = str(REPO_ROOT / "frontend" / "dist")
 
