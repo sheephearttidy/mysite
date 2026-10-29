@@ -22,7 +22,7 @@ from .core.config import REPO_ROOT, settings
 app = FastAPI(
     title="至尊杰的小窝 API",
     description="个人主页 REST 后端(FastAPI)",
-    version="5.0.0",
+    version="5.2.0",
     docs_url="/api/docs",
     openapi_url="/api/openapi.json",
     redoc_url=None,

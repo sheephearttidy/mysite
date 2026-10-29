@@ -233,6 +233,19 @@ deploy/             nginx 与 systemd 配置
 | `MYSITE_UPLOAD_DIR` | `assets/uploads` | 上传目录 |
 | `MYSITE_FRONTEND_DIST` | `frontend/dist` | 前端产物目录 |
 | `MYSITE_SITE_ORIGIN` | `https://imyxj.xyz` | 站点源 |
+| `MYSITE_EMIT_SECURITY_HEADERS` | `false` | 安全响应头由 nginx 下发;仅本地直连调试设 `1` |
+
+## 安全模型
+
+**CSRF 防护。** 后台写操作(POST/PUT/DELETE)要求 Origin 主机名与请求 Host 一致,跨站或无 Origin 的请求一律 403。公开互动接口(留言/提问/点赞/上报)不校验 Origin——它们只接受 `application/json` 请求体,浏览器跨站表单伪造不出这个 Content-Type,再叠加限流防护。
+
+**CSP。** `script-src 'self'` 严格策略,所有脚本外链(包括防闪烁的 `theme-init.js`)。React 的内联样式靠 `style-src 'unsafe-inline'` 放行。上线后浏览器控制台零违规。
+
+**响应头职责划分。** HTML 由 nginx 直出、不经过 FastAPI,所以安全头(CSP/nosniff/X-Frame-Options 等)由 nginx 在每个 location 统一下发(`deploy/nginx/mysite-headers.conf`);FastAPI 侧的中间件默认关闭(`MYSITE_EMIT_SECURITY_HEADERS`),避免重复头——浏览器虽取更严格的值,但重复头不规范。
+
+**会话。** Cookie 仅存随机会话指纹,`HttpOnly + SameSite=Lax + Secure`,库里可撤销(支持踢下线);登录成功换新 sid 防会话固定;空闲超时、绝对有效期、可选 IP 绑定三重约束。
+
+**上传。** 按真实文件头(magic bytes)识别类型,扩展名与内容不符以内容为准,拒绝 PHP/JSP 等 webshell。
 
 ## 测试
 
@@ -246,12 +259,29 @@ python backend/scripts/test_force_password.py                  # 25 项强制改
 python backend/scripts/test_admin_ui.py                        # 17 项后台界面
 ```
 
+审计脚本(全量检查用,部分需先启动服务):
+
+```bash
+python backend/scripts/audit_permissions.py http://127.0.0.1:5100  # 41 项权限矩阵
+python backend/scripts/audit_actions.py                            # 27 项管理写操作
+python backend/scripts/audit_visual.py http://127.0.0.1:5100       # 34 项视觉/CSP
+python backend/scripts/audit_security.py                           # 54 项安全攻击面
+python backend/scripts/test_csrf_matrix.py                         # 11 项同源判定
+python backend/scripts/audit_worldmap.py http://127.0.0.1:5100     # 9 项世界地图
+python backend/scripts/audit_projection.py                         # 10 项投影校验
+python backend/scripts/audit_schema.py 数据库路径                    # 表结构一致性
+python backend/scripts/audit_docs.py                               # 文档真实性
+python backend/scripts/audit_deploy.py                             # 本地 vs 线上
+python backend/scripts/verify_prod_v52.py                          # 线上终验(页面/安全头/世界地图)
+```
+
 部分脚本需要指定测试库与服务地址,避免污染开发数据:
 
 ```bash
 # Windows PowerShell
 $env:SMOKE_DB='D:\tmp\test.db'      # test_auth_crud.py / admin_check.py
-$env:TEST_DB='D:\tmp\test.db'       # test_force_password.py / test_admin_ui.py
+$env:TEST_DB='D:\tmp\test.db'       # test_force_password.py / audit_actions.py
+$env:TEST_ORIGIN='http://127.0.0.1:5100'   # CSRF 同源校验用
 $env:SMOKE_BASE='http://127.0.0.1:5100'
 $env:TEST_BASE='http://127.0.0.1:5100'
 ```
@@ -263,7 +293,8 @@ $env:TEST_BASE='http://127.0.0.1:5100'
 | `v1.0.0` ~ `v3.2.2` | Flask + Jinja 单体(见 Git 历史) |
 | `v4.0.0` ~ `v4.2.0` | React 实验版(归档于 `v4-react-archive` 分支) |
 | `v5.0.0` | React SPA + FastAPI 重构 |
-| **`v5.1.0`** | **当前:样式体系补全 + 动态组件 + 地图修复 + 强制改密** |
+| `v5.1.0` | 样式体系补全 + 动态组件 + 强制改密 |
+| **`v5.2.0`** | **当前:真实世界地图 + CSRF/CSP/安全响应头加固** |
 
 旧版可通过 `git checkout v3.2.2-pre-react-refactor` 找回。
 

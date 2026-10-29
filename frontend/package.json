@@ -1,7 +1,7 @@
 {
   "name": "mysite-frontend",
   "private": true,
-  "version": "5.0.0",
+  "version": "5.2.0",
   "type": "module",
   "description": "至尊杰的小窝 · React + TypeScript 前端(前台 8 页 + 后台管理)",
   "scripts": {
